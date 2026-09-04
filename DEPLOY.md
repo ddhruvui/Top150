@@ -100,4 +100,5 @@ cd app/frontend && npm run dev                       # proxies /api to :8787
 | `/api/health` → 503 `MongoServerSelectionError` | Atlas network access, or a wrong password |
 | `... not published yet` | run the publish (step 1) |
 | UI: *Could not load* and a CORS error in the console | `CORS_ORIGIN` does not match the Render URL exactly, or `VITE_API_BASE` is unset (calls then hit Render itself and 404) |
+| UI: unstyled page, console says *Refused to apply style … MIME type ('text/plain')* | the CSS request got a 404 — Render answers missing files with `text/plain` and `nosniff`, and Chrome reports that as a MIME error. It happens when the page is opened during the ~2 min a Render deploy takes (assets not yet in place). Nothing is wrong with the build: hard-reload (⌘⇧R) once the deploy shows *Live* |
 | publish fails with `CERTIFICATE_VERIFY_FAILED` | macOS Python without the CA chain: `pip install certifi` (the script uses it when present) |
