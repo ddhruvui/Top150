@@ -32,10 +32,10 @@ export default function Backtest() {
 
   if (d.loading) return <Loading what="backtest trades" />;
   if (d.error) {
-    return <ErrorBox error={d.error} hint={
-      <>The trade ledger comes from Stage 3. Run it on a pod, then rebuild:{' '}
+    return <ErrorBox error={d.error} hint={d.error.body?.hint || (
+      <>The trade ledger comes from Stage 3. Run it on a pod, then publish:{' '}
         <code>scripts/launch_top150.sh stage3</code> →{' '}
-        <code>FULL_MIRROR=1 mirror_top150.sh</code></>} />;
+        <code>FULL_MIRROR=1 mirror_top150.sh</code></>)} />;
   }
 
   const s = d.s;

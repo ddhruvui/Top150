@@ -97,11 +97,14 @@ app serves, `reports/raw/` keeps the pod stage-reports for provenance.
 
 ```sh
 # refresh the bundle after a pipeline run (pods write the CALC volume; this only reads)
+# — ends by publishing reports/top150 to MongoDB, which is what the deployed UI shows
 .claude/skills/top150-pipeline/scripts/mirror_top150.sh          # daily book + bundle
 FULL_MIRROR=1 .claude/skills/top150-pipeline/scripts/mirror_top150.sh   # after a stage rerun
+python3 tools/publish_mongo.py                  # publish only (bundle already built)
 
-# serve it
-cd app/backend && npm install && npm start      # http://localhost:8787 (API + built UI)
+# the deployed console: API on Vercel (Top150BE), UI on Render (Top150FE) — DEPLOY.md
+# locally:
+cd app/backend && npm install && npm start      # http://localhost:8787 (reads Mongo via .env)
 cd app/frontend && npm run dev                  # hot-reload UI on :5173, proxies /api
 cd app/backend && npm test                      # paper-book regression suite
 ```

@@ -5,40 +5,45 @@ blueprint requires before real capital (BP15).
 
 ```
 app/
-  backend/    Node + Express — serves the report bundle, owns the paper book
-  frontend/   React + Vite — dashboard, suggestions, backtest explorer, paper trading
+  backend/    Node + Express — serves the published bundle from MongoDB, owns the paper book
+              (deployed on Vercel from github.com/ddhruvui/Top150BE — a subtree of this dir)
+  frontend/   React + Vite — today's ticket, dashboard, suggestions, backtest, paper trading
+              (deployed on Render from github.com/ddhruvui/Top150FE — a subtree of this dir)
 ```
 
-## Run it
+**Deployment, end to end: [DEPLOY.md](../DEPLOY.md).** The deployed UI reads only what
+`tools/publish_mongo.py` has published to the `Top150` database; the mirror step
+publishes automatically.
+
+## Run it locally
 
 ```bash
-# 1. build the report bundle from pod artifacts (see below)
-python3 tools/build_reports.py --src derived --out reports/latest
-
-# 2. API (also serves the built UI on the same port if frontend/dist exists)
+# API — reads MongoDB via ../../.env (or the JSON files with REPORTS_DIR / no MONGO_URI)
 cd app/backend && npm install && npm start        # http://localhost:8787
 
-# 3. UI in dev mode (hot reload, proxies /api to 8787)
+# UI in dev mode (hot reload, proxies /api to 8787)
 cd app/frontend && npm install && npm run dev     # http://localhost:5173
 # …or build once and let the API serve it:
 cd app/frontend && npm run build
 ```
 
-`npm test` in `app/backend` runs the paper-book regression suite.
+`npm test` in `app/backend` runs the paper-book regression suite (no database needed);
+`node smoke.mjs <url>` checks every read endpoint of a running API, local or deployed.
 
 ## Where the numbers come from
 
 Nothing is recomputed in the app. `tools/build_reports.py` reads the artifacts the
-RunPod jobs wrote (`derived/`) and emits `reports/latest/*.json`; the API slices
-that bundle. So a number on screen always equals the number the pipeline produced —
-the API cannot drift from it.
+RunPod jobs wrote (`derived/`) and emits `reports/<bundle>/*.json`;
+`tools/publish_mongo.py` writes that bundle to MongoDB, and the API slices it. So a
+number on screen always equals the number the pipeline produced — the API cannot
+drift from it.
 
-To refresh after a pipeline run:
+To refresh after a pipeline run (pull, rebuild, G-02 check, publish — one command):
 
 ```bash
-aws s3 cp $S3FLAGS s3://<volume>/derived/stage3/ derived/ --recursive
-aws s3 cp $S3FLAGS s3://<volume>/derived/predict/suggestions.json derived/
-python3 tools/build_reports.py --src derived --out reports/latest
+.claude/skills/top150-pipeline/scripts/mirror_top150.sh
+# or, just the publish of an already-built bundle:
+python3 tools/publish_mongo.py --src reports/top150 --bundle top150
 ```
 
 ## Pages

@@ -1,0 +1,8 @@
+node_modules/
+# file-mode paper book (local runs without Mongo) — never a source of truth in git
+data/
+.env
+.env.*
+!.env.example
+.vercel/
+*.log

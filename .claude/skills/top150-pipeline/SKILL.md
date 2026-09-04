@@ -45,7 +45,7 @@ Bundled helpers in `.claude/skills/top150-pipeline/scripts/` (call by full path;
 | `podlog150 <pat> [n]` | newest matching `_pod_logs/` entry on the calc volume |
 | `pods` | account-wide pod list (name, id, status, created) |
 | `watch_pods.py` | report-only watchdog; one line per state change (UP/DONE/STALL/IDLE) |
-| `mirror_top150.sh` | pull book (+stage artifacts with `FULL_MIRROR=1`), enforce G-02 vs the source tape, rebuild `reports/top150` |
+| `mirror_top150.sh` | pull book (+stage artifacts with `FULL_MIRROR=1`), enforce G-02 vs the source tape, rebuild `reports/top150`, **publish it to MongoDB** (`tools/publish_mongo.py`; `PUBLISH_MONGO=0` skips) |
 
 ## Hard rules (each one has burned a run)
 
@@ -56,8 +56,8 @@ Bundled helpers in `.claude/skills/top150-pipeline/scripts/` (call by full path;
    `data_acquisition/`, no `daily.sh`, and no `watch_jobs.sh` any more; the last of
    those auto-relaunched jobs with prod wiring and would write the source tape.
 3. **Branch check first**: `git branch --show-current` must say `top150` (or `top200`).
-   The backend's branch-aware bundle selection (`app/backend/src/reports.js`) serves
-   `reports/top150` only on those branches.
+   The backend serves the bundle named by `BUNDLE` (default `top150`) — from MongoDB
+   when `MONGO_URI` is set, else `reports/<bundle>` on disk.
 4. A launched pod with **no bootstrap log on k4cli3aj48 within ~5 min** is on a broken
    EU-RO-1 host (struck twice on 2026-09-01): it bills forever while RUNNING and never
    starts. Check `$SK150/vol150 ls _pod_logs/ | tail`, then DELETE the pod
@@ -103,12 +103,14 @@ Finish by publishing:
 ```
 
 It pulls `suggestions.json`, enforces **G-02** (`as_of_close` must equal the newest
-`data/eod_bulk/US/` day-file **on the source**), stages a flat src dir, and rebuilds
-`reports/top150`. If G-02 fires, rerun market + predict — the source tape moved after
-this chain started.
+`data/eod_bulk/US/` day-file **on the source**), stages a flat src dir, rebuilds
+`reports/top150`, and **publishes it to MongoDB** (`Top150` db — needs `.env` at the
+repo root; `tools/publish_mongo.py` alone re-publishes an already-built bundle). If
+G-02 fires, rerun market + predict — the source tape moved after this chain started.
 
-View: `scripts/serve_top150_console.sh` (:8790), or `app/backend && npm start` on this
-branch (branch-aware bundle pick, restart after checkout).
+View: the deployed UI (Render) reads the published bundle through the Vercel API within
+~30 s — see `DEPLOY.md`. Locally: `scripts/serve_top150_console.sh` (:8790, files) or
+`app/backend && npm start` (Mongo via `.env`).
 
 ## Quarterly research refresh (stage1 → stage2 → stage3)
 

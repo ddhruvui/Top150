@@ -61,8 +61,8 @@ step, say so rather than re-running the pipeline:
 
 > Everything already ran on the pods. Just pull the results down and rebuild the reports bundle.
 
-Then view it with `scripts/serve_top150_console.sh` (:8790), or `cd app/backend && npm start`
-on this branch.
+The mirror ends by publishing the bundle to MongoDB, so the deployed UI (see `DEPLOY.md`)
+shows it within about 30 seconds. Locally: `scripts/serve_top150_console.sh` (:8790).
 
 A pod exiting is not evidence a stage succeeded — a stage can be OOM-killed (`exit=-9`) while
 its pod still self-terminates normally and leaves yesterday's output in place. Ask for exit

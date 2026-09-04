@@ -11,3 +11,6 @@ vectorbt>=0.26          # M15 fast-path cross-check engine
 torch>=2.2              # M7 GRU / M8 CNN (GPU on RunPod)
 exchange_calendars>=4.5 # NYSE session grid (upstream also uses it)
 pytest>=8
+# tools/publish_mongo.py — the mirror's publish step (runs locally, not on pods)
+pymongo>=4.6
+certifi>=2024.2    # Atlas TLS chain on macOS Python builds

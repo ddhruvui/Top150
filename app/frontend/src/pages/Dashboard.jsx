@@ -46,10 +46,8 @@ export default function Dashboard() {
   if (d.loading) return <Loading what="report" />;
   if (d.error) {
     return (
-      <ErrorBox error={d.error} hint={
-        <>Build the bundle from the pod artifacts first:{' '}
-          <code>python3 tools/build_reports.py --src derived --out reports/latest</code></>
-      } />
+      <ErrorBox error={d.error} hint={d.error.body?.hint
+        || 'Nothing published yet — run the pipeline mirror step, which publishes the bundle.'} />
     );
   }
 

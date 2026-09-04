@@ -15,7 +15,10 @@
 .DS_Store
 __pycache__/
 *.pyc
+# secrets — every .env variant, at any depth; the examples stay tracked
 .env
+.env.*
+!.env.example
 
 # --- prediction stack: generated / downloaded, never sourced from git ---
 .pytest_cache/

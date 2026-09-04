@@ -12,6 +12,7 @@
 //      dropped out of the target shows as SELL.
 import * as reports from './reports.js';
 import { state as paperState } from './paper.js';
+import { storeLocation } from './store.js';
 
 const ET = 'America/New_York';
 
@@ -30,9 +31,8 @@ function nowInET(now = new Date()) {
 const CLOSE_MIN = 16 * 60;      // 16:00 ET
 const OPEN_MIN = 9 * 60 + 30;   // 09:30 ET
 
-export function sessionContext(now = new Date()) {
-  const cal = reports.readCalendar();
-  const sessions = cal?.sessions ?? [];
+/** Pure: `sessions` is the sorted ISO list from the calendar section. */
+export function sessionContext(now = new Date(), sessions = []) {
   const { date: todayET, minutes } = nowInET(now);
   const isSessionToday = sessions.includes(todayET);
   const todayClosed = isSessionToday && minutes >= CLOSE_MIN;
@@ -57,20 +57,20 @@ export function sessionContext(now = new Date()) {
   };
 }
 
-export function ticket(now = new Date()) {
-  const ctx = sessionContext(now);
-  const sug = reports.suggestions();
-  const cfg = reports.config();
+export async function ticket(now = new Date()) {
+  const [sug, cfg, calendar, book] = await Promise.all([
+    reports.suggestions(), reports.config(), reports.readCalendar(), paperState(),
+  ]);
+  const cal = calendar?.sessions ?? [];
+  const ctx = sessionContext(now, cal);
   if (!sug) return { session: ctx, error: 'no suggestions in the report bundle' };
 
-  const book = paperState();
   const nav = Number(book.nav) > 0 ? Number(book.nav) : 100000;
   const held = new Map();
   for (const p of book.positions) {
     if (p.status === 'open' || p.status === 'ordered') held.set(p.ticker, p);
   }
 
-  const cal = reports.readCalendar()?.sessions ?? [];
   const iNextOpen = ctx.next_open ? cal.indexOf(ctx.next_open) : -1;
   // M5.2: vertical exit is a MOO at fill + h + 1 sessions. For a not-yet-held
   // name the fill session IS the next open; for a held one it is fill_date.
@@ -199,7 +199,7 @@ export function ticket(now = new Date()) {
     buys, sells, holds, due_exits: dueExits,
     gate_warning: 'The G-11 gates on this book return ITERATE — research output, '
       + 'not a recommendation to trade.',
-    holdings_source: 'the paper book (app/backend/data/paper_book.json). Positions '
-      + 'you hold elsewhere are invisible to this diff until they are recorded here.',
+    holdings_source: `the paper book (${storeLocation()}). Positions you hold `
+      + 'elsewhere are invisible to this diff until they are recorded here.',
   };
 }

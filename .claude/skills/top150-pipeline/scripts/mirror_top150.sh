@@ -56,4 +56,13 @@ src_s3 cp "$SRC_BUCKET/m1/sessions.parquet" "$STAGE_SRC/sessions.parquet" --quie
 say "rebuilding reports/top150"
 SYSTEM_CONFIG=configs/system_top150.yaml \
   python3 tools/build_reports.py --src "$STAGE_SRC" --out reports/top150
-say "DONE — serve with: scripts/serve_top150_console.sh (:8790), or the branch-aware backend on top150/top200"
+# ---- publish: MongoDB is what the deployed UI reads --------------------------
+# reports/top150 stays the local record (and what serve_top150_console.sh
+# serves); the deployed backend (Vercel) reads only what is published here.
+if [ "${PUBLISH_MONGO:-1}" = "1" ]; then
+  say "publishing reports/top150 to MongoDB"
+  python3 tools/publish_mongo.py --src reports/top150 --bundle top150
+else
+  say "PUBLISH_MONGO=0 — bundle rebuilt locally, NOT published to MongoDB"
+fi
+say "DONE — deployed UI shows the published bundle; locally: scripts/serve_top150_console.sh (:8790)"

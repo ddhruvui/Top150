@@ -56,9 +56,13 @@ scripts/launch_top150.sh predict    # latest-date scores -> target book -> sugge
                                     # calc volume; full refit auto every 21 sessions or
                                     # on config/feature change; REFIT=full forces it.
 
-# publish: G-02 against the source tape, then rebuild reports/top150
+# publish: G-02 against the source tape, rebuild reports/top150, push it to MongoDB
 .claude/skills/top150-pipeline/scripts/mirror_top150.sh
 ```
+
+The research console (`app/`) is deployed — API on Vercel, UI on Render — and reads
+the bundle from MongoDB; see [DEPLOY.md](DEPLOY.md). `scripts/push_repos.sh` pushes
+this repo and the two deploy repos together.
 
 `USE_MARKET=0` restricts to the 506-name M1 layer (pipeline validation only —
 survivorship-biased, never for go/no-go). `KEEP_POD=1` keeps the pod for
