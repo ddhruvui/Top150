@@ -2,9 +2,10 @@
 # aws s3 against the TOP-150 CALC volume (k4cli3aj48), endpoint/region preset.
 #   vol150 ls derived/top150/predict/
 #   vol150 cp derived/top150/predict/suggestions.json /tmp/x --quiet
-# Path rule (same as daily-pipeline's vol): a bare relative path is a CALC-volume
-# path; anything starting with '/', '.', '-' or 's3://' passes through untouched.
-# To read the PROD volume use daily-pipeline's `vol` — never write to it from here.
+# Path rule: a bare relative path is a CALC-volume path; anything starting with
+# '/', '.', '-' or 's3://' passes through untouched.
+# To READ the source volume use `srcvol` (read-only, refuses any write). There is
+# deliberately no helper here that can write to the source.
 set -euo pipefail
 . "$(dirname "$0")/_env150.sh"
 SUB="$1"; shift

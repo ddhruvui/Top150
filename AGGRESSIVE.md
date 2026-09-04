@@ -3,8 +3,8 @@
 Research answer to: *"can this system make materially more than the baseline's
 13%/yr, with shorter holds, without borrowing money?"* Built entirely on
 existing data (cached Stage-2 scores on the experiment volume); no model was
-retrained. Main branch and the production volume `8qik4zxpxq` are untouched —
-the source volume was only ever **read**.
+retrained. Main branch and the data volumes are untouched — every source volume
+was only ever **read**.
 
 ## The two adopted books (cash only, gross ≤ 1.0×)
 
@@ -46,17 +46,25 @@ last-3y and was explicitly declined (no borrowed money).
 
 ## Run it
 
+> **Historical note.** These rounds were run when `crimtr8kbf` was an *experiment*
+> volume that this repo mounted and wrote. It is now the **read-only data source**,
+> and the commands below have changed accordingly. The old
+> `scripts/launch_sync_volume.sh` and `scripts/launch_exp_aggressive.sh` are gone —
+> both defaulted to mounting `crimtr8kbf`, and the guards in `scripts/_common.sh`
+> would refuse them today. There is no sync step any more: pods read the source
+> read-only into `/scratch` on every run.
+
 ```sh
-# one-time: copy inputs from the production volume (read-only) to crimtr8kbf
-scripts/launch_sync_volume.sh
+# reproduce any experiment round (outputs -> calc volume)
+OUT_DIR=/workspace/derived/top150/exp_aggr/roundF \
+VARIANTS_B64="$(base64 < scripts/variants/roundF.json | tr -d '\n')" \
+  scripts/launch_top150.sh exp
 
-# reproduce any experiment round
-scripts/launch_exp_aggressive.sh roundF scripts/variants/roundF.json
-
-# daily suggestions for a book (EXPERIMENT VOLUME ONLY — the config hash
-# differs from production, so predict will full-refit its own champion store)
-RUNPOD_VOLUME_ID_OVERRIDE=crimtr8kbf SYSTEM_CONFIG=configs/system_aggressive.yaml \
-  scripts/launch_predict.sh predict
+# daily suggestions for a book (the config hash differs from the adopted top150
+# config, so predict will full-refit its own champion store)
+SYSTEM_CONFIG=configs/system_aggressive.yaml \
+OUT_DIR=/workspace/derived/top150/predict_aggr \
+  scripts/launch_top150.sh predict
 ```
 
 Engine levers added on this branch (all default-off, symmetric path

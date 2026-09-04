@@ -2,9 +2,10 @@
 
 Implementation of [stock_prediction_implementation_blueprint_v1_0_1.md](stock_prediction_implementation_blueprint_v1_0_1.md)
 (verified by [blueprint_verification_report_v1.md](blueprint_verification_report_v1.md)).
-Data comes from the [data_acquisition](data_acquisition/README.md) pipeline
-(see [dailyuse.md](dailyuse.md)); everything below runs on RunPod against the same
-network volume.
+**This repo computes; it does not ingest.** A **separate system** downloads all vendor
+data onto the source volume `crimtr8kbf`, which this repo reads **strictly read-only** —
+never mounted, never written. Everything computed here lands on the calc volume
+`k4cli3aj48`. See [dailyuse.md](dailyuse.md) and the `top150-pipeline` skill.
 
 ## Layout (blueprint §8)
 
@@ -36,20 +37,27 @@ ledger/trials.parquet   # every evaluated config -> DSR's N (G-09)
 
 ## RunPod jobs
 
+Every job goes through `launch_top150.sh`, which wires the calc volume for output and
+the source volume for read-only input. There is no fetch stage and no `daily.sh`.
+
 ```sh
-scripts/daily.sh                    # one-command daily loop: fetch -> post -> market
-                                    # -> predict -> mirror -> reports/latest
-scripts/launch_predict.sh test      # T-suite on a CPU pod (validates pod env)
-scripts/launch_predict.sh market    # eod_bulk -> m1x: whole-market panel + top-1000
-                                    # survivorship-free universe (G-05). Resumable.
-scripts/launch_predict.sh stage1    # features -> LGBM heads (purged WF) -> ensemble
+# gate first: has the separate download system finished for this session?
+.claude/skills/top150-pipeline/scripts/verify_source.py
+
+scripts/launch_top150.sh test       # T-suite on a CPU pod (validates pod env)
+scripts/launch_top150.sh market     # -> m1x150: point-in-time top-150 dollar-volume
+                                    # universe, survivorship-free (G-05). Resumable.
+scripts/launch_top150.sh stage1     # features -> LGBM heads (purged WF) -> ensemble
                                     # -> portfolio -> backtest -> G-11 gates
-scripts/launch_predict.sh stage2    # + GRU + JKX CNN + FinBERT (GPU pod)
-scripts/launch_predict.sh predict   # latest-date scores -> target book -> suggestions.
-                                    # Continual: warm-updates volume-stored champions
-                                    # daily (champion-vs-challenger on the same purged
-                                    # valid year); full refit auto every 21 sessions or
+scripts/launch_top150.sh stage2     # + GRU + JKX CNN + FinBERT (GPU pod)
+scripts/launch_top150.sh stage3     # meta gate + barrier book + CPCV
+scripts/launch_top150.sh predict    # latest-date scores -> target book -> suggestions.
+                                    # Continual: warm-updates champions stored on the
+                                    # calc volume; full refit auto every 21 sessions or
                                     # on config/feature change; REFIT=full forces it.
+
+# publish: G-02 against the source tape, then rebuild reports/top150
+.claude/skills/top150-pipeline/scripts/mirror_top150.sh
 ```
 
 `USE_MARKET=0` restricts to the 506-name M1 layer (pipeline validation only —

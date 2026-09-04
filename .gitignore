@@ -1,8 +1,9 @@
-# Downloaded EODHD data (mirrored from the RunPod volume by download.sh) — never commit
+# Vendor data mirrored down from the READ-ONLY source volume — never commit.
+# Nothing in this repo writes these back; a separate system owns them upstream.
 /data/
-# Downloaded Sharadar/Nasdaq Data Link data (mirrored by data_acquisition/scripts/download.sh)
+# Sharadar / Nasdaq Data Link mirror
 /data_nasdaq/
-# Downloaded Tiingo data (mirrored by data_acquisition/scripts/download.sh)
+# Tiingo mirror
 /data_tiingo/
 # Other volume mirrors (borrow, calendar, finbert, M1 landing layer, whole-market panel)
 /data_borrow/

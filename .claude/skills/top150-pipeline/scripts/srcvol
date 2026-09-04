@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# READ-ONLY aws s3 against the SOURCE data volume (crimtr8kbf), endpoint/region preset.
+#   srcvol ls data/eod_bulk/US/
+#   srcvol cp m1/sessions.parquet /tmp/sessions.parquet --quiet
+#
+# This is the ONLY sanctioned way to touch the source tape from a helper. It
+# accepts ls/cp/sync only, and refuses a destination inside the source bucket —
+# so a transposed cp cannot turn into a write. A separate system owns everything
+# on this volume; nothing here may add to, change or delete from it.
+#
+# For the calc volume (writes, outputs, pod logs) use vol150 instead.
+set -euo pipefail
+. "$(dirname "$0")/_env150.sh"
+src_s3 "$@"

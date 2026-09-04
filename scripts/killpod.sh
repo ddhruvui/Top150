@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Safety net: terminate any leftover "investopediaclaude-*" pods (eodhd, nasdaq, …) that failed
-# to self-terminate. Lists pods via the account API and DELETEs each match. Run this if launch.sh
-# reported a pod but it never died (or just run it periodically).
+# Safety net: terminate any leftover "investopediaclaude-*" pods (predict-market,
+# predict-stage1, …) that failed to self-terminate. Lists pods via the account API and
+# DELETEs each match. Run this when a pod was launched but never died — notably the
+# broken-host case in the top150-pipeline skill (rule 4): no bootstrap log within ~5 min
+# means it will bill forever while RUNNING and never start.
 . "$(dirname "$0")/_common.sh"
 : "${RUNPOD_API_KEY:?account rpa_ key, set in runpod/.env}"
 

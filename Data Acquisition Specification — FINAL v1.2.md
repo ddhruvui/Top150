@@ -1,5 +1,13 @@
 # Data Acquisition Specification — FINAL v1.2 (coding-ready)
 
+> **Kept as the READ-ONLY data contract of an UPSTREAM system.** This repo does not
+> implement any of the fetching described below — a separate system does, and it owns
+> the source volume `crimtr8kbf`. What this document is still good for here is the
+> *shape* of what lands on that volume: the tree layout, dataset ids (D-xx), field
+> semantics and the M1 landing tables that the prediction stack reads. Treat the
+> pulling, scheduling, retry and repair sections as descriptions of someone else's
+> job, not as work to be done in this repo. Nothing here may write to that volume.
+
 **For:** Implementation Blueprint v1.0.1, module M1 (Data Ingestion & Storage) and Q-001.
 **Supersedes:** _EODHD-Primary Data Acquisition Specification_ (research draft) and _Data Download Manifest v1.0_ — both are merged here; where they conflicted, the manifest's blueprint-verified decisions win.
 **Completeness claim:** The blueprint's entire external-data surface is the nine M1 tables + the Q-001 trading calendar + two model/ops artifacts (FinBERT weights, broker session). Every column of every M1 table is mapped below to a vendor field or to a blueprint-sanctioned fallback (§6). Closure proof in §7. Verified against vendor docs 2026-07-17; residual verify-at-implementation items in §8.

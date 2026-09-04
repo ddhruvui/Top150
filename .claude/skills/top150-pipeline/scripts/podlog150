@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # podlog150 <pattern> [lines] — newest _pod_logs entry on the CALC volume (k4cli3aj48).
-# Top-150 pods mount k4cli3aj48, so their logs are HERE — the daily-pipeline podlog
-# (prod volume) cannot see them. Works after the pod self-terminated.
+# Pods mount k4cli3aj48, so their logs are HERE, on the calc volume — not on the
+# source. Works after the pod self-terminated.
 set -euo pipefail
 . "$(dirname "$0")/_env150.sh"
 HERE="$(cd "$(dirname "$0")" && pwd)"

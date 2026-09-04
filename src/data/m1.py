@@ -1,8 +1,9 @@
 """M1 landing-layer readers (§4 M1).
 
-The data_acquisition pipeline owns M1 (ingestion + snapshots); this module is
-the read side: it loads the Parquet tables build_m1.py writes and presents them
-with stable dtypes. Nothing here mutates the landing layer (M1-01).
+An UPSTREAM system owns M1 (ingestion + snapshots) on the read-only source
+volume; this module is the read side: it loads the Parquet tables that system
+writes and presents them with stable dtypes. Nothing here mutates the landing
+layer (M1-01) — this repo has no write path to the source at all.
 """
 from __future__ import annotations
 

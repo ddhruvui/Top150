@@ -30,12 +30,20 @@ else
     timeout 1200 python -m pip install --quiet --no-input --disable-pip-version-check $PIP \
       || echo "!! pip install failed — job will report missing imports"
 
-    # ---- SRC_VOLUME_ID prefetch (top-150 experiment wiring) ------------------
+    # ---- source prefetch: READ-ONLY GETs from the data volume ----------------
     # The pod mounts the CALC volume at /workspace; the data volume is read
     # STRICTLY via S3 GETs into container-local /scratch — it is never mounted
-    # and never written. Inputs pulled per job; env re-pointed at /scratch.
+    # and never written. Every aws call below runs source -> /scratch; there is
+    # deliberately no call in the reverse direction anywhere in this file.
+    # Inputs are pulled per job and the env is re-pointed at /scratch.
     PREFETCH_FAIL=""
-    if [ -n "${SRC_VOLUME_ID:-}" ]; then
+    if [ -z "${SRC_VOLUME_ID:-}" ]; then
+      echo "FATAL: SRC_VOLUME_ID unset — refusing to run."
+      echo "  Without it this job reads /workspace (the CALC volume), which holds no"
+      echo "  raw data, and would silently compute on nothing. Launch through"
+      echo "  scripts/launch_top150.sh, which always wires the read-only source."
+      PREFETCH_FAIL="SRC_VOLUME_ID unset"
+    else
       echo "prefetch: s3://${SRC_VOLUME_ID} -> /scratch (read-only GETs)"
       timeout 600 python -m pip install --quiet --no-input --disable-pip-version-check awscli \
         || PREFETCH_FAIL="pip awscli"
@@ -80,37 +88,46 @@ print("\n".join(sorted(pd.read_parquet(os.environ["MEM"])["ticker"].astype(str).
       df -h /scratch | tail -1; du -sh /scratch/* 2>/dev/null
     fi
 
-    export M1_DIR="${M1_DIR:-/workspace/m1}"
-    export EOD_DIR="${EOD_DIR:-/workspace/data}"
-    export MARKET_DIR="${MARKET_DIR:-/workspace/m1x}"
-    export OUT_DIR="${OUT_DIR:-/workspace/derived/${JOB:-stage1}}"
-    # G-09: one ledger for ALL runs — a per-pod ledger would undercount DSR's N
-    export LEDGER_PATH="${LEDGER_PATH:-/workspace/ledger/trials.parquet}"
-    # continual learning: champions persist here between daily predict runs
-    export MODEL_DIR="${MODEL_DIR:-/workspace/models}"
-    export REFIT="${REFIT:-auto}"
-    mkdir -p "$OUT_DIR"
+    # A half-synced /scratch is the dangerous case: the job runs, exits 0, and
+    # produces a book priced off partial source data that looks entirely normal.
+    # PREFETCH_FAIL was recorded above and, until now, never read.
+    if [ -n "$PREFETCH_FAIL" ]; then
+      echo "FATAL: prefetch incomplete ($PREFETCH_FAIL) — refusing to compute on"
+      echo "  partial source data. Fix the source read and relaunch."
+      ec=96
+    else
+      export M1_DIR="${M1_DIR:-/workspace/m1}"
+      export EOD_DIR="${EOD_DIR:-/workspace/data}"
+      export MARKET_DIR="${MARKET_DIR:-/workspace/m1x}"
+      export OUT_DIR="${OUT_DIR:-/workspace/derived/${JOB:-stage1}}"
+      # G-09: one ledger for ALL runs — a per-pod ledger would undercount DSR's N
+      export LEDGER_PATH="${LEDGER_PATH:-/workspace/ledger/trials.parquet}"
+      # continual learning: champions persist here between daily predict runs
+      export MODEL_DIR="${MODEL_DIR:-/workspace/models}"
+      export REFIT="${REFIT:-auto}"
+      mkdir -p "$OUT_DIR"
 
-    case "${JOB:-stage1}" in
-      test)    timeout 3600  python -m pytest tests/ -q ;;
-      market)  timeout 28800 python src/data/build_market.py ;;
-      stage1)  timeout 28800 python -m src.pipeline.stage1 --m1 "$M1_DIR" --eod "$EOD_DIR" \
-                 --out "$OUT_DIR" ${USE_MARKET:+--market "$MARKET_DIR"} ;;
-      stage2)  timeout 64800 python -m src.pipeline.stage2 --m1 "$M1_DIR" --eod "$EOD_DIR" \
-                 --out "$OUT_DIR" ${USE_MARKET:+--market "$MARKET_DIR"} ;;
-      stage3)  timeout 28800 python -m src.pipeline.stage3 --m1 "$M1_DIR" --eod "$EOD_DIR" \
-                 --out "$OUT_DIR" --scores "${SCORES_DIR:-/workspace/derived/stage2}" \
-                 ${USE_MARKET:+--market "$MARKET_DIR"} ${NO_CPCV:+--no-cpcv} ;;
-      exp)     timeout 28800 python -m src.pipeline.experiments --m1 "$M1_DIR" \
-                 --eod "$EOD_DIR" --out "$OUT_DIR" \
-                 --scores "${SCORES_DIR:-/workspace/derived/stage2}" \
-                 --scores-alt "${SCORES_DIR_ALT:-/workspace/derived/stage1}" \
-                 ${USE_MARKET:+--market "$MARKET_DIR"} ;;
-      predict) timeout 14400 python -m src.pipeline.predict --m1 "$M1_DIR" --eod "$EOD_DIR" \
-                 --out "$OUT_DIR" ${USE_MARKET:+--market "$MARKET_DIR"} ;;
-      *) echo "unknown JOB '$JOB'" ;;
-    esac
-    ec=$?
+      case "${JOB:-stage1}" in
+        test)    timeout 3600  python -m pytest tests/ -q ;;
+        market)  timeout 28800 python src/data/build_market.py ;;
+        stage1)  timeout 28800 python -m src.pipeline.stage1 --m1 "$M1_DIR" --eod "$EOD_DIR" \
+                   --out "$OUT_DIR" ${USE_MARKET:+--market "$MARKET_DIR"} ;;
+        stage2)  timeout 64800 python -m src.pipeline.stage2 --m1 "$M1_DIR" --eod "$EOD_DIR" \
+                   --out "$OUT_DIR" ${USE_MARKET:+--market "$MARKET_DIR"} ;;
+        stage3)  timeout 28800 python -m src.pipeline.stage3 --m1 "$M1_DIR" --eod "$EOD_DIR" \
+                   --out "$OUT_DIR" --scores "${SCORES_DIR:-/workspace/derived/stage2}" \
+                   ${USE_MARKET:+--market "$MARKET_DIR"} ${NO_CPCV:+--no-cpcv} ;;
+        exp)     timeout 28800 python -m src.pipeline.experiments --m1 "$M1_DIR" \
+                   --eod "$EOD_DIR" --out "$OUT_DIR" \
+                   --scores "${SCORES_DIR:-/workspace/derived/stage2}" \
+                   --scores-alt "${SCORES_DIR_ALT:-/workspace/derived/stage1}" \
+                   ${USE_MARKET:+--market "$MARKET_DIR"} ;;
+        predict) timeout 14400 python -m src.pipeline.predict --m1 "$M1_DIR" --eod "$EOD_DIR" \
+                   --out "$OUT_DIR" ${USE_MARKET:+--market "$MARKET_DIR"} ;;
+        *) echo "unknown JOB '$JOB'" ;;
+      esac
+      ec=$?
+    fi
   else
     echo "FATAL: bundle unpack failed — proceeding to terminate"
     ec=97
@@ -140,5 +157,5 @@ PY
   [ $? -eq 0 ] && exit 0
   echo "terminate attempt $attempt not confirmed — retry in 20s"; sleep 20
 done
-echo "!! TERMINATION NOT CONFIRMED — run data_acquisition/scripts/killpod.sh"
+echo "!! TERMINATION NOT CONFIRMED — run scripts/killpod.sh"
 sleep 30

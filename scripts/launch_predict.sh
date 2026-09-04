@@ -7,14 +7,21 @@
 #   scripts/launch_predict.sh predict   # latest-date scores -> target book -> suggestions — CPU
 #
 # USE_MARKET=1 (default) points stage1/predict at the m1x whole-market universe;
-# KEEP_POD=1 leaves the pod alive for inspection. Reuses data_acquisition's .env.
-. "$(dirname "$0")/../data_acquisition/scripts/_common.sh"
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# KEEP_POD=1 leaves the pod alive for inspection.
+#
+# VOLUME CONTRACT: the pod mounts the CALC volume only. The data source is read
+# STRICTLY via S3 GETs into container-local /scratch (the prefetch block in
+# pod_bootstrap_predict.sh) — it is never mounted and never written. _common.sh
+# rebinds RUNPOD_VOLUME_ID to the calc volume and refuses a protected id, so the
+# payload built below cannot name the source volume; the assertion after it is a
+# second lock on the one line that actually mounts something.
+. "$(dirname "$0")/_common.sh"
+REPO_ROOT="$ROOT"
 
 JOB="${1:-stage1}"
 case "$JOB" in test|market|stage1|stage2|stage3|predict|exp) ;; *)
   echo "unknown job '$JOB' (test|market|stage1|stage2|stage3|predict|exp)" >&2; exit 2 ;; esac
-: "${RUNPOD_API_KEY:?set in data_acquisition/runpod/.env}"
+: "${RUNPOD_API_KEY:?set in runpod/.env}"
 
 DC="${RUNPOD_DATACENTER:-EU-RO-1}"
 CPU_IMAGE="${RUNPOD_IMAGE:-python:3.11-slim}"
@@ -73,18 +80,27 @@ ENV_COMMON=$(cat <<JSON
     "SYSTEM_CONFIG": "${SYSTEM_CONFIG:-}"
 JSON
 )
-# SRC_VOLUME_ID (experiment wiring, e.g. launch_top150.sh): the pod mounts the
-# calc volume and pulls inputs from this volume via read-only S3 GETs — the
-# creds/endpoint ship in the pod env ONLY in that mode.
-if [ -n "${SRC_VOLUME_ID:-}" ]; then
-  ENV_COMMON="${ENV_COMMON},
+# The pod ALWAYS mounts the calc volume and ALWAYS pulls its inputs from the
+# source volume via read-only S3 GETs into /scratch. This used to be conditional
+# ("experiment wiring"); it is now the only mode, because the unconditional path
+# was the one that mounted the source tape and wrote to it.
+ENV_COMMON="${ENV_COMMON},
     \"SRC_VOLUME_ID\": \"${SRC_VOLUME_ID}\",
     \"AWS_ACCESS_KEY_ID\": \"${AWS_ACCESS_KEY_ID}\",
     \"AWS_SECRET_ACCESS_KEY\": \"${AWS_SECRET_ACCESS_KEY}\",
     \"RUNPOD_S3_ENDPOINT\": \"${RUNPOD_S3_ENDPOINT}\",
     \"RUNPOD_S3_REGION\": \"${RUNPOD_S3_REGION}\",
-    \"MARKET_DIR\": \"${MARKET_DIR:-/workspace/m1x}\",
-    \"UNIVERSE_SIZE\": \"${UNIVERSE_SIZE:-1000}\""
+    \"MARKET_DIR\": \"${MARKET_DIR:-/workspace/m1x150}\",
+    \"UNIVERSE_SIZE\": \"${UNIVERSE_SIZE:-150}\""
+
+# Last line of defence before the payload names a volume to mount.
+if is_protected "$RUNPOD_VOLUME_ID"; then
+  echo "REFUSING: pod payload would mount $RUNPOD_VOLUME_ID, a read-only data volume" >&2
+  exit 2
+fi
+if [ "$RUNPOD_VOLUME_ID" = "$SRC_VOLUME_ID" ]; then
+  echo "REFUSING: mount volume == source volume ($SRC_VOLUME_ID)" >&2
+  exit 2
 fi
 
 if [ "$JOB" = "stage2" ]; then
@@ -177,5 +193,5 @@ fi
 printf '%s\tpredict-%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$JOB" "$POD_ID" \
   >> "$ROOT/runpod/launched-pods.log"
 echo "launched predict-${JOB} pod: ${POD_ID}  [${PLACED_ON}]"
-echo "watch:   data_acquisition/scripts/storage_usage.sh | grep -E '_pod_logs|derived'"
+echo "watch:   scripts/storage_usage.sh | grep -E '_pod_logs|derived'"
 echo "fetch:   aws s3 cp \$S3FLAGS $BUCKET/derived/${JOB}/ ./derived_${JOB}/ --recursive"

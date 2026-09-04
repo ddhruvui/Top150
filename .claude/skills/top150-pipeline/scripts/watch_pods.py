@@ -7,8 +7,10 @@ to a Monitor without flooding it:
     STALL <name>    pod alive but its _pod_logs entry has not grown for STALL_CHECKS polls
     IDLE            no pods running (printed once per idle stretch)
 
-post is exempt from STALL: post.py prints its gate line once and then polls in
-silence, so a flat log is its normal waiting state, not a hang.
+Reads pod logs from the CALC volume (vol150) — that is where this pipeline's pods
+write. It is REPORT-ONLY by design: it never relaunches anything. The predecessor
+that did (watch_jobs.sh) relaunched with prod wiring, which is how an unattended
+run could end up writing the read-only source tape.
 
 Written in Python because macOS ships bash 3.2, which has no associative arrays —
 a bash version of this silently mis-tracked state.
@@ -20,11 +22,11 @@ import json, os, subprocess, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 POLL = int(os.environ.get("POLL", "180"))
 STALL_CHECKS = int(os.environ.get("STALL_CHECKS", "5"))
-EXEMPT = {"investopediaclaude-post"}
+EXEMPT = set()   # (the old "post" ingest job is gone — this repo does not ingest)
 
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
 env = {}
-for ln in open(os.path.join(REPO, "data_acquisition/runpod/.env")):
+for ln in open(os.path.join(REPO, "runpod/.env")):
     ln = ln.strip()
     if ln and not ln.startswith("#") and "=" in ln:
         k, v = ln.split("=", 1)
@@ -50,7 +52,7 @@ def pods():
 
 
 def logsizes():
-    r = subprocess.run([os.path.join(HERE, "vol"), "ls", "_pod_logs/"],
+    r = subprocess.run([os.path.join(HERE, "vol150"), "ls", "_pod_logs/"],
                        capture_output=True, text=True)
     m = {}
     for ln in r.stdout.splitlines():

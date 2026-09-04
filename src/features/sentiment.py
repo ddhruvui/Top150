@@ -5,8 +5,9 @@ sent_mean, sent_ewm3 (3-day EWMA [IMPL]), news_count = log1p(n), has_news.
 Headlines after the close roll to the NEXT session [MUST — EOD cutoff].
 Sentiment is a FEATURE, never a standalone strategy (Lopez-Lira caveat).
 
-Weights come from the PINNED local snapshot (data_finbert/, fetch_finbert.py) —
-never from a moving HuggingFace `main` (G-10 reproducibility).
+Weights come from the PINNED snapshot the upstream system publishes under
+`data_finbert/` on the read-only source volume — never from a moving
+HuggingFace `main` (G-10 reproducibility).
 """
 from __future__ import annotations
 
@@ -43,7 +44,7 @@ def _load_headlines(news_dir: str | Path, tickers: set[str]) -> pd.DataFrame:
 
 
 def resolve_snapshot(finbert_dir: str | Path) -> Path:
-    """fetch_finbert.py stores files under a pinned-revision subdirectory."""
+    """The upstream snapshot stores files under a pinned-revision subdirectory."""
     d = Path(finbert_dir)
     if (d / "config.json").exists():
         return d

@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
-"""Verify every vendor fetch actually COMPLETED, not just that its pod exited.
+"""Is the SOURCE tape ready to compute against?
 
-A pod exiting proves nothing: on 2026-08-27 a post pod self-terminated "cleanly"
-with both its stages SIGKILLed. The manifest is the real evidence — it is written
-only when the fetcher reaches its end, and it carries per-job results.
+This repo does not download anything — a separate system owns every vendor tree
+on crimtr8kbf. This is the read-only gate that answers whether that system has
+finished for the session, BEFORE we spend a pod computing against a half-filled
+tape. It reads each tree's `_run.json` manifest and nothing else; it never
+writes, and it cannot (srcvol refuses any mutating operation).
 
-Usage: verify_fetch.py [FLOOR_ISO]
-  FLOOR_ISO  manifests older than this are reported STALE (pass the launch time of
-             the run you are verifying; without it freshness is not checked).
+The manifest is the real evidence of completion, not the presence of files: it
+is written only when a fetcher reaches its end, and it carries per-job results.
+
+Usage: verify_source.py [FLOOR_ISO]
+  FLOOR_ISO  manifests older than this are reported STALE (pass the time the
+             upstream run started; without it freshness is not checked).
 Exit 0 only if every tree is fresh with zero hard failures.
 """
 import json, os, subprocess, sys
@@ -31,7 +36,7 @@ floor = ts(FLOOR) if FLOOR else None
 stale, failed = [], []
 for tree in TREES:
     dst = os.path.join(TMP, f"_run_{tree}.json")
-    r = subprocess.run([os.path.join(HERE, "vol"), "cp", f"{tree}/_run.json", dst, "--quiet"],
+    r = subprocess.run([os.path.join(HERE, "srcvol"), "cp", f"{tree}/_run.json", dst, "--quiet"],
                        capture_output=True, text=True)
     if r.returncode != 0:
         print(f"{tree:16s} MANIFEST MISSING"); stale.append(tree); continue

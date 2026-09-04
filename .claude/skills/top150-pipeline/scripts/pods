@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Current pods, one per line: name id desiredStatus createdAt. Empty output = none running.
 set -euo pipefail
-. "$(dirname "$0")/_env.sh"
+. "$(dirname "$0")/_env150.sh"
 curl -sS --max-time 30 https://rest.runpod.io/v1/pods \
   -H "Authorization: Bearer $RUNPOD_API_KEY" | python3 -c "
 import json,sys
