@@ -5,7 +5,7 @@ The console is three pieces, each created by hand once, then fed automatically:
 | piece | where | repo / source | what it holds |
 |---|---|---|---|
 | **MongoDB Atlas**, database `Top150` | Atlas | filled by `tools/publish_mongo.py` | the published report bundle, the trade ledger sample, prediction history, the paper book |
-| **API** (`app/backend`) | Vercel, one serverless function | [ddhruvui/Top150BE](https://github.com/ddhruvui/Top150BE) `main` | reads Mongo; owns the paper book |
+| **API** (`app/backend`) | Vercel, one serverless function — **https://top150-be.vercel.app** | [ddhruvui/Top150BE](https://github.com/ddhruvui/Top150BE) `main` | reads Mongo; owns the paper book |
 | **UI** (`app/frontend`) | Render static site | [ddhruvui/Top150FE](https://github.com/ddhruvui/Top150FE) `main` | React build that calls the API |
 
 All code lives in [ddhruvui/Top150](https://github.com/ddhruvui/Top150); the two deploy
@@ -48,15 +48,16 @@ The first publish also seeds the Mongo paper book from the old local
    | `BUNDLE` | `top150` |
    | `CORS_ORIGIN` | *(add after step 3)* `https://<your-site>.onrender.com` |
 
-4. Deploy, then open `https://<app>.vercel.app/api/health` — expect
+4. Deploy, then open `https://top150-be.vercel.app/api/health` — expect
    `{"ok":true,"source":"mongo","bundle":"top150","bundle_present":true,...}`.
-   Full check from `app/backend`: `node smoke.mjs https://<app>.vercel.app`.
+   Full check from `app/backend`: `node smoke.mjs https://top150-be.vercel.app`.
+   (Deployed 2026-09-04; a cold start costs ~4 s on the first request, then ~200 ms.)
 
 ## 3. UI on Render
 
 1. **New → Static Site**, connect `ddhruvui/Top150FE`, branch `main`.
 2. Build command `npm ci && npm run build`; publish directory `dist`.
-3. Environment variable **`VITE_API_BASE`** = `https://<app>.vercel.app` (no trailing
+3. Environment variable **`VITE_API_BASE`** = `https://top150-be.vercel.app` (no trailing
    slash). Vite inlines it at build time, so changing it later needs a redeploy
    (*Manual Deploy → Clear build cache & deploy*).
 4. No rewrite rules are needed — the app routes by URL hash.

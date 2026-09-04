@@ -8,4 +8,4 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE
-        sync: false   # set to the deployed API origin, e.g. https://top150be.vercel.app
+        value: https://top150-be.vercel.app   # the deployed API origin (no trailing slash)
