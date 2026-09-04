@@ -11,7 +11,8 @@ app/
               (deployed on Render from github.com/ddhruvui/Top150FE — a subtree of this dir)
 ```
 
-**Deployment, end to end: [DEPLOY.md](../DEPLOY.md).** The deployed UI reads only what
+**Live: UI at https://top150fe.onrender.com, API at https://top150-be.vercel.app.
+Deployment, end to end: [DEPLOY.md](../DEPLOY.md).** The deployed UI reads only what
 `tools/publish_mongo.py` has published to the `Top150` database; the mirror step
 publishes automatically.
 

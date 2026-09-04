@@ -6,7 +6,7 @@ The console is three pieces, each created by hand once, then fed automatically:
 |---|---|---|---|
 | **MongoDB Atlas**, database `Top150` | Atlas | filled by `tools/publish_mongo.py` | the published report bundle, the trade ledger sample, prediction history, the paper book |
 | **API** (`app/backend`) | Vercel, one serverless function — **https://top150-be.vercel.app** | [ddhruvui/Top150BE](https://github.com/ddhruvui/Top150BE) `main` | reads Mongo; owns the paper book |
-| **UI** (`app/frontend`) | Render static site | [ddhruvui/Top150FE](https://github.com/ddhruvui/Top150FE) `main` | React build that calls the API |
+| **UI** (`app/frontend`) | Render static site — **https://top150fe.onrender.com** | [ddhruvui/Top150FE](https://github.com/ddhruvui/Top150FE) `main` | React build that calls the API |
 
 All code lives in [ddhruvui/Top150](https://github.com/ddhruvui/Top150); the two deploy
 repos are git subtrees of it (`scripts/push_repos.sh` keeps all three in step).
@@ -46,7 +46,7 @@ The first publish also seeds the Mongo paper book from the old local
    | `MONGO_URI` | `mongodb+srv://<user>:<db_password>@<cluster>.mongodb.net/?appName=Cluster0` (placeholder kept literally) |
    | `MONGO_DB` | `Top150` |
    | `BUNDLE` | `top150` |
-   | `CORS_ORIGIN` | *(add after step 3)* `https://<your-site>.onrender.com` |
+   | `CORS_ORIGIN` | `https://top150fe.onrender.com` (the Render site — add after step 3) |
 
 4. Deploy, then open `https://top150-be.vercel.app/api/health` — expect
    `{"ok":true,"source":"mongo","bundle":"top150","bundle_present":true,...}`.
@@ -64,8 +64,8 @@ The first publish also seeds the Mongo paper book from the old local
 
 `render.yaml` in the FE repo carries the same settings if you prefer *New → Blueprint*.
 
-Then go back to Vercel, set `CORS_ORIGIN` to the Render URL, redeploy — the API now
-answers only that site's browser calls.
+Then go back to Vercel, set `CORS_ORIGIN=https://top150fe.onrender.com`, redeploy — the
+API now answers only that site's browser calls. (Both were live on 2026-09-04.)
 
 ## Day to day
 
