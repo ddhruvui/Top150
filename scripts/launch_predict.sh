@@ -18,6 +18,31 @@
 . "$(dirname "$0")/_common.sh"
 REPO_ROOT="$ROOT"
 
+# MongoDB settings for the pod-side publish (predict) come from the repo-root
+# .env — the same file the laptop-side publisher and the backend read. Parsed
+# line by line, never sourced: a URI holding Atlas's literal <db_password>
+# would otherwise be read by the shell as two redirections. Shell values win.
+load_env_file() {
+  local line k v
+  [ -f "$1" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    case "$line" in ''|'#'*) continue ;; esac
+    case "$line" in *=*) ;; *) continue ;; esac
+    k="${line%%=*}"; v="${line#*=}"
+    k="${k#export }"; k="${k%"${k##*[![:space:]]}"}"
+    v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
+    case "$v" in
+      \"*\") v="${v#\"}"; v="${v%\"}" ;;
+      \'*\') v="${v#\'}"; v="${v%\'}" ;;
+    esac
+    [ -n "${!k:-}" ] || export "$k=$v"
+  done < "$1"
+}
+load_env_file "$ROOT/.env"
+# JSON string literal (quotes included) — for values that may carry odd characters.
+jstr() { python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1"; }
+
 JOB="${1:-stage1}"
 case "$JOB" in test|market|stage1|stage2|stage3|predict|exp) ;; *)
   echo "unknown job '$JOB' (test|market|stage1|stage2|stage3|predict|exp)" >&2; exit 2 ;; esac
@@ -42,7 +67,8 @@ CPU_DISK="${RUNPOD_CONTAINER_DISK_GB:-10}"
 # runs the CPU image + CPU pip set, not the PyTorch image. GPU_FALLBACK=0 disables.
 GPU_FALLBACK="${GPU_FALLBACK:-1}"
 GPU_FALLBACK_TYPES="${RUNPOD_GPU_FALLBACK_TYPES:-NVIDIA RTX A4500|NVIDIA RTX 4000 Ada Generation|NVIDIA GeForce RTX 3090|NVIDIA RTX A6000|NVIDIA GeForce RTX 4090|NVIDIA A40}"
-PIP_CPU="pandas pyarrow numpy PyYAML scipy lightgbm scikit-learn optuna pytest"
+# pymongo+dnspython+certifi: the pod-side publish (tools/pod_publish.sh) after predict
+PIP_CPU="pandas pyarrow numpy PyYAML scipy lightgbm scikit-learn optuna pytest pymongo dnspython certifi"
 PIP_GPU="pandas pyarrow numpy PyYAML scipy lightgbm scikit-learn optuna pytest transformers==4.44.2 sentencepiece"
 
 RUNNING=$(curl -sS --max-time 30 https://rest.runpod.io/v1/pods \
@@ -55,14 +81,7 @@ echo "Bundling prediction stack ..."
 TMP_TGZ="$(mktemp -t predict-bundle).tgz"
 ( cd "$REPO_ROOT" && tar czf "$TMP_TGZ" \
     --exclude='__pycache__' --exclude='.pytest_cache' \
-    src configs tests requirements.txt )
-if [ -n "${DRY_RUN:-}" ]; then
-  echo "DRY_RUN: would upload $(du -h "$TMP_TGZ" | cut -f1) bundle + bootstrap; launch $JOB pod"
-  exit 0
-fi
-aws s3 cp $S3FLAGS "$TMP_TGZ" "$BUCKET/code/predict/bundle.tgz"
-aws s3 cp $S3FLAGS "$REPO_ROOT/scripts/pod_bootstrap_predict.sh" "$BUCKET/code/predict/bootstrap.sh"
-rm -f "$TMP_TGZ"
+    src configs tests tools requirements.txt )
 
 ENV_COMMON=$(cat <<JSON
     "JOB": "${JOB}",
@@ -92,6 +111,21 @@ ENV_COMMON="${ENV_COMMON},
     \"RUNPOD_S3_REGION\": \"${RUNPOD_S3_REGION}\",
     \"MARKET_DIR\": \"${MARKET_DIR:-/workspace/m1x150}\",
     \"UNIVERSE_SIZE\": \"${UNIVERSE_SIZE:-150}\""
+# Pod-side publish: the predict pod gets the MongoDB credentials (from .env at
+# the repo root) and publishes the bundle itself; nothing comes down to a
+# laptop. PUBLISH_MONGO=0 launches without them (the laptop mirror still works).
+if [ "$JOB" = "predict" ] && [ "${PUBLISH_MONGO:-1}" = "1" ]; then
+  : "${MONGO_URI:?set MONGO_URI in .env at the repo root for the pod-side publish, or PUBLISH_MONGO=0}"
+  ENV_COMMON="${ENV_COMMON},
+    \"PUBLISH_MONGO\": \"1\",
+    \"MONGO_URI\": $(jstr "$MONGO_URI"),
+    \"DB_PASSWORD\": $(jstr "${DB_PASSWORD:-}"),
+    \"MONGO_DB\": $(jstr "${MONGO_DB:-Top150}"),
+    \"BUNDLE\": $(jstr "${BUNDLE:-top150}")"
+else
+  ENV_COMMON="${ENV_COMMON},
+    \"PUBLISH_MONGO\": \"0\""
+fi
 
 # Last line of defence before the payload names a volume to mount.
 if is_protected "$RUNPOD_VOLUME_ID"; then
@@ -147,6 +181,31 @@ JSON
   }
   PAYLOAD=$(build_cpu_payload "")
 fi
+
+# The payload must be valid JSON — a stray quote in a secret would otherwise
+# surface as an opaque HTTP 400 from RunPod. DRY_RUN stops here, showing the
+# pod's env with secrets redacted.
+if ! printf '%s' "$PAYLOAD" | python3 -c '
+import json, sys
+p = json.load(sys.stdin)
+if len(sys.argv) > 1:
+    env = p["env"]
+    for k in list(env):
+        if any(s in k for s in ("KEY", "SECRET", "PASSWORD", "URI")) and env[k]:
+            env[k] = "<redacted>"
+    print(json.dumps(p, indent=2))
+' ${DRY_RUN:+show}; then
+  echo "pod payload is not valid JSON — check the env values (quotes?)" >&2
+  exit 2
+fi
+if [ -n "${DRY_RUN:-}" ]; then
+  echo "DRY_RUN: payload valid; would upload $(du -h "$TMP_TGZ" | cut -f1) bundle + bootstrap and launch the $JOB pod"
+  rm -f "$TMP_TGZ"
+  exit 0
+fi
+aws s3 cp $S3FLAGS "$TMP_TGZ" "$BUCKET/code/predict/bundle.tgz"
+aws s3 cp $S3FLAGS "$REPO_ROOT/scripts/pod_bootstrap_predict.sh" "$BUCKET/code/predict/bootstrap.sh"
+rm -f "$TMP_TGZ"
 
 echo "Creating ${JOB} pod in ${DC} ..."
 post_create() {

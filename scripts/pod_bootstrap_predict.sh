@@ -127,6 +127,25 @@ print("\n".join(sorted(pd.read_parquet(os.environ["MEM"])["ticker"].astype(str).
         *) echo "unknown JOB '$JOB'" ;;
       esac
       ec=$?
+
+      # ---- publish (predict only): bundle + MongoDB straight from this pod -----
+      # The deployed UI reads MongoDB, so nothing has to be pulled to a laptop.
+      # Gated on job=0: a failed or watchdog-killed predict must never publish.
+      # tools/pod_publish.sh enforces G-02 with a read-only LIST of the source.
+      if [ "${JOB:-stage1}" = "predict" ] && [ "$ec" -eq 0 ]; then
+        if [ "${PUBLISH_MONGO:-1}" = "1" ] && [ -n "${MONGO_URI:-}" ]; then
+          BUNDLE="${BUNDLE:-top150}" BUNDLE_OUT="/workspace/reports/${BUNDLE:-top150}" \
+            bash tools/pod_publish.sh
+          pub=$?
+          case "$pub" in
+            0) echo "publish=0 (PUBLISHED — deployed UI updates within ~30 s)" ;;
+            3) echo "publish=3 (G-02 FAIL — stale close, NOT published; rerun market + predict)" ;;
+            *) echo "publish=$pub (FAILED — output intact on the volume; mirror_top150.sh publishes it)" ;;
+          esac
+        else
+          echo "publish=skipped (PUBLISH_MONGO=${PUBLISH_MONGO:-1}, MONGO_URI $([ -n "${MONGO_URI:-}" ] && echo set || echo unset))"
+        fi
+      fi
     fi
   else
     echo "FATAL: bundle unpack failed — proceeding to terminate"

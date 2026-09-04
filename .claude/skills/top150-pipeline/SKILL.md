@@ -45,7 +45,7 @@ Bundled helpers in `.claude/skills/top150-pipeline/scripts/` (call by full path;
 | `podlog150 <pat> [n]` | newest matching `_pod_logs/` entry on the calc volume |
 | `pods` | account-wide pod list (name, id, status, created) |
 | `watch_pods.py` | report-only watchdog; one line per state change (UP/DONE/STALL/IDLE) |
-| `mirror_top150.sh` | pull book (+stage artifacts with `FULL_MIRROR=1`), enforce G-02 vs the source tape, rebuild `reports/top150`, **publish it to MongoDB** (`tools/publish_mongo.py`; `PUBLISH_MONGO=0` skips) |
+| `mirror_top150.sh` | laptop path (optional since the pod publishes): pull book (+stage artifacts with `FULL_MIRROR=1`), enforce G-02 vs the source tape, rebuild `reports/top150` for the git record, re-publish to MongoDB (`PUBLISH_MONGO=0` skips) |
 
 ## Hard rules (each one has burned a run)
 
@@ -96,21 +96,30 @@ After each launch confirm `$SK150/vol150 ls _pod_logs/ | tail -2` shows a fresh
 on the calc volume (`/workspace/models`, `/workspace/ledger`), so a full refit instead
 of a warm update is normal on fresh history.
 
-Finish by publishing:
+**Publishing happens on the pod.** When `predict` exits `job=0`, the same pod runs
+`tools/pod_publish.sh`: it enforces **G-02** (`as_of_close` must equal the newest
+`data/eod_bulk/US/` day-file **on the source** — a read-only LIST), builds the bundle
+with `tools/build_reports.py` (predict output + the stage1/2/3 artifacts on the calc
+volume + the session grid from the prefetch), writes it to `/workspace/reports/top150`,
+and publishes it to MongoDB (`Top150` db). The deployed UI (Render → Vercel API) shows
+it within ~30 s. Nothing is downloaded to a laptop. The launcher passes the Mongo
+credentials from the repo-root `.env` into the predict pod; `PUBLISH_MONGO=0` launches
+without them.
 
-```sh
-.claude/skills/top150-pipeline/scripts/mirror_top150.sh
-```
+Read the outcome from the pod log, below the `job=` line:
 
-It pulls `suggestions.json`, enforces **G-02** (`as_of_close` must equal the newest
-`data/eod_bulk/US/` day-file **on the source**), stages a flat src dir, rebuilds
-`reports/top150`, and **publishes it to MongoDB** (`Top150` db — needs `.env` at the
-repo root; `tools/publish_mongo.py` alone re-publishes an already-built bundle). If
-G-02 fires, rerun market + predict — the source tape moved after this chain started.
+| line | meaning |
+|---|---|
+| `publish=0` | published — done |
+| `publish=3` | **G-02 FAIL**: the book priced a stale close. Rerun market + predict; nothing was published |
+| `publish=<other>` | build or publish error; the predict output is intact on the volume — `mirror_top150.sh` publishes it from the laptop |
+| `publish=skipped` | launched with `PUBLISH_MONGO=0` or no `MONGO_URI` |
 
-View: the deployed UI (Render) reads the published bundle through the Vercel API within
-~30 s — see `DEPLOY.md`. Locally: `scripts/serve_top150_console.sh` (:8790, files) or
-`app/backend && npm start` (Mongo via `.env`).
+`mirror_top150.sh` is now optional: it pulls the artifacts, rebuilds `reports/top150`
+locally (the git record) and re-publishes — same G-02, same content.
+
+View: the deployed UI — see `DEPLOY.md`. Locally: `scripts/serve_top150_console.sh`
+(:8790, files) or `app/backend && npm start` (Mongo via `.env`).
 
 ## Quarterly research refresh (stage1 → stage2 → stage3)
 

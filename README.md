@@ -56,7 +56,9 @@ scripts/launch_top150.sh predict    # latest-date scores -> target book -> sugge
                                     # calc volume; full refit auto every 21 sessions or
                                     # on config/feature change; REFIT=full forces it.
 
-# publish: G-02 against the source tape, rebuild reports/top150, push it to MongoDB
+# the predict pod then publishes on its own: G-02 against the source tape -> bundle
+# -> MongoDB -> deployed UI (tools/pod_publish.sh). Optional laptop path for the git
+# record (re-publishes the same content):
 .claude/skills/top150-pipeline/scripts/mirror_top150.sh
 ```
 

@@ -20,8 +20,9 @@ unit tests and synthetic rehearsals only.
 ```sh
 # THE daily loop is now two launches plus a mirror — there is no fetch stage here.
 scripts/launch_top150.sh market     # membership@150 + workset -> /workspace/m1x150
-scripts/launch_top150.sh predict    # book -> /workspace/derived/top150/predict
-.claude/skills/top150-pipeline/scripts/mirror_top150.sh   # G-02 + reports/top150
+scripts/launch_top150.sh predict    # book -> /workspace/derived/top150/predict, then the
+                                    # POD publishes: G-02 -> bundle -> MongoDB -> deployed UI
+.claude/skills/top150-pipeline/scripts/mirror_top150.sh   # optional: git record + re-publish
 
 scripts/launch_top150.sh test      # T-01..T-15 suite on a CPU pod (validates pod env)
 scripts/launch_top150.sh market    # eod_bulk -> m1x150 panel + top-150 universe
@@ -61,7 +62,8 @@ persist on the volume under `/workspace/models/` (`MODEL_DIR`), and each daily r
 `REFIT=full scripts/launch_top150.sh predict` forces a from-scratch fit (also automatic
 after any `configs/system.yaml` change, feature-set change, or on the 21-session cadence).
 
-**The loop is: verify source → market → predict → mirror.** There is no one-command
+**The loop is: verify source → market → predict (which publishes itself).** The mirror is
+optional — it refreshes the local `reports/top150` git record. There is no one-command
 `daily.sh` any more, and deliberately so — it began by launching the vendor fetch and
 then ran market/predict with wiring that mounted and wrote the source tape. Each step
 is now explicit, and each is gated on the previous one reporting `job=0` (a pod exiting

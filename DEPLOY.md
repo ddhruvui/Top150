@@ -69,9 +69,13 @@ API now answers only that site's browser calls. (Both were live on 2026-09-04.)
 
 ## Day to day
 
-- **New predictions:** the daily loop is unchanged — `verify_source.py` → `market` →
-  `predict` → `mirror_top150.sh`. The mirror now ends by publishing, and the deployed
-  UI shows the new book within ~30 s (the API caches sections for that long).
+- **New predictions:** `verify_source.py` → `market` → `predict`. The predict **pod
+  publishes itself**: after `job=0` it runs `tools/pod_publish.sh` (G-02 against the
+  source, bundle build, MongoDB publish) and the deployed UI shows the new book within
+  ~30 s. Nothing is downloaded to a laptop. The launcher hands the pod the Mongo
+  credentials from this repo's `.env`; look for `publish=0` in the pod log.
+  `mirror_top150.sh` is optional now — it refreshes the local `reports/top150` git
+  record and re-publishes the same content.
 - **Code changes:** edit and commit **here**, then `scripts/push_repos.sh`. It pushes
   this branch to `Top150` and the two subtrees to `Top150BE` / `Top150FE`; Vercel and
   Render redeploy from `main` on their own.

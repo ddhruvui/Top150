@@ -51,18 +51,13 @@ Ask for these back, and treat anything missing as not-done:
 - `verify_source.py` — every tree **FRESH**, `fail=0`
 - `market job=0` and `predict job=0` — logs on the **calc volume** (`podlog150`)
 - **G-02**: `suggestions.json`'s `as_of_close` equals the newest source day-file
-- Results pulled **down to this machine** — `derived/top150/predict/suggestions.json` present
-  and dated today
-- `reports/top150/` rebuilt (that bundle is the whole contract with the UI), plus the book size
+- `publish=0` in the predict pod log — the pod built the bundle and published it to MongoDB;
+  the deployed UI (see `DEPLOY.md`) shows it within about 30 seconds. `publish=3` means G-02
+  failed on the pod (stale close): rerun market + predict.
 
-The pods write to the calc volume, not to your disk — until `mirror_top150.sh` runs there is
-nothing local to look at and the UI still shows the previous run. If you only want that last
-step, say so rather than re-running the pipeline:
-
-> Everything already ran on the pods. Just pull the results down and rebuild the reports bundle.
-
-The mirror ends by publishing the bundle to MongoDB, so the deployed UI (see `DEPLOY.md`)
-shows it within about 30 seconds. Locally: `scripts/serve_top150_console.sh` (:8790).
+Nothing has to come down to this machine. `mirror_top150.sh` is optional: it pulls the
+artifacts, rebuilds `reports/top150` for the git record and re-publishes the same content.
+Locally: `scripts/serve_top150_console.sh` (:8790).
 
 A pod exiting is not evidence a stage succeeded — a stage can be OOM-killed (`exit=-9`) while
 its pod still self-terminates normally and leaves yesterday's output in place. Ask for exit
