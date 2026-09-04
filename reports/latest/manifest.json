@@ -1,0 +1,28 @@
+{
+ "built_utc": "2026-09-02T17:32:59+00:00",
+ "source_dir": "derived",
+ "sections": {
+  "summary": {
+   "members": "stage2_report.json",
+   "book": "stage3_report.json",
+   "cpcv": "stage3_final_report.json"
+  },
+  "equity": {
+   "points": 1636
+  },
+  "suggestions": {
+   "as_of": "2026-09-01",
+   "n": 19
+  },
+  "config": {
+   "config_hash": "f4868116a77ffdd3dcc87e1f6e378e0e94977d21f23ec084fb01fd01f469bb84"
+  },
+  "calendar": {
+   "sessions": 85
+  },
+  "trades": {
+   "n_total": 23370,
+   "sampled": 4000
+  }
+ }
+}

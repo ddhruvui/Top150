@@ -1,0 +1,28 @@
+{
+ "built_utc": "2026-09-04T15:26:03+00:00",
+ "source_dir": "/var/folders/nc/94b145q13pl3jz97b9qf8msh0000gn/T/top150_src.1ySIZH",
+ "sections": {
+  "summary": {
+   "members": "stage2_report.json",
+   "book": "stage3_report.json",
+   "cpcv": "stage3_final_report.json"
+  },
+  "equity": {
+   "points": 1644
+  },
+  "suggestions": {
+   "as_of": "2026-09-03",
+   "n": 13
+  },
+  "config": {
+   "config_hash": "65110a4306f80adebc526749fc22edaf980874b3b2aa3c44f7c4ddba488cadcb"
+  },
+  "calendar": {
+   "sessions": 85
+  },
+  "trades": {
+   "n_total": 23129,
+   "sampled": 4000
+  }
+ }
+}

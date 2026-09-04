@@ -1,0 +1,199 @@
+{
+  "stage": "stage3",
+  "stamp": {
+    "config_hash": "65110a4306f80adebc526749fc22edaf980874b3b2aa3c44f7c4ddba488cadcb",
+    "data_snapshot_id": "39b3e5e7def03e0f",
+    "git_sha": "unknown",
+    "seed": 20260717
+  },
+  "adoption": {
+    "ungated": {
+      "sharpe": 0.5896766654519788,
+      "n_trades": 23129,
+      "mdd": -0.44962185937823185,
+      "avg_hold": 34.669592286739594,
+      "hit_counts": {
+        "vertical": 15832,
+        "upper": 4445,
+        "lower": 2848,
+        "censored": 4
+      }
+    },
+    "gated": {
+      "sharpe": 0.531316257935648,
+      "n_trades": 19750,
+      "mdd": -0.4500615740303422,
+      "avg_hold": 34.63483544303797,
+      "hit_counts": {
+        "vertical": 13493,
+        "upper": 3725,
+        "lower": 2528,
+        "censored": 4
+      }
+    },
+    "turnover_cut": 0.1460936486661767,
+    "adopt": false
+  },
+  "meta_folds": [
+    {
+      "fold": "wf1",
+      "n_train": 4054,
+      "mean_p": 0.6498866552751092,
+      "gated_frac": 1.0
+    },
+    {
+      "fold": "wf2",
+      "n_train": 8086,
+      "mean_p": 0.4998280826659991,
+      "gated_frac": 0.38070436507936506
+    },
+    {
+      "fold": "wf3",
+      "n_train": 12118,
+      "mean_p": 0.5201458925634199,
+      "gated_frac": 0.0
+    },
+    {
+      "fold": "wf4",
+      "n_train": 16101,
+      "mean_p": 0.5620172788453976,
+      "gated_frac": 0.5807491937484495
+    },
+    {
+      "fold": "wf5",
+      "n_train": 20106,
+      "mean_p": 0.5814530174642292,
+      "gated_frac": 1.0
+    },
+    {
+      "fold": "wf6",
+      "n_train": 24119,
+      "mean_p": 0.5653413798524116,
+      "gated_frac": 0.9950396825396826
+    },
+    {
+      "fold": "wf7",
+      "n_train": 27902,
+      "mean_p": 0.572654871843898,
+      "gated_frac": 0.8752480158730159
+    },
+    {
+      "fold": "wf8",
+      "n_train": 31873,
+      "mean_p": 0.5734354053644132,
+      "gated_frac": 0.7353670634920635
+    },
+    {
+      "fold": "wf9",
+      "n_train": 35905,
+      "mean_p": 0.5830192142989955,
+      "gated_frac": 1.0
+    },
+    {
+      "fold": "wf10",
+      "n_train": 39937,
+      "mean_p": 0.5955343892495891,
+      "gated_frac": 1.0
+    },
+    {
+      "fold": "wf11",
+      "n_train": 43969,
+      "mean_p": 0.5870466909008214,
+      "gated_frac": 1.0
+    },
+    {
+      "fold": "wf12",
+      "n_train": 48001,
+      "mean_p": 0.5869518358883006,
+      "gated_frac": 1.0
+    },
+    {
+      "fold": "wf13",
+      "n_train": 51815,
+      "mean_p": 0.5874080189844895,
+      "gated_frac": 1.0
+    },
+    {
+      "fold": "wf14",
+      "n_train": 55698,
+      "mean_p": 0.5901484317553384,
+      "gated_frac": 1.0
+    },
+    {
+      "fold": "wf15",
+      "n_train": 59546,
+      "mean_p": 0.5885256553714266,
+      "gated_frac": 1.0
+    },
+    {
+      "fold": "wf16",
+      "n_train": 63419,
+      "mean_p": 0.5913613763645456,
+      "gated_frac": 1.0
+    },
+    {
+      "fold": "wf17",
+      "n_train": 67171,
+      "mean_p": 0.5934385816726219,
+      "gated_frac": 1.0
+    },
+    {
+      "fold": "wf18",
+      "n_train": 71203,
+      "mean_p": 0.5939463286826994,
+      "gated_frac": 1.0
+    }
+  ],
+  "cpcv": {
+    "paths": [
+      {
+        "path": 0,
+        "sharpe": 0.8800138586775189,
+        "mdd": -0.5734401715906529,
+        "n_trades": 31993
+      },
+      {
+        "path": 1,
+        "sharpe": 0.9029016749484989,
+        "mdd": -0.5323345866046675,
+        "n_trades": 32127
+      },
+      {
+        "path": 2,
+        "sharpe": 0.9056524519061965,
+        "mdd": -0.4966311284827303,
+        "n_trades": 32385
+      },
+      {
+        "path": 3,
+        "sharpe": 0.9975046090400314,
+        "mdd": -0.5623276225336944,
+        "n_trades": 32012
+      },
+      {
+        "path": 4,
+        "sharpe": 1.1288060127905555,
+        "mdd": -0.46408321170296907,
+        "n_trades": 32123
+      }
+    ],
+    "sharpe_median": 0.9056524519061965,
+    "mdd_worst": -0.5734401715906529
+  },
+  "dsr": {
+    "DSR": 0.9987303598396979,
+    "SR_daily": 0.03714613835056592,
+    "SR_star": 0.0,
+    "T": 6695,
+    "N": 235,
+    "skew": -0.2952577104921287,
+    "kurtosis_raw": 8.828991662746716
+  },
+  "book": {
+    "sharpe_net": 0.5896766654519788,
+    "ann_return": 0.10924071134966265,
+    "ann_vol": 0.18525527250757196,
+    "mdd": -0.44962185937823185,
+    "n_days": 6695
+  }
+}

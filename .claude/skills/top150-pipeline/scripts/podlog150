@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# podlog150 <pattern> [lines] — newest _pod_logs entry on the CALC volume (k4cli3aj48).
+# Top-150 pods mount k4cli3aj48, so their logs are HERE — the daily-pipeline podlog
+# (prod volume) cannot see them. Works after the pod self-terminated.
+set -euo pipefail
+. "$(dirname "$0")/_env150.sh"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+PAT="$1"; N="${2:-25}"
+KEY=$("$HERE/vol150" ls "$CALC_BUCKET/_pod_logs/" | awk '{print $4}' | grep -- "$PAT" | sort | tail -1)
+[ -n "$KEY" ] || { echo "no pod log matching '$PAT' on $CALC_BUCKET" >&2; exit 1; }
+OUT="${TMPDIR:-/tmp}/podlog150_$(echo "$PAT" | tr -c 'A-Za-z0-9._-' '_').txt"
+"$HERE/vol150" cp "$CALC_BUCKET/_pod_logs/$KEY" "$OUT" --quiet
+echo "--- $KEY ($(wc -l < "$OUT" | tr -d ' ') lines) -> $OUT"
+tail -n "$N" "$OUT"

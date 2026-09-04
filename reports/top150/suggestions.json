@@ -1,0 +1,231 @@
+{
+ "as_of_close": "2026-09-03",
+ "execute_at": "next session MOO (G-02: signals from close t earn from open t+1)",
+ "stamp": {
+  "config_hash": "65110a4306f80adebc526749fc22edaf980874b3b2aa3c44f7c4ddba488cadcb",
+  "data_snapshot_id": "bb04cd9400776216",
+  "git_sha": "unknown",
+  "seed": 20260717
+ },
+ "training": {
+  "mode": "update",
+  "reason": "warm update on champions (last full fit 4 sessions old)",
+  "train_through": "2026-06-08",
+  "panel_tail_since": "2021-08-30",
+  "adopted": {
+   "lgbm_h5": false,
+   "lgbm_h20": false,
+   "lgbm_h60": false
+  },
+  "full_refit_cadence_sessions": 21,
+  "note": "warm_update continues the stored champion on the newest labeled year; champion vs challenger judged on the same purged valid year"
+ },
+ "heads": {
+  "lgbm_h5": {
+   "mode": "warm_update",
+   "adopted": false,
+   "valid_rank_ic": 0.03912677,
+   "challenger_rank_ic": 0.03912677,
+   "champion_rank_ic": 0.03912677,
+   "n_trees": 75,
+   "top_features": [
+    "size",
+    "close_ema_5",
+    "mom_12_1",
+    "ret_5",
+    "sue_pead",
+    "close_sma_5",
+    "turnover",
+    "vma_ratio",
+    "bm",
+    "close_sma_10"
+   ]
+  },
+  "lgbm_h20": {
+   "mode": "warm_update",
+   "adopted": false,
+   "valid_rank_ic": 0.04968805,
+   "challenger_rank_ic": 0.04968805,
+   "champion_rank_ic": 0.04968805,
+   "n_trees": 1,
+   "top_features": [
+    "macd_hist",
+    "vol_10",
+    "sue_pead",
+    "days_since_earnings",
+    "size",
+    "earnings_within_2d",
+    "vol_5",
+    "mom_12_1",
+    "macd_signal",
+    "ret_20"
+   ]
+  },
+  "lgbm_h60": {
+   "mode": "warm_update",
+   "adopted": false,
+   "valid_rank_ic": 0.0230294,
+   "challenger_rank_ic": 0.02221544,
+   "champion_rank_ic": 0.0230294,
+   "n_trees": 85,
+   "top_features": [
+    "vol_10",
+    "vol_60",
+    "vol_5",
+    "earnings_within_2d",
+    "days_since_earnings",
+    "sue_pead",
+    "close_ema_30",
+    "mom_12_1",
+    "rsi_14",
+    "vol_20"
+   ]
+  }
+ },
+ "portfolio": {
+  "n_names": 13,
+  "gross_long": 0.89584208,
+  "spy_hedge_weight": 0.0
+ },
+ "buys_or_increases": [
+  {
+   "ticker": "AZO",
+   "target_weight": 0.22124,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.4034,
+   "last_close": 2968.04,
+   "stop_pct": -15.32,
+   "profit_take_pct": 15.32,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "MPWR",
+   "target_weight": 0.174,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.4183,
+   "last_close": 1213.65,
+   "stop_pct": -28.32,
+   "profit_take_pct": 28.32,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "CIEN",
+   "target_weight": 0.08224,
+   "current_weight": 0.0,
+   "ensemble_rank": -0.1783,
+   "last_close": 317.46,
+   "stop_pct": -49.99,
+   "profit_take_pct": 49.99,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "TER",
+   "target_weight": 0.07915,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.4034,
+   "last_close": 338.59,
+   "stop_pct": -42.21,
+   "profit_take_pct": 42.21,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "LITE",
+   "target_weight": 0.07245,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.4289,
+   "last_close": 847.37,
+   "stop_pct": -55.19,
+   "profit_take_pct": 55.19,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "DASH",
+   "target_weight": 0.05395,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.3864,
+   "last_close": 222.0,
+   "stop_pct": -21.06,
+   "profit_take_pct": 21.06,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "ON",
+   "target_weight": 0.05239,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.3588,
+   "last_close": 73.65,
+   "stop_pct": -30.97,
+   "profit_take_pct": 30.97,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "HD",
+   "target_weight": 0.04808,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.3301,
+   "last_close": 318.07,
+   "stop_pct": -14.26,
+   "profit_take_pct": 14.26,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "HOOD",
+   "target_weight": 0.03307,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.259,
+   "last_close": 124.72,
+   "stop_pct": -53.96,
+   "profit_take_pct": 53.96,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "COIN",
+   "target_weight": 0.02857,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.3057,
+   "last_close": 192.7,
+   "stop_pct": -49.43,
+   "profit_take_pct": 49.43,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "SBUX",
+   "target_weight": 0.02758,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.3822,
+   "last_close": 105.82,
+   "stop_pct": -12.54,
+   "profit_take_pct": 12.54,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "COHR",
+   "target_weight": 0.01487,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.0541,
+   "last_close": 264.41,
+   "stop_pct": -57.03,
+   "profit_take_pct": 57.03,
+   "max_hold_sessions": 40
+  },
+  {
+   "ticker": "WDC",
+   "target_weight": 0.00828,
+   "current_weight": 0.0,
+   "ensemble_rank": 0.3673,
+   "last_close": 441.57,
+   "stop_pct": -46.06,
+   "profit_take_pct": 46.06,
+   "max_hold_sessions": 40
+  }
+ ],
+ "holds": [],
+ "sells_or_exits": [],
+ "exit_rules": {
+  "engine": "M5.2 triple barrier",
+  "m": 1.5,
+  "h_sessions": 40,
+  "note": "stop/profit-take are % vs ACTUAL fill at next open; vertical exit = MOO at t+h+1"
+ },
+ "disclaimer": "Research output of an experimental system; NOT financial advice. All performance claims require the G-11 gate evaluation first."
+}

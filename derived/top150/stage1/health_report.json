@@ -1,0 +1,39 @@
+{
+  "checks": {
+    "missing_bars_lifespan": {
+      "tickers": 131,
+      "total": 62372,
+      "ok": true,
+      "level": "INFO"
+    },
+    "missing_bars_in_universe": {
+      "total": 12170,
+      "frac": 0.01162,
+      "ok": true,
+      "level": "MUST"
+    },
+    "stale_prices": {
+      "bars": 21098,
+      "ok": true,
+      "level": "SHOULD"
+    },
+    "factor_continuity": {
+      "jump_bars": 22753,
+      "ok": true,
+      "level": "MUST"
+    },
+    "universe_count": {
+      "min": 148,
+      "max": 162,
+      "last": 159,
+      "ok": "True",
+      "level": "MUST"
+    },
+    "quarantined_bars": {
+      "bars": 184462,
+      "ok": true,
+      "level": "INFO"
+    }
+  },
+  "blocking": false
+}

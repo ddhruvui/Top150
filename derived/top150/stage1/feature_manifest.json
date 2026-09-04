@@ -1,0 +1,190 @@
+{
+  "ep": {
+    "block": "F7",
+    "formula_hash": "698e28718a4d"
+  },
+  "bm": {
+    "block": "F7",
+    "formula_hash": "02aab0a2a3b0"
+  },
+  "sp": {
+    "block": "F7",
+    "formula_hash": "377709cfdf8c"
+  },
+  "roe": {
+    "block": "F7",
+    "formula_hash": "f1bc012a9a2a"
+  },
+  "gross_prof": {
+    "block": "F7",
+    "formula_hash": "93892d21e542"
+  },
+  "asset_growth": {
+    "block": "F7",
+    "formula_hash": "a6fc6845bb1e"
+  },
+  "accruals": {
+    "block": "F7",
+    "formula_hash": "34f9dff883e2"
+  },
+  "size": {
+    "block": "F7",
+    "formula_hash": "fbfbfeeef830"
+  },
+  "ret_1": {
+    "block": "F1-F6",
+    "formula_hash": "04f5d3b839ba"
+  },
+  "ret_5": {
+    "block": "F1-F6",
+    "formula_hash": "c5788f4bff59"
+  },
+  "ret_10": {
+    "block": "F1-F6",
+    "formula_hash": "933cf5b3a854"
+  },
+  "ret_20": {
+    "block": "F1-F6",
+    "formula_hash": "14c094a28555"
+  },
+  "ret_60": {
+    "block": "F1-F6",
+    "formula_hash": "c63b4308f464"
+  },
+  "co_ratio": {
+    "block": "F1-F6",
+    "formula_hash": "875abef949a0"
+  },
+  "hl_ratio": {
+    "block": "F1-F6",
+    "formula_hash": "a8ffa385c583"
+  },
+  "range_pos": {
+    "block": "F1-F6",
+    "formula_hash": "d8ea086046e6"
+  },
+  "close_sma_5": {
+    "block": "F1-F6",
+    "formula_hash": "e59f4fc075ba"
+  },
+  "close_ema_5": {
+    "block": "F1-F6",
+    "formula_hash": "559ea0bb81ff"
+  },
+  "close_sma_10": {
+    "block": "F1-F6",
+    "formula_hash": "71089ea453eb"
+  },
+  "close_ema_10": {
+    "block": "F1-F6",
+    "formula_hash": "d5da18930237"
+  },
+  "close_sma_20": {
+    "block": "F1-F6",
+    "formula_hash": "aa759597c659"
+  },
+  "close_ema_20": {
+    "block": "F1-F6",
+    "formula_hash": "7841ac5dfa49"
+  },
+  "close_sma_30": {
+    "block": "F1-F6",
+    "formula_hash": "3a2de44f02a3"
+  },
+  "close_ema_30": {
+    "block": "F1-F6",
+    "formula_hash": "50ff393f871d"
+  },
+  "close_sma_60": {
+    "block": "F1-F6",
+    "formula_hash": "d401effb2c4d"
+  },
+  "close_ema_60": {
+    "block": "F1-F6",
+    "formula_hash": "c55ec335f069"
+  },
+  "mom_12_1": {
+    "block": "F1-F6",
+    "formula_hash": "1336a0a2d31c"
+  },
+  "rsi_14": {
+    "block": "F1-F6",
+    "formula_hash": "051a0079cf07"
+  },
+  "macd": {
+    "block": "F1-F6",
+    "formula_hash": "a0820b6adb8a"
+  },
+  "macd_signal": {
+    "block": "F1-F6",
+    "formula_hash": "7978d2f202e0"
+  },
+  "macd_hist": {
+    "block": "F1-F6",
+    "formula_hash": "e97474ce500c"
+  },
+  "vol_5": {
+    "block": "F1-F6",
+    "formula_hash": "d3c6137af3e4"
+  },
+  "vol_10": {
+    "block": "F1-F6",
+    "formula_hash": "d7715455e68d"
+  },
+  "vol_20": {
+    "block": "F1-F6",
+    "formula_hash": "041717b66767"
+  },
+  "vol_60": {
+    "block": "F1-F6",
+    "formula_hash": "55890ca4c201"
+  },
+  "atr_14": {
+    "block": "F1-F6",
+    "formula_hash": "291b714cbe80"
+  },
+  "bb_pos": {
+    "block": "F1-F6",
+    "formula_hash": "c6d3c02e5e6c"
+  },
+  "vma_ratio": {
+    "block": "F1-F6",
+    "formula_hash": "13e182fa20e8"
+  },
+  "turnover": {
+    "block": "F1-F6",
+    "formula_hash": "5113828db8af"
+  },
+  "vwap_dev": {
+    "block": "F1-F6",
+    "formula_hash": "9ae835d0b431"
+  },
+  "obv_chg_5": {
+    "block": "F1-F6",
+    "formula_hash": "715ff450d133"
+  },
+  "obv_chg_20": {
+    "block": "F1-F6",
+    "formula_hash": "dc412445b35d"
+  },
+  "sue_pead": {
+    "block": "F8",
+    "formula_hash": "91cbe41cd837"
+  },
+  "rev_mom": {
+    "block": "F8",
+    "formula_hash": "a79b5bc2593a"
+  },
+  "days_to_earnings": {
+    "block": "F8",
+    "formula_hash": "c3538ee532a4"
+  },
+  "days_since_earnings": {
+    "block": "F8",
+    "formula_hash": "bd9fee4d91e9"
+  },
+  "earnings_within_2d": {
+    "block": "F8",
+    "formula_hash": "59df7f7a9244"
+  }
+}
