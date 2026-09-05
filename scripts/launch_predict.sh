@@ -111,10 +111,11 @@ ENV_COMMON="${ENV_COMMON},
     \"RUNPOD_S3_REGION\": \"${RUNPOD_S3_REGION}\",
     \"MARKET_DIR\": \"${MARKET_DIR:-/workspace/m1x150}\",
     \"UNIVERSE_SIZE\": \"${UNIVERSE_SIZE:-150}\""
-# Pod-side publish: the predict pod gets the MongoDB credentials (from .env at
-# the repo root) and publishes the bundle itself; nothing comes down to a
-# laptop. PUBLISH_MONGO=0 launches without them (the laptop mirror still works).
-if [ "$JOB" = "predict" ] && [ "${PUBLISH_MONGO:-1}" = "1" ]; then
+# Pod-side publish: the predict pod (daily book) and the stage3 pod (quarterly
+# research refresh) get the MongoDB credentials from .env at the repo root and
+# publish the bundle themselves; nothing comes down to a laptop.
+# PUBLISH_MONGO=0 launches without them (the laptop mirror still works).
+if { [ "$JOB" = "predict" ] || [ "$JOB" = "stage3" ]; } && [ "${PUBLISH_MONGO:-1}" = "1" ]; then
   : "${MONGO_URI:?set MONGO_URI in .env at the repo root for the pod-side publish, or PUBLISH_MONGO=0}"
   ENV_COMMON="${ENV_COMMON},
     \"PUBLISH_MONGO\": \"1\",

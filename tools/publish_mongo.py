@@ -20,6 +20,8 @@ Collections (database MONGO_DB, default Top150):
 
     python3 tools/publish_mongo.py --src reports/top150 --bundle top150
     python3 tools/publish_mongo.py --dry-run            # show what would go up
+    python3 tools/publish_mongo.py --exclude suggestions  # research refresh: leave the
+                                                          # book (and its history) untouched
 
 Environment (shell, else repo-root .env): MONGO_URI (Atlas's literal
 `<db_password>` placeholder is filled from DB_PASSWORD), MONGO_DB, BUNDLE.
@@ -101,7 +103,8 @@ def ensure_indexes(db) -> None:
     db.reports.create_index([("bundle", 1), ("section", 1)])
 
 
-def publish(db, src: Path, bundle: str, dry: bool, seed_paper: Path | None) -> int:
+def publish(db, src: Path, bundle: str, dry: bool, seed_paper: Path | None,
+            exclude: set[str] = frozenset()) -> int:
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     manifest = read_json(src / "manifest.json") or {}
     built = manifest.get("built_utc")
@@ -109,16 +112,24 @@ def publish(db, src: Path, bundle: str, dry: bool, seed_paper: Path | None) -> i
 
     docs = {}
     for name in SECTIONS:
+        if name in exclude:
+            print(f"  -- {name:15s} excluded, left as published")
+            continue
         data = read_json(src / f"{name}.json")
         if data is None:
             print(f"  -- {name:15s} missing, skipped")
             continue
         docs[name] = data
         print(f"  ok {name:15s} {kb(data)}")
+    # a manifest must not describe a book this publish did not write
+    if "suggestions" in exclude and "manifest" in docs:
+        (docs["manifest"].get("sections") or {}).pop("suggestions", None)
 
-    sample = read_json(src / "trades_sample.json")
+    sample = None if "trades_sample" in exclude else read_json(src / "trades_sample.json")
     rows = (sample or {}).get("rows") or []
-    if sample:
+    if "trades_sample" in exclude:
+        print(f"  -- {'trades_sample':15s} excluded, left as published")
+    elif sample:
         print(f"  ok {'trades_sample':15s} {kb(sample)}  -> {len(rows):,} trade rows")
     else:
         print("  -- trades_sample   missing (run stage3 + FULL_MIRROR=1)")
@@ -202,8 +213,14 @@ def main() -> int:
     ap.add_argument("--db", default=None, help="database (default $MONGO_DB or Top150)")
     ap.add_argument("--seed-paper", default=str(REPO / "app/backend/data/paper_book.json"),
                     help="local paper book to seed Mongo with, once ('' to skip)")
+    ap.add_argument("--exclude", default="",
+                    help="comma-separated sections to leave untouched (e.g. suggestions)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
+    exclude = {s.strip() for s in args.exclude.split(",") if s.strip()}
+    unknown = exclude - set(SECTIONS) - {"trades_sample"}
+    if unknown:
+        sys.exit(f"--exclude: unknown section(s) {sorted(unknown)}; known: {SECTIONS + ['trades_sample']}")
 
     load_dotenv(REPO / ".env")
     bundle = args.bundle or os.environ.get("BUNDLE") or "top150"
@@ -213,11 +230,11 @@ def main() -> int:
     seed = Path(args.seed_paper) if args.seed_paper else None
 
     if args.dry_run:
-        return publish(None, src, bundle, True, seed)
+        return publish(None, src, bundle, True, seed, exclude)
     client = connect()
     db = client[args.db or os.environ.get("MONGO_DB") or "Top150"]
     try:
-        return publish(db, src, bundle, False, seed)
+        return publish(db, src, bundle, False, seed, exclude)
     finally:
         client.close()
 

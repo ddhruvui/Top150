@@ -143,14 +143,20 @@ scripts/launch_top150.sh stage3     # meta gate + barrier book + CPCV
   MDD −45%; last-3y 13.3%/0.64; `lgbm_h5` degenerates on 150 names (valid RIC 0.0000
   every fold) and M10-03 admits only h20+h60.
 
-Then publish with the stage artifacts re-pulled:
+**The stage3 pod publishes the research refresh itself** (`publish=0` in its log, below
+`job=`): `tools/pod_publish.sh` in *research* mode rebuilds the bundle from the stage
+artifacts on the calc volume and publishes the gates verdict, members, equity curve,
+CPCV and trade ledger. It deliberately leaves the `suggestions` section untouched — the
+book the UI shows is only ever written by a G-02-verified predict publish, so a research
+refresh never re-pushes whatever `suggestions.json` sits on the volume. The next daily
+predict then publishes a fresh book on top of the new research sections.
+
+Optional, for the git record (the refreshed `derived/top150/` artifacts and
+`reports/top150` are committed on this branch):
 
 ```sh
 FULL_MIRROR=1 .claude/skills/top150-pipeline/scripts/mirror_top150.sh
 ```
-
-The refreshed `derived/top150/` artifacts are committed on this branch (that is the
-record — check `git status` after the mirror and commit them with the bundle).
 
 ## Monitoring
 

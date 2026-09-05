@@ -76,6 +76,11 @@ API now answers only that site's browser calls. (Both were live on 2026-09-04.)
   credentials from this repo's `.env`; look for `publish=0` in the pod log.
   `mirror_top150.sh` is optional now — it refreshes the local `reports/top150` git
   record and re-publishes the same content.
+- **Quarterly research refresh:** `stage1` → `stage2` → `stage3`. The **stage3 pod
+  publishes too**, in *research* mode: gates, members, equity curve, CPCV and the trade
+  ledger go up; the `suggestions` section is left untouched, so the book on the UI stays
+  the last G-02-verified one until the next daily predict. Look for `publish=0` in the
+  stage3 log.
 - **Code changes:** edit and commit **here**, then `scripts/push_repos.sh`. It pushes
   this branch to `Top150` and the two subtrees to `Top150BE` / `Top150FE`; Vercel and
   Render redeploy from `main` on their own.

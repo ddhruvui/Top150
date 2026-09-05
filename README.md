@@ -57,7 +57,8 @@ scripts/launch_top150.sh predict    # latest-date scores -> target book -> sugge
                                     # on config/feature change; REFIT=full forces it.
 
 # the predict pod then publishes on its own: G-02 against the source tape -> bundle
-# -> MongoDB -> deployed UI (tools/pod_publish.sh). Optional laptop path for the git
+# -> MongoDB -> deployed UI (tools/pod_publish.sh); the stage3 pod publishes the
+# research sections the same way (book untouched). Optional laptop path for the git
 # record (re-publishes the same content):
 .claude/skills/top150-pipeline/scripts/mirror_top150.sh
 ```

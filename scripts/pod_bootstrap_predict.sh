@@ -128,17 +128,20 @@ print("\n".join(sorted(pd.read_parquet(os.environ["MEM"])["ticker"].astype(str).
       esac
       ec=$?
 
-      # ---- publish (predict only): bundle + MongoDB straight from this pod -----
+      # ---- publish: bundle + MongoDB straight from this pod ---------------------
       # The deployed UI reads MongoDB, so nothing has to be pulled to a laptop.
-      # Gated on job=0: a failed or watchdog-killed predict must never publish.
-      # tools/pod_publish.sh enforces G-02 with a read-only LIST of the source.
-      if [ "${JOB:-stage1}" = "predict" ] && [ "$ec" -eq 0 ]; then
+      #   predict -> book mode:     G-02 (read-only LIST of the source), all sections
+      #   stage3  -> research mode: gates/equity/ledger only; the book is untouched
+      # Gated on job=0: a failed or watchdog-killed job must never publish.
+      PUB_MODE=""
+      case "${JOB:-stage1}" in predict) PUB_MODE=book ;; stage3) PUB_MODE=research ;; esac
+      if [ -n "$PUB_MODE" ] && [ "$ec" -eq 0 ]; then
         if [ "${PUBLISH_MONGO:-1}" = "1" ] && [ -n "${MONGO_URI:-}" ]; then
-          BUNDLE="${BUNDLE:-top150}" BUNDLE_OUT="/workspace/reports/${BUNDLE:-top150}" \
-            bash tools/pod_publish.sh
+          PUBLISH_MODE="$PUB_MODE" BUNDLE="${BUNDLE:-top150}" \
+            BUNDLE_OUT="/workspace/reports/${BUNDLE:-top150}" bash tools/pod_publish.sh
           pub=$?
           case "$pub" in
-            0) echo "publish=0 (PUBLISHED — deployed UI updates within ~30 s)" ;;
+            0) echo "publish=0 ($PUB_MODE PUBLISHED — deployed UI updates within ~30 s)" ;;
             3) echo "publish=3 (G-02 FAIL — stale close, NOT published; rerun market + predict)" ;;
             *) echo "publish=$pub (FAILED — output intact on the volume; mirror_top150.sh publishes it)" ;;
           esac

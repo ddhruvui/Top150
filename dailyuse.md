@@ -70,10 +70,12 @@ is now explicit, and each is gated on the previous one reporting `job=0` (a pod 
 proves nothing). The `top150-pipeline` skill carries the ordering rules and the
 "looks finished but silently half-built" failure modes.
 
-`FULL_MIRROR=1` after a stage3 rerun re-pulls the equity/trades parquets. Stage 1/2/3
-are the research/backtest reports — they only need re-running when code or config
-changes, or on the quarterly cadence to refresh the G-11 gate verdict; they are
-deliberately not part of the daily loop.
+Stage 1/2/3 are the research/backtest reports — they only need re-running when code or
+config changes, or on the quarterly cadence to refresh the G-11 gate verdict; they are
+deliberately not part of the daily loop. The **stage3 pod publishes** the refreshed
+research sections itself (gates, equity, ledger — the book is left untouched, see the
+skill); `FULL_MIRROR=1 mirror_top150.sh` is the optional laptop path that re-pulls the
+parquets for the git record.
 
 - Pods self-terminate with a confirmed DELETE; a restart marker prevents billing loops.
   `KEEP_POD=1` keeps a pod alive for inspection; `RUNPOD_VCPU=8` (16 GB) is required for
