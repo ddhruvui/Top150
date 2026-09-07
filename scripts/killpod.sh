@@ -22,7 +22,8 @@ for p in pods:
     req.add_header("Authorization", "Bearer " + key)
     try:
         st = u.urlopen(req, timeout=30).status
-        print(f"deleted {pid} ({p.get(\"desiredStatus\")}) -> {st}")
+        status = p.get("desiredStatus")
+        print(f"deleted {pid} ({status}) -> {st}")
         killed += 1
     except urllib.error.HTTPError as e:
         if e.code == 404:

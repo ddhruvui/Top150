@@ -108,7 +108,9 @@ def main():
         out = Path(a.out)
         out.mkdir(parents=True, exist_ok=True)
         (out / "summary.md").write_text(md)
-        shutil.copy(a.report, out / "experiments_report.json")
+        dst = out / "experiments_report.json"
+        if Path(a.report).resolve() != dst.resolve():
+            shutil.copy(a.report, dst)
         print(f"wrote {out / 'summary.md'}")
     else:
         print(md)
