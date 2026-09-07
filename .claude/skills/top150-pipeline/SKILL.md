@@ -65,6 +65,15 @@ Bundled helpers in `.claude/skills/top150-pipeline/scripts/` (call by full path;
 5. **A pod exiting is not success.** Only `job=0` in the log is. A stage can be
    OOM-killed (`exit=-9`) while its pod self-terminates normally, leaving yesterday's
    output in place.
+6. **`job=0` is not "pod gone" either.** On 2026-09-07 two finished pods logged
+   `terminate attempt N not confirmed` twelve times, exited, were restarted by RunPod,
+   hit the marker (`job=98`) and looped — billing all the while. After a `job=` line,
+   confirm the pod left `$SK150/pods`; if not, `scripts/killpod.sh` (curl DELETE; the
+   laptop's python has no CA bundle). The bootstrap now prints the DELETE's HTTP status
+   and retries via curl.
+7. **Experiment output stays out of `derived/top150/`.** Branch `exp-short-horizon`
+   writes to `OUT_DIR=/workspace/derived/exp_short/<job>` on the same calc volume and
+   launches with `PUBLISH_MONGO=0`; the production prefixes are the daily loop's.
 
 ## Daily loop
 
@@ -137,7 +146,9 @@ scripts/launch_top150.sh stage3     # meta gate + barrier book + CPCV
 - **stage2 "no instances available" 500**: WIDEN the GPU pool — the 3-type default is
   the constraint, not disk. `RUNPOD_GPU_TYPES` with ~9 card types fixed it instantly
   on 2026-09-01, e.g.:
-  `RUNPOD_GPU_TYPES='["NVIDIA GeForce RTX 4090","NVIDIA RTX A5000","NVIDIA A40","NVIDIA RTX A4500","NVIDIA RTX A6000","NVIDIA GeForce RTX 3090","NVIDIA L4","NVIDIA RTX 4000 Ada Generation","NVIDIA A30"]' scripts/launch_top150.sh stage2`
+  `RUNPOD_GPU_TYPES='["NVIDIA GeForce RTX 4090","NVIDIA RTX A5000","NVIDIA A40","NVIDIA RTX A4500","NVIDIA RTX A6000","NVIDIA GeForce RTX 3090","NVIDIA L4","NVIDIA RTX 4000 Ada Generation","NVIDIA L40S","NVIDIA RTX A4000"]' scripts/launch_top150.sh stage2`
+  Every id must be in RunPod's current `gpuTypeIds` enum or the whole create is an
+  HTTP 400 ("value must be one of …") — `NVIDIA A30` dropped out of it on 2026-09-07.
 - **Interpreting results**: stage1 KILL is NOT diagnostic — the book only emerges at
   stage3. Known baseline (2026-09-01 full run): stage3 ungated 9.6% CAGR / SR 0.59 /
   MDD −45%; last-3y 13.3%/0.64; `lgbm_h5` degenerates on 150 names (valid RIC 0.0000
