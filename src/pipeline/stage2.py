@@ -49,7 +49,8 @@ def run_stage2(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None 
                          valid_sessions=252 * int(cfg.val.valid_years),
                          test_sessions=252 * int(cfg.val.step_years),
                          step_sessions=252 * int(cfg.val.step_years),
-                         label_span=label_span, embargo=int(cfg.val.embargo_days))
+                         label_span=label_span, embargo=int(cfg.val.embargo_days),
+                         partial_last_min=cfg.val.get("partial_last_fold_min_sessions"))
     print(f"walk-forward folds: {len(folds)}", flush=True)
 
     ledger = TrialsLedger()

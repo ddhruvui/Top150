@@ -44,9 +44,17 @@ def _purge_embargo(dates: pd.DatetimeIndex, candidate: np.ndarray,
 def walk_forward(dates: pd.DatetimeIndex, train_sessions: int = 1260,
                  valid_sessions: int = 504, test_sessions: int = 252,
                  step_sessions: int = 252, label_span: int = 61,
-                 embargo: int = 21) -> list[Fold]:
+                 embargo: int = 21,
+                 partial_last_min: int | None = None) -> list[Fold]:
     """Default: train ~5y -> valid ~2y -> test 1y, step 1y [IMPL step].
-    FK alternative (§B): call with 750/0/250/250."""
+    FK alternative (§B): call with 750/0/250/250.
+
+    partial_last_min [IMPL]: the loop stops at the last FULL test block, so the
+    tail of the panel (up to test_sessions-1 sessions) is never scored and the
+    book's trades stop months before the last date. When set, one extra final
+    fold is emitted whose test block runs to the last session, provided it has
+    at least this many sessions; its train/valid windows are purged and
+    embargoed exactly like every other fold. None -> bit-identical behaviour."""
     folds = []
     n = len(dates)
     start = 0
@@ -57,7 +65,9 @@ def walk_forward(dates: pd.DatetimeIndex, train_sessions: int = 1260,
         i_te0 = i_va0 + valid_sessions
         i_te1 = i_te0 + test_sessions
         if i_te1 > n:
-            break
+            if partial_last_min is None or i_te0 + int(partial_last_min) > n:
+                break
+            i_te1 = n                      # partial final fold: test to the last session
         test_iv = [(i_te0, i_te1 - 1)]
         tr = _purge_embargo(dates, np.arange(i_tr0, i_va0), test_iv, label_span, embargo)
         va = _purge_embargo(dates, np.arange(i_va0, i_te0), test_iv, label_span, embargo)

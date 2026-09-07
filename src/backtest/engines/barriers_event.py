@@ -43,7 +43,10 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
                        net_moo_costs: bool = False,
                        gross_cap: float | None = None,
                        gross_cap_exact: bool = False,
-                       stay_mask: pd.DataFrame | None = None) -> dict:
+                       stay_mask: pd.DataFrame | None = None,
+                       trail_m: float | None = None,
+                       flat_k: int | None = None,
+                       flat_m: float | None = None) -> dict:
     """selection: wide bool frame (decision date x ticker) of names entering that
     day's tranche. Returns {'daily_net', 'equity', 'trades', 'pdt_log', ...}."""
     dates = panel.adj_open.index
@@ -110,9 +113,11 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
     ex = barrier_exits(edf[["date", "ticker", "side"]], panel.adj_open, panel.adj_high,
                        panel.adj_low, panel.adj_close, sigma32, cost_model,
                        m=m_b, h=h_b, tie_break=str(cfg.barrier.tie_break),
-                       thr_cap=thr_cap, m_up=m_up, m_dn=m_dn)
+                       thr_cap=thr_cap, m_up=m_up, m_dn=m_dn,
+                       trail_m=trail_m, flat_k=flat_k, flat_m=flat_m)
     ex["tranche_w"] = edf["tranche_w"].to_numpy()
-    ex = ex[ex["barrier_hit"].isin(["upper", "lower", "vertical", "censored"])]
+    ex = ex[ex["barrier_hit"].isin(["upper", "lower", "vertical", "censored",
+                                    "trail", "flat"])]
 
     # 3) PDT: same-session exits; under $25k the exhausted 4th defers to next open
     pdt = PDTCounter(account_equity)

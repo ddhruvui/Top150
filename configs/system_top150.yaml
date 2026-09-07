@@ -169,6 +169,10 @@ val:
   step_years: 1
   fk_alternative: false                # 750d train / 250d test, step 250
   embargo_days: 21
+  partial_last_fold_min_sessions: 21   # [IMPL] score the panel TAIL: emit a final
+                                       #   partial test fold (>= 21 sessions) so scores
+                                       #   and trades run to the last date instead of
+                                       #   stopping at the last full test year
   cpcv_n_groups: 6
   cpcv_k_test: 2                       # -> 15 splits, 5 paths
   holdout_years: 1                     # final untouched segment, opened once

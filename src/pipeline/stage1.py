@@ -69,7 +69,8 @@ def run_stage1(m1_dir: str, eod_dir: str, out_dir: str,
                          valid_sessions=252 * int(cfg.val.valid_years),
                          test_sessions=252 * int(cfg.val.step_years),
                          step_sessions=252 * int(cfg.val.step_years),
-                         label_span=label_span, embargo=int(cfg.val.embargo_days))
+                         label_span=label_span, embargo=int(cfg.val.embargo_days),
+                         partial_last_min=cfg.val.get("partial_last_fold_min_sessions"))
     if not folds:
         raise RuntimeError(f"sample too short for walk-forward: {len(dates)} sessions")
     print(f"walk-forward folds: {len(folds)}")

@@ -75,7 +75,8 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                          valid_sessions=252 * int(cfg.val.valid_years),
                          test_sessions=252 * int(cfg.val.step_years),
                          step_sessions=252 * int(cfg.val.step_years),
-                         label_span=label_span, embargo=int(cfg.val.embargo_days))
+                         label_span=label_span, embargo=int(cfg.val.embargo_days),
+                         partial_last_min=cfg.val.get("partial_last_fold_min_sessions"))
     test_dates = pd.DatetimeIndex(sorted(set().union(*[set(f.test) for f in folds])))
     test_dates = test_dates.intersection(next(iter(scores.values())).dropna(how="all").index)
 
