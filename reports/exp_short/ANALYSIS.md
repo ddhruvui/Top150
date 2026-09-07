@@ -79,11 +79,53 @@ Findings, in order of size:
 6. **Earnings skip** is neutral at h40 (as before) and is kept on for h ≤ 10,
    where a single gap is the whole trade.
 
-## 3. What is being tested next (round I) and what still has to happen
+## 2b. Round I — 26 variants on the h5/h7/h10 winners (cached scores, 5 bps unless noted)
 
-- `fill_max` 1.5/2.0 on h5/h7/h10; top-7/top-10 at h7; vol target 25/30%;
-  barrier width m 1.0/2.0; earnings skip on/off; the same at 10 bps as the
-  honest middle case; h40 + fill_max as the control.
+Full table: [roundI_cached/summary.md](roundI_cached/summary.md). Anchor = round-H
+`h10, floor members, 5 bps` (SR 0.84 / CAGR 15.0% / MDD −31.5% / hold 8.8).
+
+| lever | SR | CAGR | MDD | gross | hold |
+|---|---|---|---|---|---|
+| h10 + barrier m 2.0 | **0.85** | 15.4% | -30.6% | 0.78 | 9.5 |
+| h10 + fill_max 1.5 | 0.84 | 16.5% | -31.6% | 0.83 | 8.8 |
+| h10 + fill_max 2.0 | 0.82 | 16.9% | -33.6% | 0.87 | 8.8 |
+| **h7, h20 members, fill_max 2.0** | 0.83 | **17.8%** | -30.8% | 0.85 | **6.2** |
+| h7 + fill_max 1.5 | 0.82 | 16.1% | -29.9% | 0.83 | 6.1 |
+| h10 + vol target 25% | 0.83 | 16.4% | -34.8% | 0.84 | 8.8 |
+| h10 + vol target 30% | 0.80 | 16.9% | -39.6% | 0.88 | 8.8 |
+| h10, top-7 / h7, top-7 / top-10 | 0.81-0.83 | 13.7-14.5% | -31..-33% | 0.79-0.81 | — |
+| h10, earnings skip off | 0.84 | 14.9% | -30.1% | 0.77 | 8.8 |
+| h10 + dead-money exit at 5 | 0.78 | 13.8% | -30.0% | 0.76 | 6.7 |
+| h10 / h7 + barrier m 1.0 | 0.75 / 0.65 | 12.7% / 10.6% | -33% | 0.73 | 7.0 / 4.9 |
+| h5, h20 members, fill 2.0 | 0.73 | 15.1% | -36.9% | 0.84 | 4.4 |
+| "best" combos (fill 2.0 + vt 25%) | 0.80 | 17.4-17.5% | -34..-37% | 0.90 | — |
+| the same at 10 bps | 0.69-0.73 | 14.6-15.4% | -36..-38% | 0.89 | — |
+| h40 floor + fill 2.0, 15 bps (control) | 0.78 | 18.2% | **-53.4%** | 0.97 | 34.7 |
+
+Readings:
+
+- **`fill_max` does what it was built for**: +6-10pp of invested capital and
+  +1.5-2pp CAGR at h7/h10 for ≤0.02 Sharpe; 1.5 is the better trade, 2.0 starts
+  to cost drawdown. On the 40-session book it is harmful (−53% MDD): at long
+  holds the freed capital is re-deployed *into* drawdowns.
+- **Widening the barrier at h10 (m 2.0) helps, tightening (m 1.0) hurts**: at a
+  10-session horizon the fixed ±1.5σ√10 stop already fires on noise; letting the
+  vertical do more of the exiting is better. Lower m at h7 is the worst variant.
+- **More names does not help** (top-7/10 lower CAGR, same drawdown) — the top of
+  the ranking carries the return, as rounds A-F found.
+- **Raising the vol target buys CAGR with drawdown** one-for-one; not free.
+- **The one-week candidate**: h7, `lgbm_h20`+`gru_h20`, top-5, vt 20%,
+  fill_max 1.5-2.0, earnings skip: SR 0.82-0.83, CAGR 16-18%, MDD −30/−31%,
+  6 sessions average hold — vs the adopted 40-session book's 0.71 / 14.0% /
+  −45% on the same scores and cost convention (15 bps there, 5 bps here).
+  At 10 bps it is 0.69; **the cost measurement decides**.
+
+## 3. What is being tested next and what still has to happen
+
+- Round J (`scripts/variants/roundJ.json`, 16 variants): the production
+  anchor, the floor, trail/flat on h40, and the h5/h7/h10 candidates with
+  fill_max and m 2.0 — re-run on the **fresh** tail-coverage stage-2 scores to
+  confirm the ranking holds when the sample runs to 2026-09-04.
 - stage2 → stage3 on the tail-coverage fold so the production comparison
   (and the UI's Backtest page, if merged) covers up to the last date.
 - Re-run rounds H/I on the fresh stage-2 scores to confirm the ranking holds.
