@@ -21,7 +21,9 @@ close above its 20d and 60d averages with the 20d average rising over 5
 sessions), `conv_weight` ("linear" | "harmonic": tilt the entering tranche
 toward the top of the ranking instead of pure inverse-vol), `trail_m`
 (trailing stop, M5.2 overlay), `flat_k`/`flat_m` (dead-money exit, M5.2
-overlay). All default-off.
+overlay), `fill_max` (scale the entering tranche up, to at most fill_max x
+nominal, to re-deploy capital freed by early exits under the exact cash cap).
+All default-off.
 """
 from __future__ import annotations
 
@@ -385,7 +387,7 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                   gross_cap=v.get("gross_cap"),
                   gross_cap_exact=bool(v.get("gc_exact")),
                   trail_m=v.get("trail_m"), flat_k=v.get("flat_k"),
-                  flat_m=v.get("flat_m"))
+                  flat_m=v.get("flat_m"), fill_max=v.get("fill_max"))
         if conv is not None:
             kw["meta_mult"] = conv
         if v.get("exit_rank"):
@@ -420,7 +422,7 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                   "vol_thr", "vt", "vt_cap", "top_n", "tranches", "name_cap",
                   "m_up", "m_dn", "cost_bps", "sent_gate", "net_moo",
                   "fin_bps_yr", "gross_cap", "gc_exact", "exit_rank",
-                  "trend", "conv_weight", "trail_m", "flat_k", "flat_m")
+                  "trend", "conv_weight", "trail_m", "flat_k", "flat_m", "fill_max")
         row = {"name": name, **{k: v.get(k) for k in LEVERS},
                "members": members, **met}
         results.append(row)

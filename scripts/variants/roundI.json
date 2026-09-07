@@ -1,0 +1,535 @@
+[
+ {
+  "name": "I0_h10_c5",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5
+ },
+ {
+  "name": "I1_h10_fill15",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "fill_max": 1.5
+ },
+ {
+  "name": "I1_h10_fill20",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "fill_max": 2.0
+ },
+ {
+  "name": "I1_h7_fill15",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 7,
+  "tranches": 7,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "fill_max": 1.5
+ },
+ {
+  "name": "I1_h7_fill20",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 7,
+  "tranches": 7,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "fill_max": 2.0
+ },
+ {
+  "name": "I1_h5_fill20",
+  "members": [
+   "lgbm_h20",
+   "gru_h20"
+  ],
+  "h": 5,
+  "tranches": 5,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "fill_max": 2.0
+ },
+ {
+  "name": "I2_h7_h20only",
+  "members": [
+   "lgbm_h20",
+   "gru_h20"
+  ],
+  "h": 7,
+  "tranches": 7,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5
+ },
+ {
+  "name": "I2_h7_h20only_fill20",
+  "members": [
+   "lgbm_h20",
+   "gru_h20"
+  ],
+  "h": 7,
+  "tranches": 7,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "fill_max": 2.0
+ },
+ {
+  "name": "I3_h10_flat5",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "flat_k": 5,
+  "flat_m": 0.5
+ },
+ {
+  "name": "I3_h10_flat5_fill20",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "flat_k": 5,
+  "flat_m": 0.5,
+  "fill_max": 2.0
+ },
+ {
+  "name": "I4_h7_top7",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 7,
+  "tranches": 7,
+  "top_n": 7,
+  "name_cap": 0.25,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5
+ },
+ {
+  "name": "I4_h7_top10",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 7,
+  "tranches": 7,
+  "top_n": 10,
+  "name_cap": 0.2,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5
+ },
+ {
+  "name": "I4_h10_top7",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 7,
+  "name_cap": 0.25,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5
+ },
+ {
+  "name": "I5_h10_noearn",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": false,
+  "cost_bps": 5
+ },
+ {
+  "name": "I5_h7_noearn",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 7,
+  "tranches": 7,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": false,
+  "cost_bps": 5
+ },
+ {
+  "name": "I6_h10_vt25",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.25,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5
+ },
+ {
+  "name": "I6_h10_vt30",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.3,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5
+ },
+ {
+  "name": "I6_h7_vt25",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 7,
+  "tranches": 7,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.25,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5
+ },
+ {
+  "name": "I7_h10_m10",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "m": 1.0
+ },
+ {
+  "name": "I7_h10_m20",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "m": 2.0
+ },
+ {
+  "name": "I7_h7_m10",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 7,
+  "tranches": 7,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "m": 1.0
+ },
+ {
+  "name": "I8_h7_best",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 7,
+  "tranches": 7,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.25,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "fill_max": 2.0
+ },
+ {
+  "name": "I8_h10_best",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.25,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 5,
+  "fill_max": 2.0
+ },
+ {
+  "name": "I8_h7_best_c10",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 7,
+  "tranches": 7,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.25,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 10,
+  "fill_max": 2.0
+ },
+ {
+  "name": "I8_h10_best_c10",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 10,
+  "tranches": 10,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.25,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": true,
+  "cost_bps": 10,
+  "fill_max": 2.0
+ },
+ {
+  "name": "I9_h40_floor_fill20",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 40,
+  "tranches": 15,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "skip_earnings": false,
+  "cost_bps": 15,
+  "fill_max": 2.0
+ }
+]

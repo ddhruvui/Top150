@@ -94,3 +94,43 @@ def test_flat_exit_frees_dead_money():
     b = barrier_exits(_ent(idx), op, hi, lo, close, sig, cm, m=m, h=h,
                       trail_m=None, flat_k=None, flat_m=None)
     pd.testing.assert_frame_equal(a, b)
+
+
+def test_fill_max_redeploys_freed_capital_under_the_cap(rng, synth_panel):
+    """Under the exact 1.0x cash cap, fill_max>1 raises realized gross by
+    re-deploying capital freed by early barrier exits, and never breaches the cap."""
+    from src.config import load_config
+    from src.backtest.engines.barriers_event import run_event_backtest
+    from src.primitives.ewma import ewma_sigma
+    from src.primitives.returns import daily_return, log_return
+    cfg, _ = load_config('configs/system_top150.yaml')
+    p = synth_panel
+    sig = ewma_sigma(log_return(daily_return(p.adj_close)), span=32)
+    ens = pd.DataFrame(rng.random(p.adj_close.shape), index=p.adj_close.index,
+                       columns=p.adj_close.columns)
+    sel = ens.rank(axis=1, ascending=False, method='first').le(5)
+    cm = CostModel(5)
+
+    def gross(res):
+        tr = res['trades']
+        g = (tr.groupby('fill_date')['tranche_w'].sum()
+             .reindex(p.adj_close.index, fill_value=0.0)
+             - tr.groupby('exit_date')['tranche_w'].sum()
+             .reindex(p.adj_close.index, fill_value=0.0)).cumsum()
+        return g.mean(), g.max()
+
+    base = run_event_backtest(sel, p, sig, cm, cfg, h=10, net_moo_costs=True,
+                              gross_cap=1.0, gross_cap_exact=True)
+    full = run_event_backtest(sel, p, sig, cm, cfg, h=10, net_moo_costs=True,
+                              gross_cap=1.0, gross_cap_exact=True, fill_max=2.0)
+    same = run_event_backtest(sel, p, sig, cm, cfg, h=10, net_moo_costs=True,
+                              gross_cap=1.0, gross_cap_exact=True, fill_max=1.0)
+    pd.testing.assert_frame_equal(base['trades'], same['trades'])   # 1.0 = off
+    b_avg, b_max = gross(base)
+    f_avg, f_max = gross(full)
+    assert f_avg > b_avg
+    assert f_max <= 1.0 + 1e-9 and b_max <= 1.0 + 1e-9
+    # no entry is scaled above fill_max x its nominal size (later tranches may
+    # be scaled DOWN by the cap precisely because more capital is already live)
+    ratio = full['trades']['tranche_w'] / base['trades']['tranche_w']
+    assert ratio.max() <= 2.0 + 1e-9
