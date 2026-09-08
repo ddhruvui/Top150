@@ -1,0 +1,82 @@
+[
+ {
+  "name": "K_trail_on_cfg",
+  "members": [
+   "lgbm_h5",
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h5",
+   "gru_h20",
+   "gru_h60",
+   "cnn_I5R20"
+  ],
+  "h": 40,
+  "tranches": 15,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true
+ },
+ {
+  "name": "K_trail_off",
+  "members": [
+   "lgbm_h5",
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h5",
+   "gru_h20",
+   "gru_h60",
+   "cnn_I5R20"
+  ],
+  "h": 40,
+  "tranches": 15,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "trail_m": 0
+ },
+ {
+  "name": "K_trail_on_floor",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 40,
+  "tranches": 15,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true
+ },
+ {
+  "name": "K_trail_off_floor",
+  "members": [
+   "lgbm_h20",
+   "lgbm_h60",
+   "gru_h20",
+   "gru_h60"
+  ],
+  "h": 40,
+  "tranches": 15,
+  "top_n": 5,
+  "name_cap": 0.3,
+  "vt": 0.2,
+  "vt_cap": 2.5,
+  "net_moo": true,
+  "gross_cap": 1.0,
+  "gc_exact": true,
+  "trail_m": 0
+ }
+]
