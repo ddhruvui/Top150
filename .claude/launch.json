@@ -4,14 +4,29 @@
     {
       "name": "investopedia-app",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["start", "--prefix", "app/backend"],
+      "runtimeArgs": [
+        "start",
+        "--prefix",
+        "app/backend"
+      ],
       "port": 8787
     },
     {
       "name": "top150-console",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["scripts/serve_top150_console.sh"],
+      "runtimeArgs": [
+        "scripts/serve_top150_console.sh"
+      ],
       "port": 8790
+    },
+    {
+      "name": "exp-short-console",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "REPORTS_DIR=$(pwd)/reports/top150_exp PORT=8791 bash scripts/serve_top150_console.sh"
+      ],
+      "port": 8791
     }
   ]
 }
