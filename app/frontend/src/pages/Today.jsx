@@ -125,6 +125,8 @@ function ActionRow({ r, kind }) {
         : r.fill_price != null ? fmtNum(r.fill_price, 2) : '—'}</td>
       <td className="n neg">{r.stop_pct != null ? `${fmtNum(r.stop_pct, 2)}%` : '—'}</td>
       <td className="n pos">{r.profit_take_pct != null ? `+${fmtNum(r.profit_take_pct, 2)}%` : '—'}</td>
+      <td className="n" title="Trailing stop: each night raise the stop to the high since fill minus this, never below the fixed stop">
+        {r.trail_pct != null ? `-${fmtNum(r.trail_pct, 2)}%` : '—'}</td>
       <td className="small muted" style={{ whiteSpace: 'normal', maxWidth: 260 }}>
         {wide ? <Badge kind="neutral">⏱ time-exit only</Badge> : r.reason}
       </td>
@@ -141,7 +143,8 @@ function DetailHead({ sort, onSort }) {
       <Th k="ensemble_rank" num {...p}>Conviction</Th>
       <Th k="last_close" num {...p}>Price</Th>
       <Th k="stop_pct" num {...p}>Stop</Th>
-      <Th k="profit_take_pct" num {...p}>Profit-take</Th><th>Why</th>
+      <Th k="profit_take_pct" num {...p}>Profit-take</Th>
+      <Th k="trail_pct" num {...p}>Trail</Th><th>Why</th>
     </tr>
   );
 }
@@ -183,6 +186,7 @@ export default function Today() {
         ticker: r.ticker, side: 1, target_weight: r.target_weight,
         signal_date: t.signals.as_of_close, ref_close: r.last_close,
         stop_pct: r.stop_pct, profit_take_pct: r.profit_take_pct,
+        trail_pct: r.trail_pct ?? null,
         max_hold_sessions: r.max_hold_sessions, ensemble_rank: r.ensemble_rank,
       });
       setMsg({ ok: true, text: `${r.ticker} is now tracked in your practice book — it "fills" at the ${pretty(s.next_open)} open.` });

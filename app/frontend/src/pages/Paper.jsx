@@ -52,6 +52,7 @@ function CloseForm({ pos, onDone }) {
         <option value="profit_take">Hit profit target</option>
         <option value="stop">Hit stop-loss</option>
         <option value="vertical">Time limit reached</option>
+        <option value="trail">Trailing stop hit</option>
         <option value="manual">My own call</option>
       </select>
       <button className="btn sm" disabled={!px} onClick={submit}>Sold it</button>

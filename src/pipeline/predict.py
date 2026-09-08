@@ -243,6 +243,9 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     cap = cfg.barrier.get("thr_cap_pct")
     if cap is not None:
         thr = thr.clip(upper=float(cap))
+    trail_m = cfg.barrier.get("trail_m")
+    trail_on = trail_m is not None and float(trail_m) > 0
+    trail_w = (float(trail_m) * sigma32.loc[t_last] * np.sqrt(h_bar)) if trail_on else None
     last_close = panel.raw_close.loc[t_last]
     ens_last = ens.loc[t_last]
 
@@ -261,6 +264,8 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
                "last_close": round(float(last_close.get(t, np.nan)), 2),
                "stop_pct": round(-float(thr.get(t, np.nan)) * 100, 2),
                "profit_take_pct": round(float(thr.get(t, np.nan)) * 100, 2),
+               "trail_pct": (round(float(trail_w.get(t, np.nan)) * 100, 2)
+                             if trail_on else None),
                "max_hold_sessions": h_bar}
         (buys if wt > cur + 1e-6 else holds).append(row)
     for t, cur in current.items():
@@ -289,8 +294,12 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
         "holds": holds,
         "sells_or_exits": sells,
         "exit_rules": {"engine": "M5.2 triple barrier", "m": m_bar, "h_sessions": h_bar,
+                       "trail_m": float(trail_m) if trail_on else None,
                        "note": "stop/profit-take are % vs ACTUAL fill at next open; "
-                               "vertical exit = MOO at t+h+1"},
+                               "vertical exit = MOO at t+h+1"
+                               + ("; trailing stop: after each close raise the GTC "
+                                  "stop to high_since_fill x (1 - trail_pct), never "
+                                  "below the fixed stop" if trail_on else "")},
         "disclaimer": "Research output of an experimental system; NOT financial advice. "
                       "All performance claims require the G-11 gate evaluation first.",
     }
@@ -305,16 +314,20 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
               else " — " + ", ".join(
                   f"{k} {'adopted' if v.get('adopted') else 'kept champion'}"
                   for k, v in heads_info.items())), "",
-          "| ticker | action | target w | rank | last close | stop % | PT % |",
-          "|---|---|---|---|---|---|---|"]
+          "| ticker | action | target w | rank | last close | stop % | PT % | trail % |",
+          "|---|---|---|---|---|---|---|---|"]
     for row in buys[:40]:
+        tp = row.get("trail_pct")
         md.append(f"| {row['ticker']} | BUY/ADD | {row['target_weight']:.3%} | "
                   f"{row['ensemble_rank']:+.3f} | {row['last_close']} | "
-                  f"{row['stop_pct']}% | +{row['profit_take_pct']}% |")
+                  f"{row['stop_pct']}% | +{row['profit_take_pct']}% | "
+                  f"{'-' + str(tp) + '%' if tp is not None else 'off'} |")
     for row in sells[:20]:
-        md.append(f"| {row['ticker']} | EXIT | 0 |  |  |  |  |")
-    md += ["", "_Vertical exit: MOO " + str(h_bar) + " sessions after entry. "
-           "Research tooling, not financial advice._"]
+        md.append(f"| {row['ticker']} | EXIT | 0 |  |  |  |  |  |")
+    md += ["", "_Vertical exit: MOO " + str(h_bar) + " sessions after entry."
+           + (" Trailing stop: each night raise the stop to the high since fill "
+              "minus trail %, never below the fixed stop." if trail_on else "")
+           + " Research tooling, not financial advice._"]
     (out / "suggestions.md").write_text("\n".join(md))
     print(f"suggestions written: {len(buys)} buys/adds, {len(sells)} exits, "
           f"{len(holds)} holds", flush=True)

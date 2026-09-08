@@ -21,7 +21,7 @@ overlay off the symmetric path is bit-identical to the original engine):
                 long (running_low * (1 + ...) for a short), never below the
                 fixed stop. The level active DURING a session is the one known
                 at the prior close — a GTC stop re-pegged nightly (M18-style).
-                Exits on the ratcheted level are tagged `trail`.
+                Exits on the ratcheted level are tagged `trail`. 0/None = off.
   flat_k/flat_m dead-money exit. At the close of the flat_k-th held session, if
                 |close/P0 - 1| < flat_m*sigma*sqrt(flat_k), exit MOO at the next
                 open (tagged `flat`). Frees capital parked in trades that never
@@ -83,7 +83,8 @@ def barrier_exits(entries: pd.DataFrame, adj_open: pd.DataFrame, adj_high: pd.Da
         upper, lower = P0 * (1 + thr_u), P0 * (1 - thr_d)
         pt_level, stop_level = (upper, lower) if side > 0 else (lower, upper)
         rec.update(fill_date=dates[i0], entry_price=P0)
-        trail_w = trail_m * sig * np.sqrt(h) if trail_m is not None else None
+        trail_w = (trail_m * sig * np.sqrt(h)
+                   if trail_m is not None and float(trail_m) > 0 else None)
         flat_w = (flat_m * sig * np.sqrt(int(flat_k))
                   if flat_k is not None and flat_m is not None else None)
         run_ext = -np.inf if side > 0 else np.inf   # running high (long) / low (short)

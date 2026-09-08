@@ -185,11 +185,15 @@ on the cycles that did not replicate and hurts at h40; not adopted.
 
 - Done: round J on the fresh scores (§2d), stage1 → stage2 → stage3 with the
   tail fold (§2c).
-- To adopt the trailing stop or dead-money exit: set `barrier.trail_m: 1.0` (or
-  `barrier.flat_k: 20`, `flat_m: 0.5`) in the config and wire those keys through
-  `engine_opts_from_cfg` and the M18 order file (the trail is a nightly re-peg
-  of the GTC stop; the flat exit is a scheduled MOO). Both are a config-hash
-  change, so predict full-refits its champions once.
+- **Adopted 2026-09-08: `barrier.trail_m: 1.0`** in `configs/system_top150.yaml`.
+  Wired through `engine_opts_from_cfg` (stage3 book, CPCV paths), `meta_outcomes`
+  (meta labels see the same exits), the M18 order file (`trailing_stops()`:
+  nightly GTC-stop re-peg to max(fixed, high_since_fill x (1 - trail)); no native
+  broker TRAIL order, which would trail intraday), `predict` suggestions
+  (`trail_pct` per row, `exit_rules.trail_m`) and the console's exit labels.
+  The dead-money exit (`flat_k`/`flat_m`) is wired the same way but left off.
+  Config-hash change: the next predict full-refits its champions once; the next
+  stage3 run produces the first book that trades the trail.
 - Merge to `top150` and run the quarterly refresh (stage1 → stage2 → stage3)
   so the published Backtest page covers up to the last date.
 - Separately: the daily ticket still comes from the 15-tranche rotation

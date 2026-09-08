@@ -86,6 +86,8 @@ export function OutcomeBadge({ hit }) {
     upper: ['pass', '▲', 'Hit profit target'],
     lower: ['fail', '▼', 'Hit stop-loss'],
     vertical: ['neutral', '⏱', 'Time limit'],
+    trail: ['neutral', '⤴', 'Trailing stop'],
+    flat: ['neutral', '≈', 'Flat exit'],
     censored: ['neutral', '⋯', 'Still open at end'],
   };
   const [kind, glyph, label] = map[hit] || ['neutral', '•', hit || '—'];

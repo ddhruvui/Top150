@@ -27,7 +27,10 @@ def engine_opts_from_cfg(cfg) -> dict:
     behavior (the default system.yaml carries none of them)."""
     return {"net_moo_costs": bool(cfg.cost.get("net_moo_at_open", False)),
             "gross_cap": cfg.port.get("gross_cap"),
-            "gross_cap_exact": bool(cfg.port.get("gross_cap_exact", False))}
+            "gross_cap_exact": bool(cfg.port.get("gross_cap_exact", False)),
+            "trail_m": cfg.barrier.get("trail_m"),
+            "flat_k": cfg.barrier.get("flat_k"),
+            "flat_m": cfg.barrier.get("flat_m")}
 
 
 def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
@@ -59,6 +62,14 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
     h_b = int(cfg.barrier.h_days) if h is None else int(h)
     if thr_cap is None:
         thr_cap = cfg.barrier.get("thr_cap_pct")
+    # M5.2 overlays default to the config (the ONE engine, G-15); an explicit
+    # argument overrides per variant — pass 0 to switch an adopted overlay off
+    if trail_m is None:
+        trail_m = cfg.barrier.get("trail_m")
+    if flat_k is None:
+        flat_k = cfg.barrier.get("flat_k")
+    if flat_m is None:
+        flat_m = cfg.barrier.get("flat_m")
 
     # 1) entries per decision day with inverse-vol weights inside the tranche
     #

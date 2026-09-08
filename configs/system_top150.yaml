@@ -43,6 +43,12 @@ barrier:
                                        #   net SR 0.556->0.724; see reports/experiments/)
   sigma_span: 32                       # EWMA span in [20, 60]; 32 == lambda 0.94 (C-02)
   tie_break: stop_first                # [IMPL] both barriers in one bar -> stop first
+  trail_m: 1.0                         # [IMPL] TRAILING STOP, adopted 2026-09-08 (rounds H/J,
+                                       #   replicated on two fits: SR 0.84 vs 0.79, hold 28
+                                       #   vs 35 sessions, MDD -42% vs -45%). After each close
+                                       #   the GTC stop is re-pegged to
+                                       #   high_since_fill * (1 - trail_m*sigma*sqrt(h)),
+                                       #   never below the fixed stop. 0 or absent = off.
 
 # ---- §3.3 Models ------------------------------------------------------------
 lgbm:

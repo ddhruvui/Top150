@@ -103,6 +103,9 @@ export async function ticket(now = new Date()) {
       last_close: r.last_close,
       stop_pct: r.stop_pct,
       profit_take_pct: r.profit_take_pct,
+      // trailing stop (barrier.trail_m): each night the GTC stop is raised to
+      // high_since_fill x (1 - trail_pct/100), never below the fixed stop
+      trail_pct: r.trail_pct ?? null,
       max_hold_sessions: h,
       shares,
       // 0 whole shares (price > slot) still costs the slot in fractional terms

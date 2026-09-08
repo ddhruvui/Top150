@@ -7,6 +7,15 @@ separate, deliberately manual step: this module never places trades on its own.
 Order sequence (§2.3 step 9): diff targets vs current book -> desired d-shares
 using raw close [IMPL: floor(dw x NAV / raw_close)] -> PDT pre-check -> MOO
 orders + GTC stop/profit-take for new entries -> vertical-barrier MOO schedule.
+
+Trailing stop (barrier.trail_m, adopted 2026-09-08): the engine ratchets the
+stop to high_since_fill x (1 - trail_m*sigma_entry*sqrt(h)) using the level
+known at the prior close. Live, that is a plain GTC STP order whose stop price
+is REPLACED every night: `trailing_stops()` emits one SELL STP per held
+position at max(fixed stop, trailing level), computed from the position's own
+fill price, entry sigma and running high (the paper book records all three).
+A native broker TRAIL order is deliberately not used — it would trail intraday
+on the last print, which is not what was backtested.
 """
 from __future__ import annotations
 
@@ -61,6 +70,50 @@ def generate_orders(target_weights: pd.Series, current_shares: pd.Series,
                 orders.append(Order(t, "SELL", abs(d), "LMT", "GTC",
                                     limit_price=round(px * (1 + thr), 2),
                                     note=f"M5.2 profit-take; vertical MOO t+{h + 1}"))
+    return orders
+
+
+def trail_width(sigma_entry: float, cfg) -> float | None:
+    """Fractional trailing distance below the running high, or None when off."""
+    tm = cfg.barrier.get("trail_m")
+    if tm is None or float(tm) <= 0 or not np.isfinite(sigma_entry):
+        return None
+    return float(tm) * float(sigma_entry) * np.sqrt(int(cfg.barrier.h_days))
+
+
+def stop_level(entry_price: float, sigma_entry: float, high_since_fill: float,
+               cfg) -> tuple[float, str]:
+    """Tonight's stop for an open long: the fixed M5.2 stop, raised to the
+    trailing level once that is higher. Returns (price, 'fixed'|'trail')."""
+    m, h = float(cfg.barrier.m), int(cfg.barrier.h_days)
+    thr = m * float(sigma_entry) * np.sqrt(h)
+    cap = cfg.barrier.get("thr_cap_pct")
+    if cap is not None:
+        thr = min(thr, float(cap))
+    fixed = float(entry_price) * (1 - thr)
+    w = trail_width(sigma_entry, cfg)
+    if w is None or not np.isfinite(high_since_fill):
+        return fixed, "fixed"
+    trail = float(high_since_fill) * (1 - w)
+    return (trail, "trail") if trail > fixed else (fixed, "fixed")
+
+
+def trailing_stops(positions: pd.DataFrame, cfg) -> list[Order]:
+    """Nightly re-peg of the GTC stop on every open long. `positions` columns:
+    ticker, shares, entry_price, sigma_entry, high_since_fill (raw-price basis,
+    fill session onward). One SELL STP per position, REPLACING the standing
+    stop; the note says whether it is the fixed or the trailing level."""
+    orders: list[Order] = []
+    if positions is None or not len(positions):
+        return orders
+    for r in positions.itertuples(index=False):
+        sh = int(getattr(r, "shares", 0))
+        if sh <= 0:
+            continue
+        px, kind = stop_level(r.entry_price, r.sigma_entry, r.high_since_fill, cfg)
+        orders.append(Order(str(r.ticker), "SELL", sh, "STP", "GTC",
+                            stop_price=round(px, 2),
+                            note=f"M5.2 {kind} stop re-peg (replaces standing stop)"))
     return orders
 
 

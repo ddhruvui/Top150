@@ -127,7 +127,7 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
             tr_cand = pd.concat(train_pool, ignore_index=True)
             tr_out = pd.concat(outcomes_pool, ignore_index=True)
             ok = tr_out["y"].notna() & tr_out["barrier_hit"].isin(
-                ["upper", "lower", "vertical"])
+                ["upper", "lower", "vertical", "trail", "flat"])
             if ok.sum() > 200:      # [IMPL] minimum meta training set
                 X = meta_context(tr_cand[ok.values.tolist()], ens, sigma32, vol20, mom,
                                  size_f, gm, None, None)

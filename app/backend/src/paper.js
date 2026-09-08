@@ -176,7 +176,8 @@ export async function openPosition(input) {
   const [s, cfg] = await Promise.all([load(), config()]);
   const {
     ticker, side = 1, target_weight = 0, signal_date, ref_close,
-    stop_pct, profit_take_pct, max_hold_sessions = cfg.barrier.h_days,
+    stop_pct, profit_take_pct, trail_pct = null,
+    max_hold_sessions = cfg.barrier.h_days,
     ensemble_rank = null,
   } = input;
 
@@ -200,6 +201,7 @@ export async function openPosition(input) {
     ref_close: ref_close == null ? null : Number(ref_close),
     stop_pct: stop_pct == null ? null : Number(stop_pct),
     profit_take_pct: profit_take_pct == null ? null : Number(profit_take_pct),
+    trail_pct: trail_pct == null ? null : Number(trail_pct),
     max_hold_sessions: Number(max_hold_sessions),
     ensemble_rank,
     status: 'ordered',       // MOO at next open (G-02) — not yet filled
@@ -227,6 +229,12 @@ export async function recordFill(id, { fill_price, official_open, fill_date }) {
   // M5.2: barriers hang off the ACTUAL fill
   if (p.stop_pct != null) p.stop_price = fill * (1 + p.stop_pct / 100);
   if (p.profit_take_pct != null) p.profit_take_price = fill * (1 + p.profit_take_pct / 100);
+  // trailing stop: the first re-peg level is off the fill itself (the running
+  // high is at least the fill); later nights use the high since fill
+  if (p.trail_pct != null) {
+    p.high_since_fill = fill;
+    p.trail_stop_price = Math.max(p.stop_price ?? 0, fill * (1 - p.trail_pct / 100));
+  }
   p.status = 'open';
   await save(s);
   return p;

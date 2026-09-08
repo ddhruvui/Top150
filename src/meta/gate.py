@@ -82,7 +82,10 @@ def meta_outcomes(entries: pd.DataFrame, panel, sigma32: pd.DataFrame,
     res = barrier_exits(entries, panel.adj_open, panel.adj_high, panel.adj_low,
                         panel.adj_close, sigma32, cost_model,
                         m=float(cfg.barrier.m), h=int(cfg.barrier.h_days),
-                        tie_break=str(cfg.barrier.tie_break))
+                        tie_break=str(cfg.barrier.tie_break),
+                        trail_m=cfg.barrier.get("trail_m"),
+                        flat_k=cfg.barrier.get("flat_k"),
+                        flat_m=cfg.barrier.get("flat_m"))
     res["y"] = (res["exit_ret_net"] > 0).astype(float)
     return res
 

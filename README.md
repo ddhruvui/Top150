@@ -86,6 +86,11 @@ Local (mirror or synthetic): `python -m src.pipeline.stage1 --m1 <m1> --eod <dat
   cost drag == the engine's own cost ledger; event engine (barrier exits) is the
   §J second-engine confirmation.
 
+**Exit rule (2026-09-08):** M5.2 triple barrier plus a trailing stop
+(`barrier.trail_m: 1.0` — the GTC stop is re-pegged nightly to the high since
+fill minus 1σ√h, never below the fixed stop; `src/live/orders.py::trailing_stops`).
+Adopted from rounds H-J, see `reports/exp_short/ANALYSIS.md`.
+
 **Not enabled (spec-sanctioned):** M9 optional models (GKX NN, Sharpe-loss net,
 101 Alphas) sit behind config flags, off by default. RL-as-primary, foundation
 time-series models, and plain Transformers are excluded per M9.5 [MUST NOT].

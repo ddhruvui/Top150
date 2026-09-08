@@ -7,7 +7,7 @@ import { api } from '../api.js';
 import { BarChart, LineChart, fmtNum, fmtPct, fmtInt, fmtSignedPct } from '../components/Chart.jsx';
 import { Card, StatTile, Loading, ErrorBox, OutcomeBadge, Delta, Th } from '../components/Bits.jsx';
 
-const EXIT_LABEL = { upper: 'Hit profit target', lower: 'Hit stop-loss', vertical: 'Time limit', censored: 'Still open at end' };
+const EXIT_LABEL = { upper: 'Hit profit target', lower: 'Hit stop-loss', vertical: 'Time limit', trail: 'Trailing stop', flat: 'Flat exit', censored: 'Still open at end' };
 
 export default function Backtest() {
   const [d, setD] = useState({ loading: true });
@@ -159,6 +159,7 @@ export default function Backtest() {
             <option value="upper">Hit profit target</option>
             <option value="lower">Hit stop-loss</option>
             <option value="vertical">Time limit</option>
+            <option value="trail">Trailing stop</option>
           </select>
           <select value={filters.outcome}
                   onChange={(e) => setFilters({ ...filters, outcome: e.target.value, offset: 0 })}>

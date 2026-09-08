@@ -272,6 +272,7 @@ def build_trades(src: Path) -> tuple[dict | None, dict | None]:
         "total_pt": int((tr["barrier_hit"] == "upper").sum()),
         "total_stop": int((tr["barrier_hit"] == "lower").sum()),
         "total_time": int((tr["barrier_hit"] == "vertical").sum()),
+        "total_trail": int((tr["barrier_hit"] == "trail").sum()),
         "day_trades": int(tr["day_trade"].sum()) if "day_trade" in tr else 0,
         "date_range": [tr["entry_date"].min().strftime("%Y-%m-%d"),
                        tr["entry_date"].max().strftime("%Y-%m-%d")],
