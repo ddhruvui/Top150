@@ -280,9 +280,23 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
         else pd.Series(dtype=float)
     buys, holds, sells = [], [], []
     for t, wt in entries.sort_values(ascending=False).items():
+        # a name already held gets a NEW lot on top: target_weight is the total
+        # to hold (held + new), new_lot_weight the increment, lots the open ones
+        held_here = float(held_w.get(t, 0.0))
+        g_held = holds_df[holds_df["ticker"] == t].sort_values("entry_date") \
+            if len(holds_df) else holds_df
         buys.append({
-            "ticker": t, "target_weight": round(float(wt), 5),
-            "current_weight": round(float(held_w.get(t, 0.0)), 5),
+            "ticker": t, "target_weight": round(float(wt) + held_here, 5),
+            "new_lot_weight": round(float(wt), 5),
+            "current_weight": round(held_here, 5),
+            "lots": [{"entry_date": str(r.entry_date.date()),
+                      "fill_date": str(r.fill_date.date()),
+                      "weight": round(float(r.tranche_w), 5),
+                      "sessions_left": int(r.sessions_left),
+                      "stop_kind": r.stop_kind,
+                      "stop_vs_close_pct": _f(r.stop_vs_close_pct),
+                      "pt_vs_close_pct": _f(r.pt_vs_close_pct)}
+                     for r in g_held.itertuples(index=False)] or None,
             "ensemble_rank": _f(ens_last.get(t, np.nan), 4),
             "last_close": _f(last_close.get(t, np.nan)),
             "stop_pct": _f(-float(thr.get(t, np.nan)) * 100),
@@ -292,6 +306,8 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
             "max_hold_sessions": h_bar, "sessions_left": h_bar,
             "lot": "new tranche (fills at the next open)"})
     for t, g in (holds_df.groupby("ticker") if len(holds_df) else []):
+        if t in entries.index:
+            continue                      # carried on its BUY (new lot) row above
         g = g.sort_values("entry_date")
         # the ticket prices levels off the last close: report the most binding
         # lot's stop (highest) and the nearest profit-take, both vs last close
@@ -339,6 +355,7 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
                           "last_close": _f(last_close.get(t, np.nan)),
                           "reason": "held but not in the event-engine book"})
     gross_book = float(entries.sum()) + float(held_w.sum())
+    assert abs(sum(r["target_weight"] for r in buys + holds) - gross_book) < 1e-6
     book_names = sorted(in_book)
 
     suggestions = {
@@ -403,7 +420,9 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
           "|---|---|---|---|---|---|---|---|---|---|"]
     for row in buys[:40]:
         tp = row.get("trail_pct")
-        md.append(f"| {row['ticker']} | BUY (new lot) | {row['target_weight']:.3%} | "
+        md.append(f"| {row['ticker']} | BUY (new lot {row['new_lot_weight']:.3%}"
+                  f"{' + held ' + format(row['current_weight'], '.3%') if row['current_weight'] else ''}) | "
+                  f"{row['target_weight']:.3%} | "
                   f"{_rk(row['ensemble_rank'])} | "
                   f"{row['last_close']} | {row['stop_pct']}% | +{row['profit_take_pct']}% | "
                   f"{'-' + str(tp) + '%' if tp is not None else 'off'} | {row['sessions_left']} | fill |")

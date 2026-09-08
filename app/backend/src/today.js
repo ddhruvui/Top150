@@ -108,6 +108,7 @@ export async function ticket(now = new Date()) {
       stop_pct: r.stop_pct,
       profit_take_pct: r.profit_take_pct,
       levels_basis: r.levels_basis ?? 'fill',
+      new_lot_weight: r.new_lot_weight ?? null,
       sessions_left: r.sessions_left ?? null,
       lots: r.lots ?? null,
       // trailing stop (barrier.trail_m): each night the GTC stop is raised to
@@ -133,6 +134,15 @@ export async function ticket(now = new Date()) {
                   reason: r.lots ? `open lot in the backtested book (${r.lots.length} lot${r.lots.length === 1 ? '' : 's'}) — not held here`
                                  : 'new — not held',
                   sell_by_date: sellBy });
+    } else if (r.new_lot_weight > 0) {
+      // held here AND the engine adds a lot today: buy the increment only
+      const addDollars = r.new_lot_weight * nav;
+      const addShares = px ? Math.floor(addDollars / px) : null;
+      buys.push({
+        ...row, action: 'BUY', position_id: pos.id, status: pos.status,
+        shares: addShares, est_cost: addShares ? addShares * px : addDollars,
+        reason: `add a lot (${(r.new_lot_weight * 100).toFixed(2)}% of NAV) to an open position`,
+        sell_by_date: sellByFrom(null, h) });
     } else {
       holds.push({
         ...row, action: 'HOLD', position_id: pos.id, status: pos.status,
