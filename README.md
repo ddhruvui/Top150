@@ -29,7 +29,7 @@ src/
   validation/  M16 splits.py (C-07 purge+embargo, CPCV 6/2), metrics.py, dsr.py,
                baselines.py (G-08), gates.py (G-11)
   hpo/         M17 determinism.py, ledger.py (DSR N), search.py (Optuna <=100)
-  live/        M18 orders.py (order FILES; submission stays manual)
+  live/        M18 orders.py (order FILES + nightly trailing-stop re-peg; submission stays manual)
   pipeline/    stage1.py, stage2.py, stage3.py, predict.py, common.py
 tests/         §9 T-01..T-15 (pytest; also runs on the pod via JOB=test)
 ledger/trials.parquet   # every evaluated config -> DSR's N (G-09)

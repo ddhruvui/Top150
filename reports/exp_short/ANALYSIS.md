@@ -216,9 +216,13 @@ exits trail 43% / vertical 38% / profit-take 18%.
   stage3 run produces the first book that trades the trail.
 - Merge to `top150` and run the quarterly refresh (stage1 → stage2 → stage3)
   so the published Backtest page covers up to the last date.
-- Separately: the daily ticket still comes from the 15-tranche rotation
-  (`construct_targets`), not the event-engine book that was backtested — a
-  live/research mismatch that predates this branch.
+- **Fixed 2026-09-08**: the daily ticket now comes from the event engine
+  itself (`live_book()` in `src/backtest/engines/barriers_event.py`, called by
+  `predict`): open lots with their live stop levels, lots whose vertical falls
+  at the next open, and today's tranche sized under the exact cash cap.
+  `tests/test_live_book.py` proves the ticket at date T equals the backtest's
+  entries and holdings at T. The 15-tranche rotation (`construct_targets`) is
+  now only the Stage-1 fast path.
 - Before any change trades real money: paper-trade and measure open-print
   slippage with the console; every cost figure above is an assumption.
 

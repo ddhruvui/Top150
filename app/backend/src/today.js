@@ -103,6 +103,9 @@ export async function ticket(now = new Date()) {
       last_close: r.last_close,
       stop_pct: r.stop_pct,
       profit_take_pct: r.profit_take_pct,
+      levels_basis: r.levels_basis ?? 'fill',
+      sessions_left: r.sessions_left ?? null,
+      lots: r.lots ?? null,
       // trailing stop (barrier.trail_m): each night the GTC stop is raised to
       // high_since_fill x (1 - trail_pct/100), never below the fixed stop
       trail_pct: r.trail_pct ?? null,
@@ -116,9 +119,16 @@ export async function ticket(now = new Date()) {
         ? px * (1 + r.profit_take_pct / 100) : null,
       barrier_unreachable: unreachable,
     };
+    // Event-engine book (2026-09-08+): a row may be an OPEN lot the backtest
+    // already holds — sessions_left counts to its vertical from the next open,
+    // and its stop/profit-take are priced off the last close (levels_basis).
+    const sellBy = r.sessions_left != null && iNextOpen >= 0
+      ? cal[iNextOpen + r.sessions_left] ?? null : sellByFrom(null, h);
     if (!pos) {
-      buys.push({ ...row, action: 'BUY', reason: 'new — not held',
-                  sell_by_date: sellByFrom(null, h) });
+      buys.push({ ...row, action: 'BUY',
+                  reason: r.lots ? `open lot in the backtested book (${r.lots.length} lot${r.lots.length === 1 ? '' : 's'}) — not held here`
+                                 : 'new — not held',
+                  sell_by_date: sellBy });
     } else {
       holds.push({
         ...row, action: 'HOLD', position_id: pos.id, status: pos.status,
@@ -126,7 +136,9 @@ export async function ticket(now = new Date()) {
         // A filled position's barriers are the real ones from the fill.
         stop_price: pos.stop_price ?? row.stop_price,
         profit_take_price: pos.profit_take_price ?? row.profit_take_price,
-        sell_by_date: sellByFrom(pos.fill_date ?? null, pos.max_hold_sessions ?? h),
+        sell_by_date: r.sessions_left != null && iNextOpen >= 0
+          ? cal[iNextOpen + r.sessions_left] ?? null
+          : sellByFrom(pos.fill_date ?? null, pos.max_hold_sessions ?? h),
       });
     }
   }

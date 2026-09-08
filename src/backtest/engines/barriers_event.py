@@ -33,6 +33,26 @@ def engine_opts_from_cfg(cfg) -> dict:
             "flat_m": cfg.barrier.get("flat_m")}
 
 
+def tranche_weights(row: pd.Series, sigma_row: pd.Series, cap: float, tranches: int,
+                    meta_row: pd.Series | None = None) -> pd.Series | None:
+    """Step 1 of the event engine for ONE decision day: inverse-vol weights over
+    the names entering (x the meta multiplier), normalized to a tranche gross
+    of 1 and capped at the book-level single-name cap. None when nothing
+    enters. Shared by the backtest loop and the live book (G-15)."""
+    names = list(row.index[row.astype(bool)])
+    if not names:
+        return None
+    iv = 1.0 / sigma_row[names]
+    if meta_row is not None:
+        mm = meta_row.reindex(names).fillna(0.0)
+        iv = iv * mm
+    iv = iv.replace([np.inf, -np.inf], np.nan).dropna()
+    iv = iv[iv > 0]
+    if not len(iv):
+        return None
+    return (iv / iv.sum()).clip(upper=cap * tranches)   # cap at book level
+
+
 def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
                        cost_model: CostModel, cfg,
                        meta_mult: pd.DataFrame | None = None,
@@ -82,18 +102,10 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
     live_q: list[tuple[int, float]] = []   # (expiry index, entering gross)
     live_gross = 0.0
     for d0, row in selection.iterrows():
-        names = list(row.index[row.astype(bool)])
-        if not names:
+        meta_row = meta_mult.reindex(index=[d0]).iloc[0] if meta_mult is not None else None
+        w = tranche_weights(row, sigma32.loc[d0], cap, tranches, meta_row)
+        if w is None:
             continue
-        iv = 1.0 / sigma32.loc[d0, names]
-        if meta_mult is not None:
-            mm = meta_mult.reindex(index=[d0], columns=names).iloc[0].fillna(0.0)
-            iv = iv * mm
-        iv = iv.replace([np.inf, -np.inf], np.nan).dropna()
-        iv = iv[iv > 0]
-        if not len(iv):
-            continue
-        w = (iv / iv.sum()).clip(upper=cap * tranches)   # cap at book level
         # M13 regime overlay + M14 vol targeting scale the ENTERING tranche
         bud = float(day_budget_mult.get(d0, 1.0)) if day_budget_mult is not None else 1.0
         if gross_cap is not None and not gross_cap_exact:
@@ -299,3 +311,101 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
             "avg_hold": float(ex["holding_days"].mean()),
             "cost_daily": pd.Series(cost, index=dates),
             "hit_counts": ex["barrier_hit"].value_counts().to_dict()}
+
+
+def live_book(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
+              cost_model: CostModel, cfg, day_budget_mult: pd.Series | None = None,
+              meta_mult: pd.DataFrame | None = None) -> dict:
+    """The event-engine book to hold at the NEXT open, read off the ONE engine.
+
+    `selection` (decision dates x tickers, bool) covers a trailing window that
+    ends at the panel's last session t. The engine is replayed over it with the
+    config's options (exact cash cap, MOO netting, trailing stop — the same call
+    stage3 makes) and the book at open t+1 is:
+
+      holds      lots filled on or before t that no barrier has closed — the
+                 engine reports them `censored` — with the stop level active for
+                 the next session (the fixed M5.2 stop, or the trail ratchet off
+                 the high since fill, whichever is higher) and their profit-take,
+                 both also expressed vs the last close for the ticket;
+      due_exits  open lots whose vertical falls at the next open (entered h or
+                 more sessions before t): MOO sells. Their capital is re-used by
+                 today's tranche, exactly as the exact cap treats at-open exits;
+      entries    today's tranche (decision at t): tranche_weights / tranches x
+                 budget(t), scaled down to fit gross_cap against the lots that
+                 stay live — the engine's rule for the row it cannot replay
+                 itself, because open t+1 is not on the tape yet.
+
+    Weights are fractions of NAV at entry, the engine's own sizing basis."""
+    dates = panel.adj_open.index
+    pos = {d: i for i, d in enumerate(dates)}
+    t, i_last = dates[-1], len(dates) - 1
+    h = int(cfg.barrier.h_days)
+    tranches = int(cfg.port.tranches)
+    cap_name = float(cfg.port.single_name_cap)
+    opts = engine_opts_from_cfg(cfg)
+    res = run_event_backtest(selection, panel, sigma32, cost_model, cfg,
+                             meta_mult=meta_mult, day_budget_mult=day_budget_mult, **opts)
+    tr = res["trades"]
+    cols = ["entry_date", "ticker", "fill_date", "entry_price", "tranche_w"]
+    open_lots = tr[tr["barrier_hit"] == "censored"][cols].copy() if len(tr) \
+        else pd.DataFrame(columns=cols)
+
+    # per-lot levels for the next session
+    m_b = float(cfg.barrier.m)
+    thr_cap = cfg.barrier.get("thr_cap_pct")
+    trail_m = opts.get("trail_m")
+    trail_on = trail_m is not None and float(trail_m) > 0
+    H, C = panel.adj_high, panel.adj_close
+    ent_idx, s_left, kinds, stops, pts, stop_pct, pt_pct = [], [], [], [], [], [], []
+    for r in open_lots.itertuples(index=False):
+        it, i0 = pos[r.entry_date], pos[r.fill_date]
+        sig = float(sigma32.at[r.entry_date, r.ticker])
+        thr = m_b * sig * np.sqrt(h)
+        if thr_cap is not None:
+            thr = min(thr, float(thr_cap))
+        P0 = float(r.entry_price)
+        stop, pt, kind = P0 * (1 - thr), P0 * (1 + thr), "fixed"
+        if trail_on:
+            hi = H[r.ticker].iloc[i0:i_last + 1]
+            if hi.notna().any():
+                lvl = float(np.nanmax(hi.to_numpy())) * (1 - float(trail_m) * sig * np.sqrt(h))
+                if lvl > stop:
+                    stop, kind = lvl, "trail"
+        c = C[r.ticker].iloc[:i_last + 1].dropna()
+        c_last = float(c.iloc[-1]) if len(c) else np.nan
+        ent_idx.append(it)
+        s_left.append(max(0, it + h - i_last))
+        kinds.append(kind); stops.append(stop); pts.append(pt)
+        stop_pct.append((stop / c_last - 1) * 100 if np.isfinite(c_last) else np.nan)
+        pt_pct.append((pt / c_last - 1) * 100 if np.isfinite(c_last) else np.nan)
+    open_lots = open_lots.assign(entry_idx=ent_idx, sessions_left=s_left, stop_kind=kinds,
+                                 stop_level_adj=stops, pt_level_adj=pts,
+                                 stop_vs_close_pct=stop_pct, pt_vs_close_pct=pt_pct)
+    due = open_lots[open_lots["entry_idx"] <= i_last - h].reset_index(drop=True)
+    keep = open_lots[open_lots["entry_idx"] > i_last - h].reset_index(drop=True)
+
+    # today's tranche under the cap
+    intended = pd.Series(dtype=float)
+    if t in selection.index:
+        meta_row = meta_mult.reindex(index=[t]).iloc[0] if meta_mult is not None else None
+        w = tranche_weights(selection.loc[t], sigma32.loc[t], cap_name, tranches, meta_row)
+        if w is not None:
+            intended = w / tranches
+    bud = float(day_budget_mult.get(t, 1.0)) if day_budget_mult is not None else 1.0
+    intended = intended * bud
+    scale = 1.0
+    gc = opts.get("gross_cap")
+    if gc is not None and len(intended):
+        live = float(keep["tranche_w"].sum()) if len(keep) else 0.0
+        allowed = max(0.0, float(gc) - live)
+        tot = float(intended.sum())
+        if tot > allowed:
+            scale = allowed / tot if tot > 0 else 0.0
+    entries = intended * scale
+    entries = entries[entries > 1e-12]
+    return {"as_of": t, "entries": entries, "holds": keep, "due_exits": due,
+            "budget": bud, "cap_scale": scale,
+            "gross_next_open": float(entries.sum()) + (float(keep["tranche_w"].sum())
+                                                        if len(keep) else 0.0),
+            "trades": tr, "daily_net": res["daily_net"]}

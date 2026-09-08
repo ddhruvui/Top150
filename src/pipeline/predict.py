@@ -9,9 +9,11 @@ from-scratch full refit still happens every `continual.full_refit_sessions`
 a `panel_tail_years` slice of the panel is loaded, which is what keeps the
 daily run short. Every fit, adopted or not, lands in the G-09 trials ledger.
 
-Scores the most recent sessions, blends ranks, runs M14 over the trailing
-window to warm the tranche state, and emits the target book for the NEXT open
-plus a buy/sell suggestion report with M5.2 barrier levels for new entries.
+Scores the most recent sessions, blends ranks, replays the M15 event engine
+over the trailing window (the same call stage3 makes: exact cash cap, MOO
+netting, trailing stop) and emits the book to hold at the NEXT open — open
+lots with their live stop levels, lots whose vertical falls at the open, and
+today's tranche sized under the cap — plus the suggestion report.
 
 Output is research tooling for the system's operator — not financial advice
 (blueprint CAV: "nothing here guarantees profit").
@@ -30,13 +32,18 @@ from src.data.m1 import M1
 from src.pipeline.common import prepare
 from src.models.lgbm import LGBMHead
 from src.models.store import ModelStore, decide_refit
-from src.ensemble.rank import ensemble_rank, deciles
-from src.portfolio.construct import construct_targets, HEDGE_COL
+from src.ensemble.rank import ensemble_rank, select_long
+from src.portfolio.construct import vol_target_scale
+from src.backtest.costs import CostModel
+from src.backtest.engines.barriers_event import (engine_opts_from_cfg, run_event_backtest,
+                                                 live_book)
+from src.regime.overlay import regime_multiplier
 from src.validation.splits import _purge_embargo
 from src.hpo.determinism import seed_everything, artifact_stamp
 from src.hpo.ledger import TrialsLedger
 
-WARM_SESSIONS = 90            # trailing window that warms the 15-tranche rotation
+WARM_SESSIONS = 90            # trailing replay window for the event-engine book: must
+                              # cover h_days of open lots plus the vol-target warm-up
 
 
 def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None = None,
@@ -113,7 +120,7 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     f_dates = feats.index.get_level_values("date")
     Xtr = feats[f_dates.isin(train_dates)]
     Xva = feats[f_dates.isin(valid_dates)]
-    score_dates = dates[-WARM_SESSIONS:]
+    score_dates = dates[-max(WARM_SESSIONS, 2 * int(cfg.barrier.h_days) + 21):]
     Xsc = feats[f_dates.isin(score_dates)]
 
     ledger = TrialsLedger()
@@ -209,35 +216,47 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
         np.broadcast_to(tradable.values, (len(mask), len(tradable))),
         index=mask.index, columns=mask.columns)
 
-    # ---- ensemble -> deciles -> warm M14 -> final target row ----
+    # ---- ensemble -> top-N selection -> the EVENT-ENGINE book at the next open ----
+    # The ticket used to come from the Stage-1 fixed 15-tranche rotation
+    # (construct_targets): a 15-session smear of top-N membership that the
+    # backtest never traded. It now replays the ONE event engine (G-15) over
+    # the trailing window with the adopted engine options (exact cash cap,
+    # MOO netting, trailing stop) — the same call stage3 makes — and reads the
+    # book to hold at open t+1 straight off it: open lots, lots whose vertical
+    # falls at the next open, and today's tranche sized under the cap.
     m = mask.loc[score_dates]
     ens = ensemble_rank(scores, m)
-    if str(cfg.port.get("selection", "top_decile_long")) == "top_n_long":
-        # aggressive-book mode: absolute top-N concentration instead of the
-        # top decile; construct_targets keys on the value 10, so mark top-N
-        n_top = int(cfg.port.get("top_n", 20))
-        rk = ens.rank(axis=1, ascending=False, method="first")
-        dec = rk.le(n_top).astype(float).where(m) * 10.0
-        print(f"selection: top_n_long (N={n_top})", flush=True)
-    else:
-        dec = deciles(ens, m)
+    sel = select_long(ens, m, cfg)
+    print(f"selection: {cfg.port.get('selection', 'top_decile_long')} "
+          f"(N={cfg.port.get('top_n', 20)}) -> event-engine live book", flush=True)
     hedge_mode = str(cfg.port.get("hedge", "short_SPY_beta_matched"))
-    beta = idx_blk["beta"].reindex(score_dates) \
-        if "beta" in idx_blk and hedge_mode != "none" else None
     if hedge_mode == "none":
         print("hedge: none (cash book — no SPY short leg)", flush=True)
-    targets = construct_targets(
-        dec, m, sigma32.loc[score_dates], beta, None,
-        tranches=int(cfg.port.tranches), single_name_cap=float(cfg.port.single_name_cap),
-        no_trade_band=float(cfg.port.no_trade_band),
-        nav_band=float(cfg.port.no_trade_band_nav_bps) / 1e4)
+    hedge_w = 0.0
+    cm = CostModel(per_trade_bps=float(cfg.cost.per_trade_bps),
+                   borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr))
+    # M13 regime overlay + M14 vol targeting scale the ENTERING tranche, exactly
+    # as stage3 does: a pre-run over the window feeds the causal vol-target scale
+    gm = regime_multiplier(idx_blk, float(cfg.regime.vol_threshold_ann),
+                           float(cfg.regime.gross_multiplier_risk_off)) \
+        .reindex(score_dates).fillna(1.0)
+    eng_kw = engine_opts_from_cfg(cfg)
+    pre = run_event_backtest(sel, panel, sigma32, cm, cfg, day_budget_mult=gm, **eng_kw)
+    vt = vol_target_scale(pre["daily_net"].loc[score_dates[0]:],
+                          float(cfg.port.vol_target_ann),
+                          float(cfg.port.vol_target_scale_cap))
+    budget = (gm * vt.reindex(score_dates).fillna(1.0)).clip(lower=0.0)
+    lb = live_book(sel, panel, sigma32, cm, cfg, day_budget_mult=budget)
     t_last = score_dates[-1]
-    w = targets.iloc[-1]
-    hedge_w = float(w.get(HEDGE_COL, 0.0))
-    w = w.drop(labels=[HEDGE_COL], errors="ignore")
-    book = w[w.abs() > 1e-6].sort_values(ascending=False)
+    assert lb["as_of"] == t_last
+    entries, holds_df, due_df = lb["entries"], lb["holds"], lb["due_exits"]
+    print(f"live book @ {t_last.date()}: {len(entries)} entering "
+          f"(gross {float(entries.sum()):.3f}, budget {lb['budget']:.2f}, cap scale "
+          f"{lb['cap_scale']:.2f}), {len(holds_df)} open lots "
+          f"(gross {float(holds_df['tranche_w'].sum()) if len(holds_df) else 0.0:.3f}), "
+          f"{len(due_df)} lots due at the open", flush=True)
 
-    # ---- barrier levels for entries (M5.2 parameters, priced off last close) ----
+    # ---- barrier levels for NEW entries (M5.2 parameters, % vs the fill) ----
     m_bar, h_bar = float(cfg.barrier.m), int(cfg.barrier.h_days)
     thr = m_bar * sigma32.loc[t_last] * np.sqrt(h_bar)
     cap = cfg.barrier.get("thr_cap_pct")
@@ -249,30 +268,73 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     last_close = panel.raw_close.loc[t_last]
     ens_last = ens.loc[t_last]
 
-    # ---- diff vs current positions ----
+    def _f(x, nd=2):
+        return None if x is None or not np.isfinite(x) else round(float(x), nd)
+
+    held_w = holds_df.groupby("ticker")["tranche_w"].sum() if len(holds_df) \
+        else pd.Series(dtype=float)
+    buys, holds, sells = [], [], []
+    for t, wt in entries.sort_values(ascending=False).items():
+        buys.append({
+            "ticker": t, "target_weight": round(float(wt), 5),
+            "current_weight": round(float(held_w.get(t, 0.0)), 5),
+            "ensemble_rank": _f(ens_last.get(t, np.nan), 4),
+            "last_close": _f(last_close.get(t, np.nan)),
+            "stop_pct": _f(-float(thr.get(t, np.nan)) * 100),
+            "profit_take_pct": _f(float(thr.get(t, np.nan)) * 100),
+            "trail_pct": _f(float(trail_w.get(t, np.nan)) * 100) if trail_on else None,
+            "levels_basis": "fill",
+            "max_hold_sessions": h_bar, "sessions_left": h_bar,
+            "lot": "new tranche (fills at the next open)"})
+    for t, g in (holds_df.groupby("ticker") if len(holds_df) else []):
+        g = g.sort_values("entry_date")
+        # the ticket prices levels off the last close: report the most binding
+        # lot's stop (highest) and the nearest profit-take, both vs last close
+        holds.append({
+            "ticker": t, "target_weight": round(float(g["tranche_w"].sum()), 5),
+            "current_weight": round(float(g["tranche_w"].sum()), 5),
+            "ensemble_rank": _f(ens_last.get(t, np.nan), 4),
+            "last_close": _f(last_close.get(t, np.nan)),
+            "stop_pct": _f(float(g["stop_vs_close_pct"].max())),
+            "profit_take_pct": _f(float(g["pt_vs_close_pct"].min())),
+            "trail_pct": _f(float(trail_w.get(t, np.nan)) * 100) if trail_on else None,
+            "levels_basis": "last_close",
+            "max_hold_sessions": h_bar,
+            "sessions_left": int(g["sessions_left"].min()),
+            "lots": [{"entry_date": str(r.entry_date.date()),
+                      "fill_date": str(r.fill_date.date()),
+                      "weight": round(float(r.tranche_w), 5),
+                      "sessions_left": int(r.sessions_left),
+                      "stop_kind": r.stop_kind,
+                      "stop_vs_close_pct": _f(r.stop_vs_close_pct),
+                      "pt_vs_close_pct": _f(r.pt_vs_close_pct)}
+                     for r in g.itertuples(index=False)]})
+    for t, g in (due_df.groupby("ticker") if len(due_df) else []):
+        sells.append({
+            "ticker": t, "target_weight": 0.0,
+            "current_weight": round(float(g["tranche_w"].sum()), 5),
+            "last_close": _f(last_close.get(t, np.nan)),
+            "reason": "vertical barrier: MOO sell at the next open (entered "
+                      + ", ".join(str(x.date()) for x in g["entry_date"]) + ")",
+            "lots": [{"entry_date": str(r.entry_date.date()),
+                      "weight": round(float(r.tranche_w), 5)}
+                     for r in g.itertuples(index=False)]})
+
+    # ---- diff vs the operator's own positions file (names outside the book) ----
     current = pd.Series(dtype=float)
     if positions_csv and Path(positions_csv).exists():
-        pos = pd.read_csv(positions_csv)
-        current = pos.set_index("ticker")["weight"] if "weight" in pos else \
+        pos_df = pd.read_csv(positions_csv)
+        current = pos_df.set_index("ticker")["weight"] if "weight" in pos_df else \
             pd.Series(dtype=float)
-    buys, sells, holds = [], [], []
-    for t, wt in book.items():
-        cur = float(current.get(t, 0.0))
-        row = {"ticker": t, "target_weight": round(float(wt), 5),
-               "current_weight": round(cur, 5),
-               "ensemble_rank": round(float(ens_last.get(t, np.nan)), 4),
-               "last_close": round(float(last_close.get(t, np.nan)), 2),
-               "stop_pct": round(-float(thr.get(t, np.nan)) * 100, 2),
-               "profit_take_pct": round(float(thr.get(t, np.nan)) * 100, 2),
-               "trail_pct": (round(float(trail_w.get(t, np.nan)) * 100, 2)
-                             if trail_on else None),
-               "max_hold_sessions": h_bar}
-        (buys if wt > cur + 1e-6 else holds).append(row)
+    in_book = set(entries.index) | set(held_w.index)
     for t, cur in current.items():
-        if t not in book.index and abs(cur) > 1e-6:
+        if t not in in_book and abs(cur) > 1e-6 and not any(s["ticker"] == t for s in sells):
             sells.append({"ticker": t, "target_weight": 0.0,
                           "current_weight": round(float(cur), 5),
-                          "last_close": round(float(last_close.get(t, np.nan)), 2)})
+                          "last_close": _f(last_close.get(t, np.nan)),
+                          "reason": "held but not in the event-engine book"})
+    gross_book = float(entries.sum()) + float(held_w.sum())
+    book_names = sorted(in_book)
 
     suggestions = {
         "as_of_close": str(t_last.date()),
@@ -288,8 +350,24 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
                     "year; champion vs challenger judged on the same purged valid year",
         },
         "heads": heads_info,
-        "portfolio": {"n_names": int(len(book)), "gross_long": float(book.clip(lower=0).sum()),
+        "portfolio": {"n_names": int(len(book_names)), "gross_long": round(gross_book, 5),
+                      "entering_gross": round(float(entries.sum()), 5),
+                      "held_gross": round(float(held_w.sum()), 5),
+                      "due_exit_gross": round(float(due_df["tranche_w"].sum())
+                                              if len(due_df) else 0.0, 5),
+                      "budget_mult": round(float(lb["budget"]), 4),
+                      "cap_scale": round(float(lb["cap_scale"]), 4),
                       "spy_hedge_weight": round(hedge_w, 4)},
+        "book_engine": {"engine": "M15 event engine replay (run_event_backtest + live_book)",
+                        "window_sessions": int(len(score_dates)),
+                        "options": {k: (None if v is None else v)
+                                    for k, v in eng_kw.items()},
+                        "sizing": "weights are fractions of NAV at entry: "
+                                  "inverse-vol within the top-N tranche / tranches x "
+                                  "regime x vol-target budget, scaled to the cash cap",
+                        "note": "replaces the Stage-1 15-tranche rotation the ticket "
+                                "used until 2026-09-08 — the book shown is the one "
+                                "the backtest trades"},
         "buys_or_increases": buys,
         "holds": holds,
         "sells_or_exits": sells,
@@ -305,29 +383,40 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     }
     (out / "suggestions.json").write_text(json.dumps(suggestions, indent=2, default=str))
 
-    md = [f"# Target book for next open (signals @ close {t_last.date()})", "",
-          f"- Names: {len(book)}, gross long {book.clip(lower=0).sum():.2f}, "
-          f"SPY hedge {hedge_w:+.2f}",
+    md = [f"# Event-engine book for next open (signals @ close {t_last.date()})", "",
+          f"- Names: {len(book_names)}, gross long {gross_book:.2f} "
+          f"(entering {float(entries.sum()):.2f} + held {float(held_w.sum()):.2f}), "
+          f"budget x{lb['budget']:.2f}, cap scale x{lb['cap_scale']:.2f}",
           f"- Heads valid RankIC: " + ", ".join(
               f"{k} {v['valid_rank_ic']:.3f}" for k, v in heads_info.items()),
           f"- Training: {mode} ({why})" + ("" if mode != "warm_update" and mode != "update"
               else " — " + ", ".join(
                   f"{k} {'adopted' if v.get('adopted') else 'kept champion'}"
                   for k, v in heads_info.items())), "",
-          "| ticker | action | target w | rank | last close | stop % | PT % | trail % |",
-          "|---|---|---|---|---|---|---|---|"]
+          "| ticker | action | weight | rank | last close | stop % | PT % | trail % | "
+          "sessions left | levels vs |",
+          "|---|---|---|---|---|---|---|---|---|---|"]
     for row in buys[:40]:
         tp = row.get("trail_pct")
-        md.append(f"| {row['ticker']} | BUY/ADD | {row['target_weight']:.3%} | "
-                  f"{row['ensemble_rank']:+.3f} | {row['last_close']} | "
-                  f"{row['stop_pct']}% | +{row['profit_take_pct']}% | "
-                  f"{'-' + str(tp) + '%' if tp is not None else 'off'} |")
-    for row in sells[:20]:
-        md.append(f"| {row['ticker']} | EXIT | 0 |  |  |  |  |  |")
+        md.append(f"| {row['ticker']} | BUY (new lot) | {row['target_weight']:.3%} | "
+                  f"{row['ensemble_rank'] if row['ensemble_rank'] is not None else 'nan':+} | "
+                  f"{row['last_close']} | {row['stop_pct']}% | +{row['profit_take_pct']}% | "
+                  f"{'-' + str(tp) + '%' if tp is not None else 'off'} | {row['sessions_left']} | fill |")
+    for row in holds[:60]:
+        md.append(f"| {row['ticker']} | HOLD ({len(row['lots'])} lot"
+                  f"{'s' if len(row['lots']) != 1 else ''}) | {row['target_weight']:.3%} | "
+                  f"{row['ensemble_rank'] if row['ensemble_rank'] is not None else 'nan':+} | "
+                  f"{row['last_close']} | {row['stop_pct']}% | +{row['profit_take_pct']}% | "
+                  f"{'-' + str(row['trail_pct']) + '%' if row.get('trail_pct') is not None else 'off'} | "
+                  f"{row['sessions_left']} | last close |")
+    for row in sells[:40]:
+        md.append(f"| {row['ticker']} | SELL at open | 0 |  | {row['last_close']} |  |  |  | 0 | "
+                  f"{row['reason'][:40]} |")
     md += ["", "_Vertical exit: MOO " + str(h_bar) + " sessions after entry."
            + (" Trailing stop: each night raise the stop to the high since fill "
               "minus trail %, never below the fixed stop." if trail_on else "")
-           + " Research tooling, not financial advice._"]
+           + " HOLD rows price the most binding lot's levels off the last close. "
+             "Research tooling, not financial advice._"]
     (out / "suggestions.md").write_text("\n".join(md))
     print(f"suggestions written: {len(buys)} buys/adds, {len(sells)} exits, "
           f"{len(holds)} holds", flush=True)
