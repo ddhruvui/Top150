@@ -1,23 +1,28 @@
-# Target book for next open (signals @ close 2026-09-03)
+# Target book for next open (signals @ close 2026-09-04)
 
-- Names: 13, gross long 0.90, SPY hedge +0.00
-- Heads valid RankIC: lgbm_h5 0.039, lgbm_h20 0.050, lgbm_h60 0.023
-- Training: update (warm update on champions (last full fit 4 sessions old)) — lgbm_h5 kept champion, lgbm_h20 kept champion, lgbm_h60 kept champion
+- Names: 18, gross long 0.92, SPY hedge +0.00
+- Heads valid RankIC: lgbm_h5 0.040, lgbm_h20 0.049, lgbm_h60 0.016
+- Training: full (config_hash changed since champion was trained)
 
-| ticker | action | target w | rank | last close | stop % | PT % |
-|---|---|---|---|---|---|---|
-| AZO | BUY/ADD | 22.124% | +0.403 | 2968.04 | -15.32% | +15.32% |
-| MPWR | BUY/ADD | 17.400% | +0.418 | 1213.65 | -28.32% | +28.32% |
-| CIEN | BUY/ADD | 8.224% | -0.178 | 317.46 | -49.99% | +49.99% |
-| TER | BUY/ADD | 7.915% | +0.403 | 338.59 | -42.21% | +42.21% |
-| LITE | BUY/ADD | 7.245% | +0.429 | 847.37 | -55.19% | +55.19% |
-| DASH | BUY/ADD | 5.395% | +0.386 | 222.0 | -21.06% | +21.06% |
-| ON | BUY/ADD | 5.239% | +0.359 | 73.65 | -30.97% | +30.97% |
-| HD | BUY/ADD | 4.808% | +0.330 | 318.07 | -14.26% | +14.26% |
-| HOOD | BUY/ADD | 3.307% | +0.259 | 124.72 | -53.96% | +53.96% |
-| COIN | BUY/ADD | 2.857% | +0.306 | 192.7 | -49.43% | +49.43% |
-| SBUX | BUY/ADD | 2.758% | +0.382 | 105.82 | -12.54% | +12.54% |
-| COHR | BUY/ADD | 1.487% | +0.054 | 264.41 | -57.03% | +57.03% |
-| WDC | BUY/ADD | 0.828% | +0.367 | 441.57 | -46.06% | +46.06% |
+| ticker | action | target w | rank | last close | stop % | PT % | trail % |
+|---|---|---|---|---|---|---|---|
+| NKE | BUY/ADD | 26.692% | +0.337 | 38.4 | -18.24% | +18.24% | -12.16% |
+| COIN | BUY/ADD | 13.484% | +0.402 | 184.64 | -48.94% | +48.94% | -32.62% |
+| HOOD | BUY/ADD | 13.479% | +0.362 | 122.11 | -52.53% | +52.53% | -35.02% |
+| CIEN | BUY/ADD | 8.161% | +0.221 | 321.0 | -48.52% | +48.52% | -32.35% |
+| ORCL | BUY/ADD | 3.958% | +0.153 | 158.78 | -32.79% | +32.79% | -21.86% |
+| META | BUY/ADD | 2.909% | -0.091 | 616.77 | -22.25% | +22.25% | -14.83% |
+| FIX | BUY/ADD | 2.743% | +0.140 | 1610.34 | -31.7% | +31.7% | -21.13% |
+| COST | BUY/ADD | 2.667% | +0.246 | 915.74 | -11.66% | +11.66% | -7.77% |
+| TJX | BUY/ADD | 2.262% | +0.176 | 132.08 | -13.74% | +13.74% | -9.16% |
+| TER | BUY/ADD | 2.137% | +0.196 | 357.03 | -42.77% | +42.77% | -28.51% |
+| PLTR | BUY/ADD | 2.008% | +0.353 | 174.33 | -46.16% | +46.16% | -30.77% |
+| NFLX | BUY/ADD | 1.929% | +0.374 | 78.25 | -22.41% | +22.41% | -14.94% |
+| CAT | BUY/ADD | 1.858% | -0.014 | 813.94 | -20.93% | +20.93% | -13.95% |
+| WMT | BUY/ADD | 1.640% | -0.031 | 107.14 | -20.14% | +20.14% | -13.43% |
+| MPWR | BUY/ADD | 1.612% | +0.228 | 1223.86 | -27.52% | +27.52% | -18.34% |
+| TSLA | BUY/ADD | 1.529% | +0.237 | 354.08 | -33.88% | +33.88% | -22.59% |
+| COHR | BUY/ADD | 1.415% | +0.128 | 281.86 | -57.25% | +57.25% | -38.17% |
+| APP | BUY/ADD | 1.180% | +0.000 | 320.56 | -37.12% | +37.12% | -24.75% |
 
-_Vertical exit: MOO 40 sessions after entry. Research tooling, not financial advice._
+_Vertical exit: MOO 40 sessions after entry. Trailing stop: each night raise the stop to the high since fill minus trail %, never below the fixed stop. Research tooling, not financial advice._
