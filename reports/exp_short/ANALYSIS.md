@@ -202,10 +202,9 @@ on the cycles that did not replicate and hurts at h40; not adopted.
 
 | item | location |
 |---|---|
-| code | branch `exp-short-horizon` (off `top150`) |
-| round H output | `k4cli3aj48:derived/exp_short/exp_roundH_cached/` (+ pod log); ran on x3n7kgbbit before the volume correction |
+| code | merged into `top150` on 2026-09-08 (branch deleted) |
+| round H output | `k4cli3aj48:derived/exp_short/exp_roundH_cached/` (+ pod log) |
 | round I output | `k4cli3aj48:derived/exp_short/exp_roundI_cached/` |
 | round J output (fresh scores) | `k4cli3aj48:derived/exp_short/exp_roundJ_fresh/` |
-| stage1/2/3 with tail coverage | `k4cli3aj48:derived/exp_short/stage{1,2,3}/` |
-| production artifacts (untouched) | `k4cli3aj48:derived/top150/*` |
+| stage1/2/3 with tail coverage | `k4cli3aj48:derived/top150/stage{1,2,3}/` — replaced the 2026-09-01 artifacts on merge (old copies live in git history) |
 | ranked tables in git | `reports/exp_short/<round>/summary.md` |
