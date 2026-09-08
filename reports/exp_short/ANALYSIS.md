@@ -190,7 +190,7 @@ the third independent fit ([roundK_trail_pair/summary.md](roundK_trail_pair/summ
 |---|---|---|---|---|---|
 | all 7 (production) | off | 0.74 | 15.2% | −45.5% | 34.4 |
 | all 7 (production) | **on** | 0.75 | 14.2% | **−41.6%** | **27.5** |
-| floor (h20+h60) | off | see table | | | |
+| floor (h20+h60) | off | 0.84 | 19.2% | −42.3% | 34.3 |
 | floor (h20+h60) | **on** | 0.86 | 18.0% | −37.7% | 27.7 |
 
 Third fit in a row where the trail shortens the hold by ~7 sessions and takes
