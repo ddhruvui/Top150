@@ -79,8 +79,12 @@ export async function ticket(now = new Date()) {
     return i >= 0 ? cal[i + h + 1] ?? null : null;
   };
 
+  // The target book = today's new lots + the open lots the engine still holds
+  // (event-engine ticket, 2026-09-08+). A held name shows DO NOTHING when the
+  // paper book has it and BUY (open lot, to replicate the book) when it does not.
   const target = new Map();
   for (const r of sug.buys_or_increases || []) target.set(r.ticker, r);
+  for (const r of sug.holds || []) if (!target.has(r.ticker)) target.set(r.ticker, r);
 
   const buys = [];
   const holds = [];
