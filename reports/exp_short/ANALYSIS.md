@@ -181,6 +181,26 @@ production cost of 15 bps. The member floor is neutral on the fresh fit
 (+1.3pp CAGR, same Sharpe) and stays as M10-03 hygiene. `fill_max` only pays
 on the cycles that did not replicate and hurts at h40; not adopted.
 
+## 2e. Round K — the trail on the 2026-09-08 production fit (paired, same scores)
+
+After the quarterly refresh under the adopted config, the same-scores pair on
+the third independent fit ([roundK_trail_pair/summary.md](roundK_trail_pair/summary.md)):
+
+| members | trail | SR | CAGR | MDD | hold |
+|---|---|---|---|---|---|
+| all 7 (production) | off | 0.74 | 15.2% | −45.5% | 34.4 |
+| all 7 (production) | **on** | 0.75 | 14.2% | **−41.6%** | **27.5** |
+| floor (h20+h60) | off | see table | | | |
+| floor (h20+h60) | **on** | 0.86 | 18.0% | −37.7% | 27.7 |
+
+Third fit in a row where the trail shortens the hold by ~7 sessions and takes
+~4pp off the drawdown at equal-or-better Sharpe; the Sharpe gain itself ranges
+from +0.01 (this fit) to +0.05 (the two earlier fits), so treat the trail as a
+drawdown-and-holding-time improvement, not a return improvement. The
+production book with the trail: 23,159 trades to 2026-09-03, active-window
+SR 0.75 / CAGR 14.2% / MDD −41.6%, CPCV median 0.84, DSR 1.00 at N=808,
+exits trail 43% / vertical 38% / profit-take 18%.
+
 ## 3. What is being tested next and what still has to happen
 
 - Done: round J on the fresh scores (§2d), stage1 → stage2 → stage3 with the
