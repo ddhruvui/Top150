@@ -355,7 +355,9 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
                           "last_close": _f(last_close.get(t, np.nan)),
                           "reason": "held but not in the event-engine book"})
     gross_book = float(entries.sum()) + float(held_w.sum())
-    assert abs(sum(r["target_weight"] for r in buys + holds) - gross_book) < 1e-6
+    # rows are rounded to 5 dp: the ticket must still add up to the book
+    assert abs(sum(r["target_weight"] for r in buys + holds) - gross_book) < 1e-3, \
+        (sum(r["target_weight"] for r in buys + holds), gross_book)
     book_names = sorted(in_book)
 
     suggestions = {
