@@ -71,7 +71,15 @@ Bundled helpers in `.claude/skills/top150-pipeline/scripts/` (call by full path;
    confirm the pod left `$SK150/pods`; if not, `scripts/killpod.sh` (curl DELETE; the
    laptop's python has no CA bundle). The bootstrap now prints the DELETE's HTTP status
    and retries via curl.
-7. **Experiment output stays out of `derived/top150/`.** Branch `exp-short-horizon`
+   Root cause (seen in the log 2026-09-08): RunPod's REST API answers the pod's
+   python `urllib` DELETE with a Cloudflare **403 "error code: 1010"** (blocked by
+   the client signature); curl gets a 204. The bootstrap now falls back to curl.
+8. **One pod at a time when the ledger is being written.** The G-09 trials ledger
+   (`/workspace/ledger/trials.parquet`) is rewritten whole on every append; a second
+   pod reading it mid-write sees a 0-byte parquet and dies (`ArrowInvalid: Parquet
+   file size is 0 bytes` — an `exp` pod launched 30 s after `predict`, 2026-09-08).
+   Run predict/stage/exp jobs sequentially, or at least not within the same minute.
+9. **Experiment output stays out of `derived/top150/`.** Branch `exp-short-horizon`
    writes to `OUT_DIR=/workspace/derived/exp_short/<job>` on the same calc volume and
    launches with `PUBLISH_MONGO=0`; the production prefixes are the daily loop's.
 
