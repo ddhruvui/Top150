@@ -101,3 +101,9 @@ def test_live_book_levels_and_tranche_weights(rng, synth_panel):
     w = tranche_weights(row, sig.iloc[-1], float(cfg.port.single_name_cap), 10)
     assert abs(w.sum() - 1) < 1e-12 and set(w.index) == set(row.index[row])
     assert tranche_weights(row & False, sig.iloc[-1], 0.3, 10) is None
+
+
+def test_ticket_rank_formatter_handles_unscored_names():
+    from src.pipeline.predict import _rk
+    assert _rk(0.4025) == '+0.403' and _rk(-0.1) == '-0.100'
+    assert _rk(None) == 'nan' and _rk(float('nan')) == 'nan'

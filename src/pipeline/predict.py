@@ -46,6 +46,11 @@ WARM_SESSIONS = 90            # trailing replay window for the event-engine book
                               # cover h_days of open lots plus the vol-target warm-up
 
 
+def _rk(x) -> str:
+    """Rank column for the markdown ticket: signed number, or 'nan' when unscored."""
+    return f"{float(x):+.3f}" if x is not None and np.isfinite(x) else "nan"
+
+
 def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None = None,
                 max_tickers: int | None = None, market_dir: str | None = None,
                 positions_csv: str | None = None, model_dir: str | None = None,
@@ -399,13 +404,13 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     for row in buys[:40]:
         tp = row.get("trail_pct")
         md.append(f"| {row['ticker']} | BUY (new lot) | {row['target_weight']:.3%} | "
-                  f"{row['ensemble_rank'] if row['ensemble_rank'] is not None else 'nan':+} | "
+                  f"{_rk(row['ensemble_rank'])} | "
                   f"{row['last_close']} | {row['stop_pct']}% | +{row['profit_take_pct']}% | "
                   f"{'-' + str(tp) + '%' if tp is not None else 'off'} | {row['sessions_left']} | fill |")
     for row in holds[:60]:
         md.append(f"| {row['ticker']} | HOLD ({len(row['lots'])} lot"
                   f"{'s' if len(row['lots']) != 1 else ''}) | {row['target_weight']:.3%} | "
-                  f"{row['ensemble_rank'] if row['ensemble_rank'] is not None else 'nan':+} | "
+                  f"{_rk(row['ensemble_rank'])} | "
                   f"{row['last_close']} | {row['stop_pct']}% | +{row['profit_take_pct']}% | "
                   f"{'-' + str(row['trail_pct']) + '%' if row.get('trail_pct') is not None else 'off'} | "
                   f"{row['sessions_left']} | last close |")
