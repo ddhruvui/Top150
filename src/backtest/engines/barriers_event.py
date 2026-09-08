@@ -43,7 +43,11 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
                        net_moo_costs: bool = False,
                        gross_cap: float | None = None,
                        gross_cap_exact: bool = False,
-                       stay_mask: pd.DataFrame | None = None) -> dict:
+                       stay_mask: pd.DataFrame | None = None,
+                       trail_m: float | None = None,
+                       flat_k: int | None = None,
+                       flat_m: float | None = None,
+                       fill_max: float | None = None) -> dict:
     """selection: wide bool frame (decision date x ticker) of names entering that
     day's tranche. Returns {'daily_net', 'equity', 'trades', 'pdt_log', ...}."""
     dates = panel.adj_open.index
@@ -110,9 +114,11 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
     ex = barrier_exits(edf[["date", "ticker", "side"]], panel.adj_open, panel.adj_high,
                        panel.adj_low, panel.adj_close, sigma32, cost_model,
                        m=m_b, h=h_b, tie_break=str(cfg.barrier.tie_break),
-                       thr_cap=thr_cap, m_up=m_up, m_dn=m_dn)
+                       thr_cap=thr_cap, m_up=m_up, m_dn=m_dn,
+                       trail_m=trail_m, flat_k=flat_k, flat_m=flat_m)
     ex["tranche_w"] = edf["tranche_w"].to_numpy()
-    ex = ex[ex["barrier_hit"].isin(["upper", "lower", "vertical", "censored"])]
+    ex = ex[ex["barrier_hit"].isin(["upper", "lower", "vertical", "censored",
+                                    "trail", "flat"])]
 
     # 3) PDT: same-session exits; under $25k the exhausted 4th defers to next open
     pdt = PDTCounter(account_equity)
@@ -186,8 +192,17 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
     # buys at one print; an intraday barrier exit frees it the next session.
     # The projected cap above instead assumes every position runs to its
     # vertical, leaving early-exit capital idle (~0.80x invested at cap 1.0).
+    #
+    # fill_max [IMPL lever]: the exact cap only ever scales an entering tranche
+    # DOWN. At short horizons a third of positions leave early through a
+    # barrier and their capital sits idle until the nominal 1/tranches slice
+    # of the next day (~0.76x invested at h=7-10). With fill_max > 1 the
+    # entering tranche is scaled UP to re-deploy freed capital, to at most
+    # fill_max x its nominal size and never above the cap. Default None/1.0 =
+    # original accounting.
     if gross_cap is not None and gross_cap_exact and len(ex):
         capg = float(gross_cap)
+        fill = float(fill_max) if fill_max is not None else 1.0
         w_arr = ex["tranche_w"].to_numpy(float).copy()
         i0_arr = np.array([pos[d] for d in ex["fill_date"]])
         ie_arr = np.array([pos[d] for d in ex["exit_date"]])
@@ -208,7 +223,9 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
             intended = float(w_arr[k:j].sum())
             allowed = max(0.0, capg - live)
             s = 1.0 if intended <= allowed else (allowed / intended if intended > 0 else 0.0)
-            if s < 1.0:
+            if fill > 1.0 and 0.0 < intended < allowed:
+                s = min(fill, allowed / intended)      # re-deploy freed capital
+            if s != 1.0:
                 w_arr[k:j] *= s
             for r in range(k, j):
                 if w_arr[r] > 0:

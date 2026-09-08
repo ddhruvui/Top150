@@ -95,9 +95,10 @@ parquets for the git record.
 
 ## Research console (reports + paper trading)
 
-Final reports live in **`reports/`** — `RUN_REPORT.md` and `suggestions_latest.md`
-are the human-readable finals, `reports/latest/*.json` is the machine bundle the
-app serves, `reports/raw/` keeps the pod stage-reports for provenance.
+Final reports live in **`reports/`** — `suggestions_top150.md` is the human-readable
+book, `reports/top150/*.json` is the machine bundle the app serves (built from the
+stage artifacts mirrored under `derived/top150/`), and `reports/exp_short/` is the
+experiment record (ranked variant tables + ANALYSIS.md).
 
 ```sh
 # refresh the bundle after a pipeline run (pods write the CALC volume; this only reads)

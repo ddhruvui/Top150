@@ -13,6 +13,19 @@ For an entry decided at close t, side in {+1,-1}, filled at P0 = adj_open_{t+1}:
 Touch scan over sessions t+1..t+h using daily H/L; gap-through at a session's
 open fills at the OPEN price (conservative, M15-04); both barriers inside one
 bar resolve to the STOP side first (tie_break default [IMPL]).
+
+Optional overlays (branch exp-short-horizon; each default-off, and with every
+overlay off the symmetric path is bit-identical to the original engine):
+  trail_m       trailing stop. After each completed session the stop side is
+                ratcheted to running_high * (1 - trail_m*sigma*sqrt(h)) for a
+                long (running_low * (1 + ...) for a short), never below the
+                fixed stop. The level active DURING a session is the one known
+                at the prior close — a GTC stop re-pegged nightly (M18-style).
+                Exits on the ratcheted level are tagged `trail`.
+  flat_k/flat_m dead-money exit. At the close of the flat_k-th held session, if
+                |close/P0 - 1| < flat_m*sigma*sqrt(flat_k), exit MOO at the next
+                open (tagged `flat`). Frees capital parked in trades that never
+                moved, without touching trades that are working.
 """
 from __future__ import annotations
 
@@ -27,7 +40,10 @@ def barrier_exits(entries: pd.DataFrame, adj_open: pd.DataFrame, adj_high: pd.Da
                   cost_model: CostModel, m: float = 1.5, h: int = 20,
                   tie_break: str = "stop_first",
                   thr_cap: float | None = None,
-                  m_up: float | None = None, m_dn: float | None = None) -> pd.DataFrame:
+                  m_up: float | None = None, m_dn: float | None = None,
+                  trail_m: float | None = None,
+                  flat_k: int | None = None,
+                  flat_m: float | None = None) -> pd.DataFrame:
     """entries: DataFrame with columns (date, ticker, side). Returns one row per entry:
     entry_date, ticker, side, fill_date, entry_price, exit_date, exit_price,
     barrier_hit in {upper, lower, vertical, censored, no_fill}, label,
@@ -40,6 +56,7 @@ def barrier_exits(entries: pd.DataFrame, adj_open: pd.DataFrame, adj_high: pd.Da
     cols = {t: j for j, t in enumerate(adj_open.columns)}
     O, H = adj_open.to_numpy(), adj_high.to_numpy()
     L, S = adj_low.to_numpy(), sigma32.to_numpy()
+    C = adj_close.to_numpy()
     n_dates = len(dates)
     out = []
 
@@ -66,6 +83,13 @@ def barrier_exits(entries: pd.DataFrame, adj_open: pd.DataFrame, adj_high: pd.Da
         upper, lower = P0 * (1 + thr_u), P0 * (1 - thr_d)
         pt_level, stop_level = (upper, lower) if side > 0 else (lower, upper)
         rec.update(fill_date=dates[i0], entry_price=P0)
+        trail_w = trail_m * sig * np.sqrt(h) if trail_m is not None else None
+        flat_w = (flat_m * sig * np.sqrt(int(flat_k))
+                  if flat_k is not None and flat_m is not None else None)
+        run_ext = -np.inf if side > 0 else np.inf   # running high (long) / low (short)
+        trail_lvl = None                            # level known at the prior close
+        stop_name = "lower" if side > 0 else "upper"
+        trailing = False
 
         exit_price, exit_i, hit = np.nan, None, None
         last_scanned = i0 - 1
@@ -75,24 +99,48 @@ def barrier_exits(entries: pd.DataFrame, adj_open: pd.DataFrame, adj_high: pd.Da
                 continue                                       # halted bar
             last_scanned = s
             oo = o if np.isfinite(o) else np.nan
-            if np.isfinite(oo) and oo >= upper and s > i0:     # gap through at the open
+            # this session's levels: fixed barriers, stop side ratcheted by the trail
+            up_s, dn_s, trailing = upper, lower, False
+            if trail_lvl is not None:
+                if side > 0 and trail_lvl > lower:
+                    dn_s, trailing = trail_lvl, True
+                elif side < 0 and trail_lvl < upper:
+                    up_s, trailing = trail_lvl, True
+            pt_s, stop_s = (up_s, dn_s) if side > 0 else (dn_s, up_s)
+            if np.isfinite(oo) and oo >= up_s and s > i0:      # gap through at the open
                 exit_price, exit_i, hit = oo, s, "upper"
                 break
-            if np.isfinite(oo) and oo <= lower and s > i0:
+            if np.isfinite(oo) and oo <= dn_s and s > i0:
                 exit_price, exit_i, hit = oo, s, "lower"
                 break
-            both = hi >= upper and lo <= lower
+            both = hi >= up_s and lo <= dn_s
             if both:
-                level = stop_level if tie_break == "stop_first" else pt_level
+                level = stop_s if tie_break == "stop_first" else pt_s
                 exit_price, exit_i = level, s
-                hit = "upper" if level == upper else "lower"
+                hit = "upper" if level == up_s else "lower"
                 break
-            if hi >= upper:
-                exit_price, exit_i, hit = upper, s, "upper"
+            if hi >= up_s:
+                exit_price, exit_i, hit = up_s, s, "upper"
                 break
-            if lo <= lower:
-                exit_price, exit_i, hit = lower, s, "lower"
+            if lo <= dn_s:
+                exit_price, exit_i, hit = dn_s, s, "lower"
                 break
+            # no exit this session: ratchet the trail for the NEXT session
+            if trail_w is not None:
+                if side > 0:
+                    run_ext = max(run_ext, hi)
+                    trail_lvl = run_ext * (1.0 - trail_w)
+                else:
+                    run_ext = min(run_ext, lo)
+                    trail_lvl = run_ext * (1.0 + trail_w)
+            # dead-money check at the close of the flat_k-th held session
+            if flat_w is not None and s - i0 + 1 == int(flat_k) and s + 1 < n_dates \
+                    and np.isfinite(C[s, j]) and np.isfinite(O[s + 1, j]) \
+                    and abs(C[s, j] / P0 - 1.0) < flat_w:
+                exit_price, exit_i, hit = O[s + 1, j], s + 1, "flat"
+                break
+        if hit == stop_name and trailing:
+            hit = "trail"                                      # stopped on the ratchet
 
         if hit is None:                                        # vertical barrier
             iv = it + h + 1

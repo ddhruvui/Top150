@@ -1,21 +1,21 @@
 {
- "generated_utc": "2026-09-04T15:26:03+00:00",
+ "generated_utc": "2026-09-08T02:31:23+00:00",
  "stamp": {
-  "config_hash": "65110a4306f80adebc526749fc22edaf980874b3b2aa3c44f7c4ddba488cadcb",
-  "data_snapshot_id": "39b3e5e7def03e0f",
+  "config_hash": "9468aeae724febd52b0e822fc0419c610e0edf2ec6a33482558ee09081a821ed",
+  "data_snapshot_id": "fb47fe61409eeedb",
   "git_sha": "unknown",
   "seed": 20260717
  },
  "universe": {
-  "names": 768,
-  "avg_daily": 156.25175242
+  "names": 770,
+  "avg_daily": 156.25339097
  },
  "gates": {
   "verdict": "ITERATE",
   "checks": [
    {
     "id": "G-11 kill: Rank IC",
-    "value": 0.02516814,
+    "value": 0.02792559,
     "threshold": 0.02,
     "op": ">=",
     "pass": true,
@@ -23,7 +23,7 @@
    },
    {
     "id": "G-11 kill: net Sharpe",
-    "value": 0.58967667,
+    "value": 0.67391022,
     "threshold": 0.5,
     "op": ">=",
     "pass": true,
@@ -31,7 +31,7 @@
    },
    {
     "id": "G-11 advance: net Sharpe",
-    "value": 0.58967667,
+    "value": 0.67391022,
     "threshold": 0.8,
     "op": ">=",
     "pass": false,
@@ -39,7 +39,7 @@
    },
    {
     "id": "G-11 advance: max drawdown",
-    "value": -0.44962186,
+    "value": -0.44979079,
     "threshold": -0.15,
     "op": ">",
     "pass": false,
@@ -47,16 +47,16 @@
    },
    {
     "id": "G-08 beat SPY buy-and-hold",
-    "value": 0.58967667,
-    "threshold": 0.6236376,
+    "value": 0.67391022,
+    "threshold": 0.64622532,
     "op": ">",
-    "pass": false,
+    "pass": true,
     "note": "free baseline"
    },
    {
     "id": "G-08 beat 12-1 momentum",
-    "value": 0.58967667,
-    "threshold": 0.15310329,
+    "value": 0.67391022,
+    "threshold": 0.19408177,
     "op": ">",
     "pass": true,
     "note": "free baseline"
@@ -65,189 +65,189 @@
  },
  "book": {
   "engine": "event (M5.2 barrier exits, regime + vol targeting)",
-  "sharpe_net": 0.58967667,
-  "mdd": -0.44962186,
-  "n_trades": 23129,
-  "avg_hold_sessions": 34.66959229,
+  "sharpe_net": 0.67391022,
+  "mdd": -0.44979079,
+  "n_trades": 24020,
+  "avg_hold_sessions": 34.47139883,
   "exit_mix": {
-   "vertical": 15832,
-   "upper": 4445,
-   "lower": 2848,
-   "censored": 4
+   "vertical": 16176,
+   "upper": 4771,
+   "lower": 2867,
+   "censored": 206
   },
-  "ann_return": 0.10924071,
-  "ann_vol": 0.18525527,
+  "ann_return": 0.13032525,
+  "ann_vol": 0.19338666,
   "meta_gate": {
    "adopted": false,
-   "sharpe": 0.53131626,
-   "n_trades": 19750,
-   "mdd": -0.45006157,
-   "turnover_cut": 0.14609365,
+   "sharpe": 0.61310964,
+   "n_trades": 20534,
+   "mdd": -0.4490349,
+   "turnover_cut": 0.14512906,
    "rule": "M11-02: ships only if turnover falls materially at equal-or-better net Sharpe"
   },
   "dsr": {
-   "DSR": 0.99873036,
-   "SR_daily": 0.03714614,
+   "DSR": 0.99972546,
+   "SR_daily": 0.04245235,
    "SR_star": 0.0,
-   "T": 6695,
-   "N": 235,
-   "skew": -0.29525771,
-   "kurtosis_raw": 8.82899166,
+   "T": 6666,
+   "N": 547,
+   "skew": -0.05701221,
+   "kurtosis_raw": 8.73954473,
    "caveat": "N counts the trials ledger visible to the run that produced this book. A ledger that does not persist across runs undercounts N and under-deflates the Sharpe (G-09)."
   }
  },
  "fast_path": {
-  "sharpe_net": -0.13032603,
-  "mdd": -0.86477905,
-  "turnover_month": 0.51581969,
+  "sharpe_net": 0.14057803,
+  "mdd": -0.64376057,
+  "turnover_month": 0.46988406,
   "note": "Stage-1 fixed 15-tranche rotation (no barrier exits)"
  },
  "ic": {
-  "IC": 0.02660425,
-  "ICIR": 0.18675534,
-  "RankIC": 0.02516814,
-  "RankICIR": 0.18265239,
-  "n_days": 4788
+  "IC": 0.02825113,
+  "ICIR": 0.19347345,
+  "RankIC": 0.02792559,
+  "RankICIR": 0.19304799,
+  "n_days": 4924
  },
  "members": [
   {
    "name": "lgbm_h60",
-   "IC": 0.03254631,
-   "RankIC": 0.02363097,
-   "ICIR": 0.23416451,
-   "RankICIR": 0.17643443
+   "IC": 0.03314167,
+   "RankIC": 0.02806867,
+   "ICIR": 0.2312612,
+   "RankICIR": 0.19727984
   },
   {
    "name": "lgbm_h20",
-   "IC": 0.02281317,
-   "RankIC": 0.02200178,
-   "ICIR": 0.17614768,
-   "RankICIR": 0.16035584
+   "IC": 0.02569043,
+   "RankIC": 0.02230341,
+   "ICIR": 0.19604919,
+   "RankICIR": 0.15793174
   },
   {
    "name": "gru_h60",
-   "IC": 0.02409493,
-   "RankIC": 0.01765241,
-   "ICIR": 0.16247439,
-   "RankICIR": 0.13030171
-  },
-  {
-   "name": "gru_h20",
-   "IC": 0.02510485,
-   "RankIC": 0.01549629,
-   "ICIR": 0.15653218,
-   "RankICIR": 0.09822128
+   "IC": 0.02125075,
+   "RankIC": 0.01848498,
+   "ICIR": 0.14156155,
+   "RankICIR": 0.14459986
   },
   {
    "name": "gru_h5",
-   "IC": 0.01611169,
-   "RankIC": 0.01137685,
-   "ICIR": 0.10293288,
-   "RankICIR": 0.07154206
+   "IC": 0.0204074,
+   "RankIC": 0.01570279,
+   "ICIR": 0.13165752,
+   "RankICIR": 0.09910607
+  },
+  {
+   "name": "gru_h20",
+   "IC": 0.0209992,
+   "RankIC": 0.01515182,
+   "ICIR": 0.14648454,
+   "RankICIR": 0.10664857
   },
   {
    "name": "cnn_I5R20",
-   "IC": 0.00153293,
-   "RankIC": 0.00355334,
-   "ICIR": 0.016036,
-   "RankICIR": 0.03617671
+   "IC": 0.00169711,
+   "RankIC": 0.00391361,
+   "ICIR": 0.01723677,
+   "RankICIR": 0.03836232
   },
   {
    "name": "lgbm_h5",
-   "IC": -0.00681633,
-   "RankIC": -0.02105555,
-   "ICIR": -0.12102177,
-   "RankICIR": -0.14170005
+   "IC": -0.00774417,
+   "RankIC": -0.02691167,
+   "ICIR": -0.13378309,
+   "RankICIR": -0.19027716
   }
  ],
  "member_admission_floor": 0.02,
  "baselines": {
   "spy_bh": {
-   "sharpe_net": 0.6236376,
-   "ann_return": 0.11948286,
-   "ann_vol": 0.19159022,
+   "sharpe_net": 0.64622532,
+   "ann_return": 0.12271456,
+   "ann_vol": 0.18989439,
    "mdd": -0.55422595,
-   "n_days": 4787
+   "n_days": 4944
   },
   "mom_12_1": {
-   "sharpe_net": 0.15310329,
-   "ann_return": 0.0513559,
-   "ann_vol": 0.33543304,
-   "mdd": -0.80443664,
-   "n_days": 4787
+   "sharpe_net": 0.19408177,
+   "ann_return": 0.06950604,
+   "ann_vol": 0.35812758,
+   "mdd": -0.80443665,
+   "n_days": 4944
   },
   "alpha_beta_vs_spy": {
-   "alpha_ann": -0.03481981,
-   "beta": 0.07716769
+   "alpha_ann": 0.01917473,
+   "beta": 0.06673405
   },
   "alpha_beta_vs_mom": {
-   "alpha_ann": -0.03036632,
-   "beta": 0.09281755
+   "alpha_ann": 0.0206323,
+   "beta": 0.09685018
   }
  },
  "sensitivity": {
   "5": {
-   "sharpe_net": 0.1356529,
-   "ann_return": 0.02665998,
-   "ann_vol": 0.19653087,
-   "mdd": -0.70100201,
-   "n_days": 4787
+   "sharpe_net": 0.39424686,
+   "ann_return": 0.0767798,
+   "ann_vol": 0.19475058,
+   "mdd": -0.52132886,
+   "n_days": 4944
   },
   "15": {
-   "sharpe_net": -0.13032603,
-   "ann_return": -0.02559959,
-   "ann_vol": 0.1964273,
-   "mdd": -0.86477905,
-   "n_days": 4787
+   "sharpe_net": 0.14057803,
+   "ann_return": 0.02736397,
+   "ann_vol": 0.19465324,
+   "mdd": -0.64376057,
+   "n_days": 4944
   },
   "30": {
-   "sharpe_net": -0.52953587,
-   "ann_return": -0.10395502,
-   "ann_vol": 0.19631346,
-   "mdd": -0.95887968,
-   "n_days": 4787
+   "sharpe_net": -0.23979842,
+   "ann_return": -0.04665385,
+   "ann_vol": 0.19455446,
+   "mdd": -0.88183274,
+   "n_days": 4944
   }
  },
  "cpcv": {
   "paths": [
    {
     "path": 0,
-    "sharpe": 0.88001386,
-    "mdd": -0.57344017,
-    "n_trades": 31993
+    "sharpe": 0.85437338,
+    "mdd": -0.58778699,
+    "n_trades": 32234
    },
    {
     "path": 1,
-    "sharpe": 0.90290167,
-    "mdd": -0.53233459,
-    "n_trades": 32127
+    "sharpe": 0.86464856,
+    "mdd": -0.51393111,
+    "n_trades": 32126
    },
    {
     "path": 2,
-    "sharpe": 0.90565245,
-    "mdd": -0.49663113,
-    "n_trades": 32385
+    "sharpe": 0.89911162,
+    "mdd": -0.49619928,
+    "n_trades": 32139
    },
    {
     "path": 3,
-    "sharpe": 0.99750461,
-    "mdd": -0.56232762,
-    "n_trades": 32012
+    "sharpe": 0.86868123,
+    "mdd": -0.52233695,
+    "n_trades": 32339
    },
    {
     "path": 4,
-    "sharpe": 1.12880601,
-    "mdd": -0.46408321,
-    "n_trades": 32123
+    "sharpe": 1.11529558,
+    "mdd": -0.50330018,
+    "n_trades": 32211
    }
   ],
-  "sharpe_median": 0.90565245,
-  "mdd_worst": -0.57344017
+  "sharpe_median": 0.86868123,
+  "mdd_worst": -0.58778699
  },
  "ensemble_vs_best_single": {
-  "ensemble_rank_ic": 0.02516814,
-  "best_single_rank_ic": 0.02363097,
-  "ensemble_geq_best": true
+  "ensemble_rank_ic": 0.02792559,
+  "best_single_rank_ic": 0.02806867,
+  "ensemble_geq_best": false
  },
  "caveat": "Research output evaluated under blueprint v1.0.1 gates. Not financial advice."
 }

@@ -15,6 +15,15 @@ tranche count (capital utilization at short holds), single-name cap, asymmetric
 barriers (m_up/m_dn), per-variant cost bps, and a FinBERT sentiment entry gate.
 Per-variant metrics now carry CAGR, calendar-year returns, subperiod blocks and
 realized gross exposure so aggressive variants are compared honestly.
+
+Short-horizon levers (branch exp-short-horizon): `trend` (entry trend filter:
+close above its 20d and 60d averages with the 20d average rising over 5
+sessions), `conv_weight` ("linear" | "harmonic": tilt the entering tranche
+toward the top of the ranking instead of pure inverse-vol), `trail_m`
+(trailing stop, M5.2 overlay), `flat_k`/`flat_m` (dead-money exit, M5.2
+overlay), `fill_max` (scale the entering tranche up, to at most fill_max x
+nominal, to re-deploy capital freed by early exits under the exact cash cap).
+All default-off.
 """
 from __future__ import annotations
 
@@ -291,6 +300,14 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
         print(f"sentiment overlay: {'loaded' if sent is not None else 'MISSING'} "
               f"(name coverage {cov:.0%})", flush=True)
 
+    # entry trend filter [IMPL lever]: every input is the close at decision t
+    trend_ok = None
+    if any(v.get("trend") for v in variants):
+        c = panel.adj_close
+        s20 = c.rolling(20, min_periods=20).mean()
+        s60 = c.rolling(60, min_periods=60).mean()
+        trend_ok = (c > s20) & (c > s60) & (s20 > s20.shift(5))
+
     ledger = TrialsLedger()
     results = []
     rank_cache: dict[tuple, dict[str, pd.DataFrame]] = {}
@@ -343,6 +360,17 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
             bad = sent.reindex(test_dates).reindex(columns=sel.columns) \
                       .le(float(v["sent_gate"])).fillna(False)
             sel = sel & ~bad
+        if v.get("trend") and trend_ok is not None:
+            sel = sel & trend_ok.reindex(test_dates).reindex(columns=sel.columns) \
+                .fillna(False)
+        conv = None
+        if v.get("conv_weight"):
+            # conviction tilt inside the entering tranche: rank 1 gets the most
+            r_sel = ens.where(sel).rank(axis=1, ascending=False, method="first")
+            if str(v["conv_weight"]) == "harmonic":
+                conv = 1.0 / r_sel
+            else:                        # linear: N, N-1, ..., 1 over the N entrants
+                conv = r_sel.rsub(r_sel.max(axis=1) + 1.0, axis=0)
 
         cfg_v = _patch_cfg(cfg, v.get("tranches"), v.get("name_cap"))
         cm_v = cm
@@ -357,7 +385,11 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                   m_up=v.get("m_up"), m_dn=v.get("m_dn"),
                   net_moo_costs=bool(v.get("net_moo")),
                   gross_cap=v.get("gross_cap"),
-                  gross_cap_exact=bool(v.get("gc_exact")))
+                  gross_cap_exact=bool(v.get("gc_exact")),
+                  trail_m=v.get("trail_m"), flat_k=v.get("flat_k"),
+                  flat_m=v.get("flat_m"), fill_max=v.get("fill_max"))
+        if conv is not None:
+            kw["meta_mult"] = conv
         if v.get("exit_rank"):
             # stay while rank <= exit_rank; only an affirmative worse rank
             # forces the exit (NaN rank = no information = stay)
@@ -389,7 +421,8 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
         LEVERS = ("scores", "weighting", "skip_earnings", "m", "h", "thr_cap",
                   "vol_thr", "vt", "vt_cap", "top_n", "tranches", "name_cap",
                   "m_up", "m_dn", "cost_bps", "sent_gate", "net_moo",
-                  "fin_bps_yr", "gross_cap", "gc_exact", "exit_rank")
+                  "fin_bps_yr", "gross_cap", "gc_exact", "exit_rank",
+                  "trend", "conv_weight", "trail_m", "flat_k", "flat_m", "fill_max")
         row = {"name": name, **{k: v.get(k) for k in LEVERS},
                "members": members, **met}
         results.append(row)

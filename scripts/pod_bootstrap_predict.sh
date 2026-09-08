@@ -24,7 +24,7 @@ else
   if tar xzf /workspace/code/predict/bundle.tgz --no-same-owner -m; then
     echo "bundle unpacked: $(find . -name '*.py' | wc -l) py files"
     command -v apt-get >/dev/null && { apt-get update -qq && \
-      apt-get install -y -qq libgomp1 >/dev/null 2>&1 || echo "!! libgomp1 install failed"; }
+      apt-get install -y -qq libgomp1 curl >/dev/null 2>&1 || echo "!! libgomp1/curl install failed"; }
     PIP="${PIP_PACKAGES:-pandas pyarrow numpy PyYAML scipy lightgbm scikit-learn}"
     echo "pip install: $PIP"
     timeout 1200 python -m pip install --quiet --no-input --disable-pip-version-check $PIP \
@@ -169,14 +169,27 @@ for ctx in (None, ssl._create_unverified_context()):
     try:
         req = u.Request(url, method="DELETE"); req.add_header("Authorization", "Bearer " + key)
         st = u.urlopen(req, timeout=30, context=ctx).status
-        if st == 204: print("terminated (204)"); sys.exit(0)
+        if st in (200, 202, 204): print(f"terminated ({st})"); sys.exit(0)
+        print("terminate: unexpected status", st, file=sys.stderr)
     except urllib.error.HTTPError as e:
         if e.code == 404: print("already gone (404)"); sys.exit(0)
+        # 2026-09-07: this branch used to swallow the code silently, so a 401/429/5xx
+        # looked like "not confirmed" 12 times over and the pod restarted into a
+        # billing loop. Say what came back.
+        print("terminate: HTTP", e.code, (e.read() or b"")[:200], file=sys.stderr)
     except Exception as e:
         print("terminate error:", e, file=sys.stderr)
 sys.exit(1)
 PY
   [ $? -eq 0 ] && exit 0
+  # second path: curl (installed above) — independent of python's SSL/cert state
+  if command -v curl >/dev/null; then
+    code=$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' -X DELETE \
+      "https://rest.runpod.io/v1/pods/${RUNPOD_POD_ID:-}" \
+      -H "Authorization: Bearer ${RUNPOD_TERMINATE_KEY:-}" 2>/dev/null)
+    case "$code" in 200|202|204|404) echo "terminated via curl ($code)"; exit 0 ;;
+                    *) echo "terminate via curl: HTTP $code" ;; esac
+  fi
   echo "terminate attempt $attempt not confirmed — retry in 20s"; sleep 20
 done
 echo "!! TERMINATION NOT CONFIRMED — run scripts/killpod.sh"
