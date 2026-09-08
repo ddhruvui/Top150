@@ -141,18 +141,62 @@ lgbm_h20 0.022, gru_h60 0.019, gru_h5 0.016, gru_h20 0.015, **cnn 0.004,
 lgbm_h5 −0.027** — the floor finding stands. Per-year table:
 [stage3_fresh/by_year.md](stage3_fresh/by_year.md).
 
+## 2d. Round J — the same candidates on the FRESH scores (the decisive test)
+
+Full table: [roundJ_fresh/summary.md](roundJ_fresh/summary.md). Every variant
+below was run on the 2026-09-01 cached scores (rounds H/I) and again on the
+2026-09-07 tail-coverage scores — two independent model fits of the same
+config. A real improvement has to survive both.
+
+| variant | SR cached → fresh | CAGR cached → fresh | MDD cached → fresh | hold |
+|---|---|---|---|---|
+| adopted book, 7 members, 15 bps | 0.71 → 0.79 | 14.0% → 16.5% | −45% → −45% | 34.5 |
+| floor members | 0.81 → 0.79 | 17.3% → 17.8% | −45% → −46% | 34.6 |
+| floor, 5 bps | 0.86 → 0.84 | 18.6% → 19.1% | −45% → −46% | 34.6 |
+| **floor + trailing stop 1.0σ√h** | **0.86 → 0.84** | 17.1% → 17.7% | **−40% → −42%** | **28.1** |
+| **floor + dead-money exit at 20** | **0.84 → 0.84** | 17.3% → 18.0% | **−41% → −42%** | **27.0** |
+| h10, 5 bps | 0.84 → **0.72** | 15.0% → 12.6% | −32% → **−42%** | 8.8 |
+| h10, 5 bps, fill 1.5 | 0.84 → 0.71 | 16.5% → 13.7% | −32% → −43% | 8.8 |
+| h7, 5 bps | 0.83 → **0.66** | 14.7% → 11.4% | −28% → **−40%** | 6.2 |
+| h7, h20 members, fill 2.0 | 0.83 → 0.69 | 17.8% → 14.1% | −31% → −43% | 6.2 |
+| h5, 5 bps | 0.71 → 0.53 | 12.3% → 8.5% | −35% → −43% | 4.4 |
+| the h7/h10 candidates at 10 bps | — → 0.59-0.63 | — → 11-12% | — → −45..−47% | — |
+
+Where the short-cycle loss comes from (per-year series, daily correlation
+between the two fits 0.83-0.84 for the short cycles vs 0.87-0.91 for h40): it
+is **spread across years**, not one bad period — 2010, 2013, 2014, 2017 and
+2025 are 6-15pp lower on the fresh fit, 2022 is −35% instead of −18%. On the
+2021-2025 window the short cycles' Sharpe is 0.33-0.39 on the fresh fit against
+0.65 for the 40-session floor book. A top-5 book that re-ranks every 7-10
+sessions is far more exposed to which particular model got fitted than a book
+that holds through 40; the cached-score result was a favourable draw.
+
+**Conclusion.** With this signal, a hold of a week or less is not supported:
+its Sharpe swings by 0.12-0.18 between two fits of the same config, its
+drawdown advantage disappears, and it still needs ≤5 bps per leg. The
+40-session book with a **trailing stop (1.0σ√h) or a dead-money exit at 20
+sessions** is the improvement that replicates: ~7 fewer sessions held, 3-4pp
+less drawdown, +0.05 Sharpe, CAGR flat to +1pp, on both fits and at the
+production cost of 15 bps. The member floor is neutral on the fresh fit
+(+1.3pp CAGR, same Sharpe) and stays as M10-03 hygiene. `fill_max` only pays
+on the cycles that did not replicate and hurts at h40; not adopted.
+
 ## 3. What is being tested next and what still has to happen
 
-- Round J (`scripts/variants/roundJ.json`, 16 variants): the production
-  anchor, the floor, trail/flat on h40, and the h5/h7/h10 candidates with
-  fill_max and m 2.0 — re-run on the **fresh** tail-coverage stage-2 scores to
-  confirm the ranking holds when the sample runs to 2026-09-04.
-- stage2 → stage3 on the tail-coverage fold so the production comparison
-  (and the UI's Backtest page, if merged) covers up to the last date.
-- Re-run rounds H/I on the fresh stage-2 scores to confirm the ranking holds.
-- Before any of this trades: paper-trade the chosen cycle and measure the
-  open-print slippage the console records; the 5-bps result stands or falls
-  on that number.
+- Done: round J on the fresh scores (§2d), stage1 → stage2 → stage3 with the
+  tail fold (§2c).
+- To adopt the trailing stop or dead-money exit: set `barrier.trail_m: 1.0` (or
+  `barrier.flat_k: 20`, `flat_m: 0.5`) in the config and wire those keys through
+  `engine_opts_from_cfg` and the M18 order file (the trail is a nightly re-peg
+  of the GTC stop; the flat exit is a scheduled MOO). Both are a config-hash
+  change, so predict full-refits its champions once.
+- Merge to `top150` and run the quarterly refresh (stage1 → stage2 → stage3)
+  so the published Backtest page covers up to the last date.
+- Separately: the daily ticket still comes from the 15-tranche rotation
+  (`construct_targets`), not the event-engine book that was backtested — a
+  live/research mismatch that predates this branch.
+- Before any change trades real money: paper-trade and measure open-print
+  slippage with the console; every cost figure above is an assumption.
 
 ## 4. Where things are
 
@@ -161,6 +205,7 @@ lgbm_h5 −0.027** — the floor finding stands. Per-year table:
 | code | branch `exp-short-horizon` (off `top150`) |
 | round H output | `k4cli3aj48:derived/exp_short/exp_roundH_cached/` (+ pod log); ran on x3n7kgbbit before the volume correction |
 | round I output | `k4cli3aj48:derived/exp_short/exp_roundI_cached/` |
+| round J output (fresh scores) | `k4cli3aj48:derived/exp_short/exp_roundJ_fresh/` |
 | stage1/2/3 with tail coverage | `k4cli3aj48:derived/exp_short/stage{1,2,3}/` |
 | production artifacts (untouched) | `k4cli3aj48:derived/top150/*` |
 | ranked tables in git | `reports/exp_short/<round>/summary.md` |
