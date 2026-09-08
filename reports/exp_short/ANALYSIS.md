@@ -120,6 +120,27 @@ Readings:
   −45% on the same scores and cost convention (15 bps there, 5 bps here).
   At 10 bps it is 0.69; **the cost measurement decides**.
 
+## 2c. The refreshed production-style book (stage1 → stage2 → stage3 with the tail fold)
+
+Same config as production except the partial final fold; models retrained on
+the 2026-09-04 snapshot. Ungated event book, active window, 15 bps:
+
+| | production (2026-09-01) | fresh (2026-09-07) |
+|---|---|---|
+| entries | 2007-01-10 → **2026-01-21** | 2007-01-10 → **2026-09-03** |
+| last exit | 2026-03-20 | 2026-09-04 (206 positions still open, `censored`) |
+| trades | 23,129 | 24,020 |
+| Sharpe / CAGR / MDD | 0.69 / 13.3% / −45% | 0.79 / 16.2% / −45% |
+| CPCV median Sharpe | 0.91 | 0.87 |
+| 2026 entries, avg net trade, win | 65, −2.7%, 35% | 815, **+5.1%**, 52% |
+
+The March cutoff is gone. The higher full-period Sharpe is partly the newer
+snapshot (the repo documents a ±0.1 band between pulls) and partly 2026, which
+the old run barely saw. Member Rank ICs on the fresh run: lgbm_h60 0.028,
+lgbm_h20 0.022, gru_h60 0.019, gru_h5 0.016, gru_h20 0.015, **cnn 0.004,
+lgbm_h5 −0.027** — the floor finding stands. Per-year table:
+[stage3_fresh/by_year.md](stage3_fresh/by_year.md).
+
 ## 3. What is being tested next and what still has to happen
 
 - Round J (`scripts/variants/roundJ.json`, 16 variants): the production
