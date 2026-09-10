@@ -1,6 +1,6 @@
 {
- "built_utc": "2026-09-08T12:14:22+00:00",
- "source_dir": "/private/tmp/claude-501/-Users-dhruvdesai-Development-Top150/7d81599a-d425-4c0d-b986-c8ca28841457/scratchpad/bundle_src2",
+ "built_utc": "2026-09-09T02:18:18+00:00",
+ "source_dir": "/var/folders/nc/94b145q13pl3jz97b9qf8msh0000gn/T/top150_src.CgMwYE",
  "sections": {
   "summary": {
    "members": "stage2_report.json",
@@ -11,14 +11,14 @@
    "points": 1645
   },
   "suggestions": {
-   "as_of": "2026-09-04",
+   "as_of": "2026-09-08",
    "n": 5
   },
   "config": {
    "config_hash": "d7893b1950b0e1322d6ee5c48234bb4c1189833ec8f8c0d253b905324fcae9e8"
   },
   "calendar": {
-   "sessions": 84
+   "sessions": 85
   },
   "trades": {
    "n_total": 23159,
