@@ -1,6 +1,6 @@
 {
- "built_utc": "2026-09-09T02:18:18+00:00",
- "source_dir": "/var/folders/nc/94b145q13pl3jz97b9qf8msh0000gn/T/top150_src.CgMwYE",
+ "built_utc": "2026-09-11T05:07:50+00:00",
+ "source_dir": "/var/folders/nc/94b145q13pl3jz97b9qf8msh0000gn/T/top150_src.7jiEOo",
  "sections": {
   "summary": {
    "members": "stage2_report.json",
@@ -11,7 +11,7 @@
    "points": 1645
   },
   "suggestions": {
-   "as_of": "2026-09-08",
+   "as_of": "2026-09-10",
    "n": 5
   },
   "config": {
