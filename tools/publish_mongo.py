@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.parse
 from datetime import datetime, timezone
@@ -40,6 +41,13 @@ REPO = Path(__file__).resolve().parent.parent
 SECTIONS = ["summary", "equity", "suggestions", "trades_summary", "manifest",
             "calendar", "config"]           # + trades_sample, handled separately
 TRADE_CHUNK = 1000
+
+# The Atlas cluster the deployed API actually reads. A mis-pointed MONGO_URI
+# still publishes "successfully": on 2026-09-11 the daily book landed on a
+# retired cluster, the pod logged publish=0, and the UI served a 3-session-old
+# book until someone noticed. Fail loudly instead of silently.
+# Override with MONGO_HOST_EXPECT; set it empty to disable the check.
+EXPECT_HOST_DEFAULT = "stockscluster.7njjp80.mongodb.net"
 
 
 # ------------------------------------------------------------------ env
@@ -61,12 +69,29 @@ def load_dotenv(path: Path) -> None:
         os.environ.setdefault(k, v)
 
 
+def uri_host(uri: str) -> str:
+    """Host[:port] out of a mongodb+srv URI, without the credentials."""
+    m = re.search(r"@([^/?,]+)", uri)
+    return m.group(1) if m else ""
+
+
 def mongo_uri() -> str:
     uri = os.environ.get("MONGO_URI", "")
     if not uri:
         sys.exit("MONGO_URI is not set (shell or .env at the repo root)")
     pw = os.environ.get("DB_PASSWORD")
-    return uri.replace("<db_password>", urllib.parse.quote_plus(pw)) if pw else uri
+    filled = uri.replace("<db_password>", urllib.parse.quote_plus(pw)) if pw else uri
+    expect = os.environ.get("MONGO_HOST_EXPECT", EXPECT_HOST_DEFAULT).strip()
+    host = uri_host(filled)
+    if expect and expect not in host:
+        sys.exit(
+            f"refusing to publish: MONGO_URI names cluster {host!r}, not the\n"
+            f"expected {expect!r}. The deployed API reads the expected cluster, so\n"
+            "publishing elsewhere succeeds silently and leaves the UI stale.\n"
+            "Fix MONGO_URI in the repo-root .env, or set MONGO_HOST_EXPECT to the\n"
+            "new host (empty string disables this check)."
+        )
+    return filled
 
 
 def connect():

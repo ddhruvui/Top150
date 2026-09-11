@@ -43,7 +43,7 @@ The first publish also seeds the Mongo paper book from the old local
    | name | value |
    |---|---|
    | `DB_PASSWORD` | the Atlas password |
-   | `MONGO_URI` | `mongodb+srv://<user>:<db_password>@<cluster>.mongodb.net/?appName=Cluster0` (placeholder kept literally) |
+   | `MONGO_URI` | `mongodb+srv://<user>:<db_password>@<cluster>.mongodb.net/?appName=Cluster0` (placeholder kept literally). **The cluster must be `stockscluster.7njjp80` — the live one.** Vercel keeps its OWN copy of this value, so it can silently disagree with the repo-root `.env`; if they diverge the pipeline publishes where nobody reads. |
    | `MONGO_DB` | `Top150` |
    | `BUNDLE` | `top150` |
    | `CORS_ORIGIN` | `https://top150fe.onrender.com` (the Render site — add after step 3) |
@@ -107,3 +107,4 @@ cd app/frontend && npm run dev                       # proxies /api to :8787
 | UI: *Could not load* and a CORS error in the console | `CORS_ORIGIN` does not match the Render URL exactly, or `VITE_API_BASE` is unset (calls then hit Render itself and 404) |
 | UI: unstyled page, console says *Refused to apply style … MIME type ('text/plain')* | the CSS request got a 404 — Render answers missing files with `text/plain` and `nosniff`, and Chrome reports that as a MIME error. It happens when the page is opened during the ~2 min a Render deploy takes (assets not yet in place). Nothing is wrong with the build: hard-reload (⌘⇧R) once the deploy shows *Live* |
 | publish fails with `CERTIFICATE_VERIFY_FAILED` | macOS Python without the CA chain: `pip install certifi` (the script uses it when present) |
+| pod log says `publish=0` but the UI still shows an older `as_of` | the book went to a cluster the deployment does not read. Happened 2026-09-11: repo `.env` still named the retired `cluster0.znyjnot` while Vercel read `stockscluster.7njjp80`, so three sessions' books published "successfully" into a cluster nobody served. `publish=0` only proves a write to whatever `MONGO_URI` names. `tools/publish_mongo.py` now refuses a cluster other than `EXPECT_HOST_DEFAULT` (override with `MONGO_HOST_EXPECT`, empty to disable). Confirm the deployment moved: `curl -s 'https://top150-be.vercel.app/api/health?cb=$(date +%s)'` and check `sections.suggestions.as_of` — the in-process cache TTL is only 30 s, so anything staler is a real mismatch, not caching |
