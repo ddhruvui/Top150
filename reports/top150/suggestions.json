@@ -1,16 +1,16 @@
 {
- "as_of_close": "2026-09-10",
+ "as_of_close": "2026-09-11",
  "execute_at": "next session MOO (G-02: signals from close t earn from open t+1)",
  "stamp": {
   "config_hash": "d7893b1950b0e1322d6ee5c48234bb4c1189833ec8f8c0d253b905324fcae9e8",
-  "data_snapshot_id": "70c05ccdbba64906",
+  "data_snapshot_id": "15d925fb026e7380",
   "git_sha": "unknown",
   "seed": 20260717
  },
  "training": {
   "mode": "update",
   "reason": "warm update on champions (last full fit 4 sessions old)",
-  "train_through": "2026-06-12",
+  "train_through": "2026-06-15",
   "panel_tail_since": "2021-09-03",
   "adopted": {
    "lgbm_h5": false,
@@ -24,9 +24,9 @@
   "lgbm_h5": {
    "mode": "warm_update",
    "adopted": false,
-   "valid_rank_ic": 0.03975769,
-   "challenger_rank_ic": 0.03975769,
-   "champion_rank_ic": 0.03975769,
+   "valid_rank_ic": 0.03903345,
+   "challenger_rank_ic": 0.03903345,
+   "champion_rank_ic": 0.03903345,
    "n_trees": 73,
    "top_features": [
     "size",
@@ -44,9 +44,9 @@
   "lgbm_h20": {
    "mode": "warm_update",
    "adopted": false,
-   "valid_rank_ic": 0.05751448,
-   "challenger_rank_ic": 0.05751448,
-   "champion_rank_ic": 0.05751448,
+   "valid_rank_ic": 0.06123867,
+   "challenger_rank_ic": 0.06123867,
+   "champion_rank_ic": 0.06123867,
    "n_trees": 1,
    "top_features": [
     "co_ratio",
@@ -64,9 +64,9 @@
   "lgbm_h60": {
    "mode": "warm_update",
    "adopted": false,
-   "valid_rank_ic": 0.03440452,
-   "challenger_rank_ic": 0.03030533,
-   "champion_rank_ic": 0.03440452,
+   "valid_rank_ic": 0.03731523,
+   "challenger_rank_ic": 0.03422566,
+   "champion_rank_ic": 0.03731523,
    "n_trees": 52,
    "top_features": [
     "vol_10",
@@ -83,13 +83,13 @@
   }
  },
  "portfolio": {
-  "n_names": 29,
+  "n_names": 30,
   "gross_long": 1.0,
-  "entering_gross": 0.05988,
-  "held_gross": 0.94012,
-  "due_exit_gross": 0.0434,
-  "budget_mult": 1.0383,
-  "cap_scale": 0.8651,
+  "entering_gross": 0.04728,
+  "held_gross": 0.95272,
+  "due_exit_gross": 0.03869,
+  "budget_mult": 0.9117,
+  "cap_scale": 0.7779,
   "spy_hedge_weight": 0.0
  },
  "book_engine": {
@@ -109,52 +109,61 @@
  "buys_or_increases": [
   {
    "ticker": "SBUX",
-   "target_weight": 0.07185,
-   "new_lot_weight": 0.01548,
-   "current_weight": 0.05637,
+   "target_weight": 0.09819,
+   "new_lot_weight": 0.01328,
+   "current_weight": 0.08491,
    "lots": [
     {
      "entry_date": "2026-09-03",
      "fill_date": "2026-09-04",
-     "weight": 0.01832,
-     "sessions_left": 36,
+     "weight": 0.01924,
+     "sessions_left": 35,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -1.82,
-     "pt_vs_close_pct": 19.78
+     "stop_vs_close_pct": -1.34,
+     "pt_vs_close_pct": 20.36
     },
     {
      "entry_date": "2026-09-04",
      "fill_date": "2026-09-08",
-     "weight": 0.00636,
-     "sessions_left": 37,
+     "weight": 0.01474,
+     "sessions_left": 36,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -3.23,
-     "pt_vs_close_pct": 18.71
+     "stop_vs_close_pct": -2.76,
+     "pt_vs_close_pct": 19.29
     },
     {
      "entry_date": "2026-09-08",
      "fill_date": "2026-09-09",
-     "weight": 0.01288,
-     "sessions_left": 38,
+     "weight": 0.01431,
+     "sessions_left": 37,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -6.65,
-     "pt_vs_close_pct": 14.97
+     "stop_vs_close_pct": -6.2,
+     "pt_vs_close_pct": 15.53
     },
     {
      "entry_date": "2026-09-09",
      "fill_date": "2026-09-10",
-     "weight": 0.01881,
+     "weight": 0.02095,
+     "sessions_left": 38,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -6.45,
+     "pt_vs_close_pct": 15.59
+    },
+    {
+     "entry_date": "2026-09-10",
+     "fill_date": "2026-09-11",
+     "weight": 0.01568,
      "sessions_left": 39,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -6.9,
-     "pt_vs_close_pct": 15.03
+     "stop_vs_close_pct": -7.42,
+     "pt_vs_close_pct": 15.2
     }
    ],
-   "ensemble_rank": 0.3669,
-   "last_close": 99.22,
-   "stop_pct": -13.43,
-   "profit_take_pct": 13.43,
-   "trail_pct": 8.95,
+   "ensemble_rank": 0.3795,
+   "last_close": 98.74,
+   "stop_pct": -13.07,
+   "profit_take_pct": 13.07,
+   "trail_pct": 8.71,
    "levels_basis": "fill",
    "max_hold_sessions": 40,
    "sessions_left": 40,
@@ -162,222 +171,249 @@
   },
   {
    "ticker": "AZO",
-   "target_weight": 0.15589,
-   "new_lot_weight": 0.01453,
-   "current_weight": 0.14136,
+   "target_weight": 0.17581,
+   "new_lot_weight": 0.0125,
+   "current_weight": 0.1633,
    "lots": [
     {
      "entry_date": "2026-08-12",
      "fill_date": "2026-08-13",
-     "weight": 0.01329,
-     "sessions_left": 20,
+     "weight": 0.01157,
+     "sessions_left": 19,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -3.75,
-     "pt_vs_close_pct": 25.52
+     "stop_vs_close_pct": -3.59,
+     "pt_vs_close_pct": 25.72
     },
     {
      "entry_date": "2026-08-21",
      "fill_date": "2026-08-24",
-     "weight": 0.01434,
-     "sessions_left": 27,
+     "weight": 0.01648,
+     "sessions_left": 26,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -6.63,
-     "pt_vs_close_pct": 21.1
+     "stop_vs_close_pct": -6.47,
+     "pt_vs_close_pct": 21.3
     },
     {
      "entry_date": "2026-08-24",
      "fill_date": "2026-08-25",
-     "weight": 0.01161,
-     "sessions_left": 28,
+     "weight": 0.01027,
+     "sessions_left": 27,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -6.58,
-     "pt_vs_close_pct": 22.35
+     "stop_vs_close_pct": -6.43,
+     "pt_vs_close_pct": 22.55
     },
     {
      "entry_date": "2026-08-25",
      "fill_date": "2026-08-26",
-     "weight": 0.00526,
-     "sessions_left": 29,
+     "weight": 0.00762,
+     "sessions_left": 28,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -7.2,
-     "pt_vs_close_pct": 22.34
+     "stop_vs_close_pct": -7.05,
+     "pt_vs_close_pct": 22.54
     },
     {
      "entry_date": "2026-08-26",
      "fill_date": "2026-08-27",
-     "weight": 0.00777,
-     "sessions_left": 30,
+     "weight": 0.00572,
+     "sessions_left": 29,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -7.17,
-     "pt_vs_close_pct": 19.99
+     "stop_vs_close_pct": -7.01,
+     "pt_vs_close_pct": 20.18
     },
     {
      "entry_date": "2026-08-27",
      "fill_date": "2026-08-28",
-     "weight": 0.00509,
-     "sessions_left": 31,
+     "weight": 0.00692,
+     "sessions_left": 30,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -7.39,
-     "pt_vs_close_pct": 19.39
+     "stop_vs_close_pct": -7.24,
+     "pt_vs_close_pct": 19.59
     },
     {
      "entry_date": "2026-08-28",
      "fill_date": "2026-08-31",
-     "weight": 0.01512,
-     "sessions_left": 32,
+     "weight": 0.01105,
+     "sessions_left": 31,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -7.15,
-     "pt_vs_close_pct": 19.24
+     "stop_vs_close_pct": -6.99,
+     "pt_vs_close_pct": 19.44
     },
     {
      "entry_date": "2026-08-31",
      "fill_date": "2026-09-01",
-     "weight": 0.00186,
-     "sessions_left": 33,
+     "weight": 0.00382,
+     "sessions_left": 32,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -6.9,
-     "pt_vs_close_pct": 21.23
+     "stop_vs_close_pct": -6.75,
+     "pt_vs_close_pct": 21.43
     },
     {
      "entry_date": "2026-09-01",
      "fill_date": "2026-09-02",
-     "weight": 0.00756,
-     "sessions_left": 34,
+     "weight": 0.00451,
+     "sessions_left": 33,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -7.08,
-     "pt_vs_close_pct": 19.27
+     "stop_vs_close_pct": -6.92,
+     "pt_vs_close_pct": 19.46
     },
     {
      "entry_date": "2026-09-02",
      "fill_date": "2026-09-03",
-     "weight": 0.00967,
-     "sessions_left": 35,
+     "weight": 0.00972,
+     "sessions_left": 34,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -6.88,
-     "pt_vs_close_pct": 18.07
+     "stop_vs_close_pct": -6.72,
+     "pt_vs_close_pct": 18.26
     },
     {
      "entry_date": "2026-09-03",
      "fill_date": "2026-09-04",
-     "weight": 0.015,
-     "sessions_left": 36,
+     "weight": 0.01575,
+     "sessions_left": 35,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -6.7,
-     "pt_vs_close_pct": 18.06
+     "stop_vs_close_pct": -6.55,
+     "pt_vs_close_pct": 18.25
     },
     {
      "entry_date": "2026-09-04",
      "fill_date": "2026-09-08",
-     "weight": 0.00535,
-     "sessions_left": 37,
+     "weight": 0.01239,
+     "sessions_left": 36,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -6.41,
-     "pt_vs_close_pct": 18.62
+     "stop_vs_close_pct": -6.26,
+     "pt_vs_close_pct": 18.82
     },
     {
      "entry_date": "2026-09-08",
      "fill_date": "2026-09-09",
-     "weight": 0.01174,
-     "sessions_left": 38,
+     "weight": 0.01304,
+     "sessions_left": 37,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -8.09,
-     "pt_vs_close_pct": 16.78
+     "stop_vs_close_pct": -7.94,
+     "pt_vs_close_pct": 16.97
     },
     {
      "entry_date": "2026-09-09",
      "fill_date": "2026-09-10",
-     "weight": 0.01772,
+     "weight": 0.01973,
+     "sessions_left": 38,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -7.99,
+     "pt_vs_close_pct": 15.71
+    },
+    {
+     "entry_date": "2026-09-10",
+     "fill_date": "2026-09-11",
+     "weight": 0.01471,
      "sessions_left": 39,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -8.59,
-     "pt_vs_close_pct": 15.52
+     "stop_vs_close_pct": -7.82,
+     "pt_vs_close_pct": 15.04
     }
    ],
-   "ensemble_rank": 0.4581,
-   "last_close": 2881.47,
-   "stop_pct": -14.31,
-   "profit_take_pct": 14.31,
-   "trail_pct": 9.54,
+   "ensemble_rank": 0.4633,
+   "last_close": 2876.75,
+   "stop_pct": -13.88,
+   "profit_take_pct": 13.88,
+   "trail_pct": 9.25,
    "levels_basis": "fill",
    "max_hold_sessions": 40,
    "sessions_left": 40,
    "lot": "new tranche (fills at the next open)"
   },
   {
-   "ticker": "HD",
-   "target_weight": 0.08702,
-   "new_lot_weight": 0.01446,
-   "current_weight": 0.07256,
+   "ticker": "COF",
+   "target_weight": 0.10882,
+   "new_lot_weight": 0.01116,
+   "current_weight": 0.09767,
    "lots": [
     {
-     "entry_date": "2026-08-26",
-     "fill_date": "2026-08-27",
-     "weight": 0.00863,
-     "sessions_left": 30,
+     "entry_date": "2026-08-11",
+     "fill_date": "2026-08-12",
+     "weight": 0.01444,
+     "sessions_left": 18,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -2.92,
-     "pt_vs_close_pct": 23.39
+     "stop_vs_close_pct": -3.19,
+     "pt_vs_close_pct": 22.79
+    },
+    {
+     "entry_date": "2026-08-12",
+     "fill_date": "2026-08-13",
+     "weight": 0.01265,
+     "sessions_left": 19,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -3.08,
+     "pt_vs_close_pct": 25.24
+    },
+    {
+     "entry_date": "2026-08-13",
+     "fill_date": "2026-08-14",
+     "weight": 0.01169,
+     "sessions_left": 20,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -2.75,
+     "pt_vs_close_pct": 25.73
+    },
+    {
+     "entry_date": "2026-08-20",
+     "fill_date": "2026-08-21",
+     "weight": 0.00867,
+     "sessions_left": 25,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -6.11,
+     "pt_vs_close_pct": 21.12
+    },
+    {
+     "entry_date": "2026-08-24",
+     "fill_date": "2026-08-25",
+     "weight": 0.01022,
+     "sessions_left": 27,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -6.27,
+     "pt_vs_close_pct": 22.96
+    },
+    {
+     "entry_date": "2026-08-25",
+     "fill_date": "2026-08-26",
+     "weight": 0.00761,
+     "sessions_left": 28,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -5.89,
+     "pt_vs_close_pct": 21.46
     },
     {
      "entry_date": "2026-08-27",
      "fill_date": "2026-08-28",
-     "weight": 0.00569,
-     "sessions_left": 31,
+     "weight": 0.00731,
+     "sessions_left": 30,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -3.17,
-     "pt_vs_close_pct": 23.57
-    },
-    {
-     "entry_date": "2026-08-31",
-     "fill_date": "2026-09-01",
-     "weight": 0.0021,
-     "sessions_left": 33,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -4.02,
-     "pt_vs_close_pct": 21.07
-    },
-    {
-     "entry_date": "2026-09-02",
-     "fill_date": "2026-09-03",
-     "weight": 0.01028,
-     "sessions_left": 35,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -5.01,
-     "pt_vs_close_pct": 19.34
-    },
-    {
-     "entry_date": "2026-09-03",
-     "fill_date": "2026-09-04",
-     "weight": 0.01611,
-     "sessions_left": 36,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -4.74,
-     "pt_vs_close_pct": 18.38
+     "stop_vs_close_pct": -5.19,
+     "pt_vs_close_pct": 21.04
     },
     {
      "entry_date": "2026-09-08",
      "fill_date": "2026-09-09",
-     "weight": 0.01178,
-     "sessions_left": 38,
+     "weight": 0.01191,
+     "sessions_left": 37,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -7.46,
-     "pt_vs_close_pct": 16.39
+     "stop_vs_close_pct": -8.12,
+     "pt_vs_close_pct": 18.51
     },
     {
-     "entry_date": "2026-09-09",
-     "fill_date": "2026-09-10",
-     "weight": 0.01797,
+     "entry_date": "2026-09-10",
+     "fill_date": "2026-09-11",
+     "weight": 0.01317,
      "sessions_left": 39,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -8.81,
-     "pt_vs_close_pct": 15.27
+     "stop_vs_close_pct": -9.38,
+     "pt_vs_close_pct": 17.29
     }
    ],
-   "ensemble_rank": 0.3836,
-   "last_close": 305.69,
-   "stop_pct": -14.38,
-   "profit_take_pct": 14.38,
-   "trail_pct": 9.58,
+   "ensemble_rank": 0.3616,
+   "last_close": 208.3,
+   "stop_pct": -15.55,
+   "profit_take_pct": 15.55,
+   "trail_pct": 10.37,
    "levels_basis": "fill",
    "max_hold_sessions": 40,
    "sessions_left": 40,
@@ -385,31 +421,150 @@
   },
   {
    "ticker": "DASH",
-   "target_weight": 0.00832,
-   "new_lot_weight": 0.00832,
-   "current_weight": 0.0,
-   "lots": null,
-   "ensemble_rank": 0.4088,
-   "last_close": 201.03,
-   "stop_pct": -24.99,
-   "profit_take_pct": 24.99,
-   "trail_pct": 16.66,
+   "target_weight": 0.01558,
+   "new_lot_weight": 0.00716,
+   "current_weight": 0.00843,
+   "lots": [
+    {
+     "entry_date": "2026-09-10",
+     "fill_date": "2026-09-11",
+     "weight": 0.00843,
+     "sessions_left": 39,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -15.4,
+     "pt_vs_close_pct": 25.05
+    }
+   ],
+   "ensemble_rank": 0.4025,
+   "last_close": 201.95,
+   "stop_pct": -24.24,
+   "profit_take_pct": 24.24,
+   "trail_pct": 16.16,
    "levels_basis": "fill",
    "max_hold_sessions": 40,
    "sessions_left": 40,
    "lot": "new tranche (fills at the next open)"
   },
   {
-   "ticker": "ADBE",
-   "target_weight": 0.00709,
-   "new_lot_weight": 0.00709,
-   "current_weight": 0.0,
-   "lots": null,
-   "ensemble_rank": 0.3952,
-   "last_close": 248.83,
-   "stop_pct": -29.34,
-   "profit_take_pct": 29.34,
-   "trail_pct": 19.56,
+   "ticker": "LITE",
+   "target_weight": 0.04174,
+   "new_lot_weight": 0.00319,
+   "current_weight": 0.03855,
+   "lots": [
+    {
+     "entry_date": "2026-08-10",
+     "fill_date": "2026-08-11",
+     "weight": 0.00688,
+     "sessions_left": 17,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -36.75,
+     "pt_vs_close_pct": 44.6
+    },
+    {
+     "entry_date": "2026-08-11",
+     "fill_date": "2026-08-12",
+     "weight": 0.00392,
+     "sessions_left": 18,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -35.31,
+     "pt_vs_close_pct": 57.49
+    },
+    {
+     "entry_date": "2026-08-13",
+     "fill_date": "2026-08-14",
+     "weight": 0.00286,
+     "sessions_left": 20,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -38.51,
+     "pt_vs_close_pct": 60.55
+    },
+    {
+     "entry_date": "2026-08-19",
+     "fill_date": "2026-08-20",
+     "weight": 0.00176,
+     "sessions_left": 24,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -38.18,
+     "pt_vs_close_pct": 48.87
+    },
+    {
+     "entry_date": "2026-08-21",
+     "fill_date": "2026-08-24",
+     "weight": 0.00453,
+     "sessions_left": 26,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -36.38,
+     "pt_vs_close_pct": 45.56
+    },
+    {
+     "entry_date": "2026-08-24",
+     "fill_date": "2026-08-25",
+     "weight": 0.00286,
+     "sessions_left": 27,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -35.53,
+     "pt_vs_close_pct": 50.59
+    },
+    {
+     "entry_date": "2026-08-28",
+     "fill_date": "2026-08-31",
+     "weight": 0.00302,
+     "sessions_left": 31,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -33.97,
+     "pt_vs_close_pct": 54.95
+    },
+    {
+     "entry_date": "2026-08-31",
+     "fill_date": "2026-09-01",
+     "weight": 0.00105,
+     "sessions_left": 32,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -32.75,
+     "pt_vs_close_pct": 54.47
+    },
+    {
+     "entry_date": "2026-09-01",
+     "fill_date": "2026-09-02",
+     "weight": 0.00122,
+     "sessions_left": 33,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -32.34,
+     "pt_vs_close_pct": 48.23
+    },
+    {
+     "entry_date": "2026-09-02",
+     "fill_date": "2026-09-03",
+     "weight": 0.00267,
+     "sessions_left": 34,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -31.01,
+     "pt_vs_close_pct": 47.61
+    },
+    {
+     "entry_date": "2026-09-03",
+     "fill_date": "2026-09-04",
+     "weight": 0.00437,
+     "sessions_left": 35,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -29.99,
+     "pt_vs_close_pct": 44.2
+    },
+    {
+     "entry_date": "2026-09-04",
+     "fill_date": "2026-09-08",
+     "weight": 0.0034,
+     "sessions_left": 36,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -29.31,
+     "pt_vs_close_pct": 49.36
+    }
+   ],
+   "ensemble_rank": 0.3878,
+   "last_close": 927.03,
+   "stop_pct": -54.37,
+   "profit_take_pct": 54.37,
+   "trail_pct": 36.25,
    "levels_basis": "fill",
    "max_hold_sessions": 40,
    "sessions_left": 40,
@@ -418,1397 +573,1286 @@
  ],
  "holds": [
   {
-   "ticker": "AMAT",
-   "target_weight": 0.00782,
-   "current_weight": 0.00782,
-   "ensemble_rank": 0.1038,
-   "last_close": 454.01,
-   "stop_pct": -16.79,
-   "profit_take_pct": 52.3,
-   "trail_pct": 23.13,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 9,
-   "lots": [
-    {
-     "entry_date": "2026-07-28",
-     "fill_date": "2026-07-29",
-     "weight": 0.0039,
-     "sessions_left": 9,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -16.79,
-     "pt_vs_close_pct": 52.3
-    },
-    {
-     "entry_date": "2026-07-29",
-     "fill_date": "2026-07-30",
-     "weight": 0.00392,
-     "sessions_left": 10,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -19.0,
-     "pt_vs_close_pct": 61.41
-    }
-   ]
-  },
-  {
-   "ticker": "APP",
-   "target_weight": 0.00721,
-   "current_weight": 0.00721,
-   "ensemble_rank": 0.2904,
-   "last_close": 314.49,
-   "stop_pct": -23.1,
-   "profit_take_pct": 29.9,
-   "trail_pct": 23.61,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 39,
-   "lots": [
-    {
-     "entry_date": "2026-09-09",
-     "fill_date": "2026-09-10",
-     "weight": 0.00721,
-     "sessions_left": 39,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -23.1,
-     "pt_vs_close_pct": 29.9
-    }
-   ]
-  },
-  {
-   "ticker": "CEG",
-   "target_weight": 0.03088,
-   "current_weight": 0.03088,
-   "ensemble_rank": 0.1226,
-   "last_close": 285.97,
-   "stop_pct": -9.57,
-   "profit_take_pct": 16.78,
-   "trail_pct": 14.31,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 14,
-   "lots": [
-    {
-     "entry_date": "2026-08-04",
-     "fill_date": "2026-08-05",
-     "weight": 0.01424,
-     "sessions_left": 14,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -10.04,
-     "pt_vs_close_pct": 16.78
-    },
-    {
-     "entry_date": "2026-08-05",
-     "fill_date": "2026-08-06",
-     "weight": 0.01664,
-     "sessions_left": 15,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -9.57,
-     "pt_vs_close_pct": 19.49
-    }
-   ]
-  },
-  {
-   "ticker": "CIEN",
-   "target_weight": 0.03153,
-   "current_weight": 0.03153,
-   "ensemble_rank": 0.2233,
-   "last_close": 334.56,
-   "stop_pct": -7.54,
-   "profit_take_pct": 65.16,
-   "trail_pct": 30.86,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 22,
-   "lots": [
-    {
-     "entry_date": "2026-08-14",
-     "fill_date": "2026-08-17",
-     "weight": 0.00645,
-     "sessions_left": 22,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -7.54,
-     "pt_vs_close_pct": 94.83
-    },
-    {
-     "entry_date": "2026-08-17",
-     "fill_date": "2026-08-18",
-     "weight": 0.00207,
-     "sessions_left": 23,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -13.06,
-     "pt_vs_close_pct": 86.5
-    },
-    {
-     "entry_date": "2026-08-18",
-     "fill_date": "2026-08-19",
-     "weight": 0.00323,
-     "sessions_left": 24,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -17.7,
-     "pt_vs_close_pct": 87.99
-    },
-    {
-     "entry_date": "2026-08-19",
-     "fill_date": "2026-08-20",
-     "weight": 0.00282,
-     "sessions_left": 25,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -16.49,
-     "pt_vs_close_pct": 79.39
-    },
-    {
-     "entry_date": "2026-08-20",
-     "fill_date": "2026-08-21",
-     "weight": 0.005,
-     "sessions_left": 26,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -15.35,
-     "pt_vs_close_pct": 75.83
-    },
-    {
-     "entry_date": "2026-08-25",
-     "fill_date": "2026-08-26",
-     "weight": 0.00189,
-     "sessions_left": 29,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -14.41,
-     "pt_vs_close_pct": 70.63
-    },
-    {
-     "entry_date": "2026-08-26",
-     "fill_date": "2026-08-27",
-     "weight": 0.00275,
-     "sessions_left": 30,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -14.03,
-     "pt_vs_close_pct": 80.77
-    },
-    {
-     "entry_date": "2026-08-27",
-     "fill_date": "2026-08-28",
-     "weight": 0.00189,
-     "sessions_left": 31,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -16.67,
-     "pt_vs_close_pct": 74.24
-    },
-    {
-     "entry_date": "2026-08-28",
-     "fill_date": "2026-08-31",
-     "weight": 0.00544,
-     "sessions_left": 32,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -20.65,
-     "pt_vs_close_pct": 65.16
-    }
-   ]
-  },
-  {
-   "ticker": "CMCSA",
-   "target_weight": 0.00023,
-   "current_weight": 0.00023,
-   "ensemble_rank": 0.1667,
-   "last_close": 25.17,
-   "stop_pct": -9.94,
-   "profit_take_pct": 21.83,
-   "trail_pct": 15.4,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 13,
-   "lots": [
-    {
-     "entry_date": "2026-08-03",
-     "fill_date": "2026-08-04",
-     "weight": 0.00023,
-     "sessions_left": 13,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -9.94,
-     "pt_vs_close_pct": 21.83
-    }
-   ]
-  },
-  {
-   "ticker": "COHR",
-   "target_weight": 0.01838,
-   "current_weight": 0.01838,
-   "ensemble_rank": 0.1855,
-   "last_close": 293.17,
-   "stop_pct": -24.02,
-   "profit_take_pct": 54.93,
-   "trail_pct": 36.58,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 11,
-   "lots": [
-    {
-     "entry_date": "2026-07-30",
-     "fill_date": "2026-07-31",
-     "weight": 0.00072,
-     "sessions_left": 11,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -24.02,
-     "pt_vs_close_pct": 54.93
-    },
-    {
-     "entry_date": "2026-08-03",
-     "fill_date": "2026-08-04",
-     "weight": 9e-05,
-     "sessions_left": 13,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -24.83,
-     "pt_vs_close_pct": 84.0
-    },
-    {
-     "entry_date": "2026-08-04",
-     "fill_date": "2026-08-05",
-     "weight": 0.00491,
-     "sessions_left": 14,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -28.0,
-     "pt_vs_close_pct": 84.23
-    },
-    {
-     "entry_date": "2026-08-10",
-     "fill_date": "2026-08-11",
-     "weight": 0.00694,
-     "sessions_left": 18,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -39.4,
-     "pt_vs_close_pct": 94.91
-    },
-    {
-     "entry_date": "2026-08-14",
-     "fill_date": "2026-08-17",
-     "weight": 0.00435,
-     "sessions_left": 22,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -35.9,
-     "pt_vs_close_pct": 95.9
-    },
-    {
-     "entry_date": "2026-08-17",
-     "fill_date": "2026-08-18",
-     "weight": 0.00138,
-     "sessions_left": 23,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -41.67,
-     "pt_vs_close_pct": 90.6
-    }
-   ]
-  },
-  {
-   "ticker": "COIN",
-   "target_weight": 0.09568,
-   "current_weight": 0.09568,
-   "ensemble_rank": 0.2432,
-   "last_close": 172.28,
-   "stop_pct": -13.99,
-   "profit_take_pct": 16.88,
-   "trail_pct": 30.35,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 13,
-   "lots": [
-    {
-     "entry_date": "2026-08-03",
-     "fill_date": "2026-08-04",
-     "weight": 0.00013,
-     "sessions_left": 13,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -19.57,
-     "pt_vs_close_pct": 23.09
-    },
-    {
-     "entry_date": "2026-08-04",
-     "fill_date": "2026-08-05",
-     "weight": 0.00788,
-     "sessions_left": 14,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -18.93,
-     "pt_vs_close_pct": 25.2
-    },
-    {
-     "entry_date": "2026-08-05",
-     "fill_date": "2026-08-06",
-     "weight": 0.00923,
-     "sessions_left": 15,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -17.95,
-     "pt_vs_close_pct": 20.74
-    },
-    {
-     "entry_date": "2026-08-06",
-     "fill_date": "2026-08-07",
-     "weight": 0.00597,
-     "sessions_left": 16,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -17.44,
-     "pt_vs_close_pct": 21.35
-    },
-    {
-     "entry_date": "2026-08-07",
-     "fill_date": "2026-08-10",
-     "weight": 0.005,
-     "sessions_left": 17,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -18.0,
-     "pt_vs_close_pct": 26.22
-    },
-    {
-     "entry_date": "2026-08-10",
-     "fill_date": "2026-08-11",
-     "weight": 0.01286,
-     "sessions_left": 18,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -17.56,
-     "pt_vs_close_pct": 22.83
-    },
-    {
-     "entry_date": "2026-08-11",
-     "fill_date": "2026-08-12",
-     "weight": 0.00868,
-     "sessions_left": 19,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -16.6,
-     "pt_vs_close_pct": 21.94
-    },
-    {
-     "entry_date": "2026-08-12",
-     "fill_date": "2026-08-13",
-     "weight": 0.00629,
-     "sessions_left": 20,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -15.68,
-     "pt_vs_close_pct": 20.02
-    },
-    {
-     "entry_date": "2026-08-13",
-     "fill_date": "2026-08-14",
-     "weight": 0.00464,
-     "sessions_left": 21,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -15.33,
-     "pt_vs_close_pct": 21.54
-    },
-    {
-     "entry_date": "2026-08-14",
-     "fill_date": "2026-08-17",
-     "weight": 0.00825,
-     "sessions_left": 22,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -15.15,
-     "pt_vs_close_pct": 18.88
-    },
-    {
-     "entry_date": "2026-08-17",
-     "fill_date": "2026-08-18",
-     "weight": 0.00268,
-     "sessions_left": 23,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -14.37,
-     "pt_vs_close_pct": 17.7
-    },
-    {
-     "entry_date": "2026-08-18",
-     "fill_date": "2026-08-19",
-     "weight": 0.00455,
-     "sessions_left": 24,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -13.99,
-     "pt_vs_close_pct": 16.88
-    },
-    {
-     "entry_date": "2026-08-26",
-     "fill_date": "2026-08-27",
-     "weight": 0.00291,
-     "sessions_left": 30,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -19.9,
-     "pt_vs_close_pct": 56.08
-    },
-    {
-     "entry_date": "2026-09-01",
-     "fill_date": "2026-09-02",
-     "weight": 0.00256,
-     "sessions_left": 34,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -21.75,
-     "pt_vs_close_pct": 48.47
-    },
-    {
-     "entry_date": "2026-09-02",
-     "fill_date": "2026-09-03",
-     "weight": 0.00332,
-     "sessions_left": 35,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -20.71,
-     "pt_vs_close_pct": 53.11
-    },
-    {
-     "entry_date": "2026-09-04",
-     "fill_date": "2026-09-08",
-     "weight": 0.00163,
-     "sessions_left": 37,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -27.68,
-     "pt_vs_close_pct": 56.2
-    },
-    {
-     "entry_date": "2026-09-08",
-     "fill_date": "2026-09-09",
-     "weight": 0.00358,
-     "sessions_left": 38,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -27.0,
-     "pt_vs_close_pct": 58.53
-    },
-    {
-     "entry_date": "2026-09-09",
-     "fill_date": "2026-09-10",
-     "weight": 0.00551,
-     "sessions_left": 39,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -30.36,
-     "pt_vs_close_pct": 45.62
-    }
-   ]
-  },
-  {
-   "ticker": "CRWD",
-   "target_weight": 0.02192,
-   "current_weight": 0.02192,
-   "ensemble_rank": 0.1625,
-   "last_close": 208.86,
-   "stop_pct": -11.01,
-   "profit_take_pct": 19.53,
-   "trail_pct": 31.26,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 26,
-   "lots": [
-    {
-     "entry_date": "2026-08-20",
-     "fill_date": "2026-08-21",
-     "weight": 0.00742,
-     "sessions_left": 26,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -12.41,
-     "pt_vs_close_pct": 21.29
-    },
-    {
-     "entry_date": "2026-08-21",
-     "fill_date": "2026-08-24",
-     "weight": 0.00792,
-     "sessions_left": 27,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -11.71,
-     "pt_vs_close_pct": 19.53
-    },
-    {
-     "entry_date": "2026-08-24",
-     "fill_date": "2026-08-25",
-     "weight": 0.00658,
-     "sessions_left": 28,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -11.01,
-     "pt_vs_close_pct": 20.0
-    }
-   ]
-  },
-  {
-   "ticker": "CVNA",
-   "target_weight": 0.01175,
-   "current_weight": 0.01175,
-   "ensemble_rank": null,
-   "last_close": 70.28,
-   "stop_pct": -17.18,
-   "profit_take_pct": 24.38,
-   "trail_pct": 21.47,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 2,
-   "lots": [
-    {
-     "entry_date": "2026-07-17",
-     "fill_date": "2026-07-20",
-     "weight": 0.00465,
-     "sessions_left": 2,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -17.25,
-     "pt_vs_close_pct": 31.31
-    },
-    {
-     "entry_date": "2026-07-20",
-     "fill_date": "2026-07-21",
-     "weight": 0.00334,
-     "sessions_left": 3,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -17.74,
-     "pt_vs_close_pct": 24.38
-    },
-    {
-     "entry_date": "2026-07-21",
-     "fill_date": "2026-07-22",
-     "weight": 0.00376,
-     "sessions_left": 4,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -17.18,
-     "pt_vs_close_pct": 24.66
-    }
-   ]
-  },
-  {
-   "ticker": "DE",
-   "target_weight": 0.02192,
-   "current_weight": 0.02192,
-   "ensemble_rank": 0.0094,
-   "last_close": 677.94,
-   "stop_pct": -7.56,
-   "profit_take_pct": 5.32,
-   "trail_pct": 14.07,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 20,
-   "lots": [
-    {
-     "entry_date": "2026-08-12",
-     "fill_date": "2026-08-13",
-     "weight": 0.01356,
-     "sessions_left": 20,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -8.36,
-     "pt_vs_close_pct": 7.82
-    },
-    {
-     "entry_date": "2026-08-19",
-     "fill_date": "2026-08-20",
-     "weight": 0.00836,
-     "sessions_left": 25,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -7.56,
-     "pt_vs_close_pct": 5.32
-    }
-   ]
-  },
-  {
-   "ticker": "DELL",
-   "target_weight": 0.01145,
-   "current_weight": 0.01145,
-   "ensemble_rank": 0.087,
-   "last_close": 506.62,
-   "stop_pct": -22.22,
-   "profit_take_pct": 26.77,
-   "trail_pct": 32.72,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 19,
-   "lots": [
-    {
-     "entry_date": "2026-08-11",
-     "fill_date": "2026-08-12",
-     "weight": 0.00694,
-     "sessions_left": 19,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -25.86,
-     "pt_vs_close_pct": 35.91
-    },
-    {
-     "entry_date": "2026-08-24",
-     "fill_date": "2026-08-25",
-     "weight": 0.0045,
-     "sessions_left": 28,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -22.22,
-     "pt_vs_close_pct": 26.77
-    }
-   ]
-  },
-  {
-   "ticker": "FDX",
-   "target_weight": 0.00971,
-   "current_weight": 0.00971,
-   "ensemble_rank": null,
-   "last_close": 311.8,
-   "stop_pct": -2.39,
-   "profit_take_pct": 16.1,
-   "trail_pct": 10.08,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 3,
-   "lots": [
-    {
-     "entry_date": "2026-07-20",
-     "fill_date": "2026-07-21",
-     "weight": 0.00688,
-     "sessions_left": 3,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -3.57,
-     "pt_vs_close_pct": 18.09
-    },
-    {
-     "entry_date": "2026-07-30",
-     "fill_date": "2026-07-31",
-     "weight": 0.00283,
-     "sessions_left": 11,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -2.39,
-     "pt_vs_close_pct": 16.1
-    }
-   ]
-  },
-  {
-   "ticker": "FIX",
-   "target_weight": 0.03395,
-   "current_weight": 0.03395,
-   "ensemble_rank": 0.2966,
-   "last_close": 1590.81,
-   "stop_pct": -9.18,
-   "profit_take_pct": 36.49,
-   "trail_pct": 19.92,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 1,
-   "lots": [
-    {
-     "entry_date": "2026-07-16",
-     "fill_date": "2026-07-17",
-     "weight": 0.01094,
-     "sessions_left": 1,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -11.46,
-     "pt_vs_close_pct": 36.49
-    },
-    {
-     "entry_date": "2026-07-17",
-     "fill_date": "2026-07-20",
-     "weight": 0.00461,
-     "sessions_left": 2,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -10.55,
-     "pt_vs_close_pct": 45.99
-    },
-    {
-     "entry_date": "2026-08-13",
-     "fill_date": "2026-08-14",
-     "weight": 0.00508,
-     "sessions_left": 21,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -9.18,
-     "pt_vs_close_pct": 46.93
-    },
-    {
-     "entry_date": "2026-08-20",
-     "fill_date": "2026-08-21",
-     "weight": 0.00644,
-     "sessions_left": 26,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -19.44,
-     "pt_vs_close_pct": 46.25
-    },
-    {
-     "entry_date": "2026-08-21",
-     "fill_date": "2026-08-24",
-     "weight": 0.00687,
-     "sessions_left": 27,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -20.61,
-     "pt_vs_close_pct": 39.95
-    }
-   ]
-  },
-  {
-   "ticker": "FLEX",
-   "target_weight": 0.00691,
-   "current_weight": 0.00691,
-   "ensemble_rank": null,
-   "last_close": 108.01,
-   "stop_pct": -17.27,
-   "profit_take_pct": 69.72,
-   "trail_pct": 22.72,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 13,
-   "lots": [
-    {
-     "entry_date": "2026-08-03",
-     "fill_date": "2026-08-04",
-     "weight": 0.00012,
-     "sessions_left": 13,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -17.27,
-     "pt_vs_close_pct": 69.72
-    },
-    {
-     "entry_date": "2026-08-04",
-     "fill_date": "2026-08-05",
-     "weight": 0.00679,
-     "sessions_left": 14,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -18.71,
-     "pt_vs_close_pct": 74.32
-    }
-   ]
-  },
-  {
-   "ticker": "GLW",
-   "target_weight": 0.00075,
-   "current_weight": 0.00075,
-   "ensemble_rank": -0.1132,
-   "last_close": 163.12,
-   "stop_pct": -36.67,
-   "profit_take_pct": 42.76,
-   "trail_pct": 27.86,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 11,
-   "lots": [
-    {
-     "entry_date": "2026-07-30",
-     "fill_date": "2026-07-31",
-     "weight": 0.00075,
-     "sessions_left": 11,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -36.67,
-     "pt_vs_close_pct": 42.76
-    }
-   ]
-  },
-  {
-   "ticker": "HOOD",
-   "target_weight": 0.02537,
-   "current_weight": 0.02537,
-   "ensemble_rank": 0.3606,
-   "last_close": 113.33,
-   "stop_pct": -14.53,
-   "profit_take_pct": 12.66,
-   "trail_pct": 32.63,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 22,
-   "lots": [
-    {
-     "entry_date": "2026-08-14",
-     "fill_date": "2026-08-17",
-     "weight": 0.00912,
-     "sessions_left": 22,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -14.86,
-     "pt_vs_close_pct": 12.66
-    },
-    {
-     "entry_date": "2026-08-20",
-     "fill_date": "2026-08-21",
-     "weight": 0.00713,
-     "sessions_left": 26,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -14.53,
-     "pt_vs_close_pct": 19.53
-    },
-    {
-     "entry_date": "2026-08-28",
-     "fill_date": "2026-08-31",
-     "weight": 0.00559,
-     "sessions_left": 32,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -22.5,
-     "pt_vs_close_pct": 32.16
-    },
-    {
-     "entry_date": "2026-08-31",
-     "fill_date": "2026-09-01",
-     "weight": 0.00069,
-     "sessions_left": 33,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -21.5,
-     "pt_vs_close_pct": 33.34
-    },
-    {
-     "entry_date": "2026-09-01",
-     "fill_date": "2026-09-02",
-     "weight": 0.00284,
-     "sessions_left": 34,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -20.59,
-     "pt_vs_close_pct": 30.16
-    }
-   ]
-  },
-  {
-   "ticker": "JNJ",
-   "target_weight": 0.00629,
-   "current_weight": 0.00629,
-   "ensemble_rank": 0.0723,
-   "last_close": 266.35,
-   "stop_pct": -4.1,
-   "profit_take_pct": 13.44,
-   "trail_pct": 8.8,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 31,
-   "lots": [
-    {
-     "entry_date": "2026-08-27",
-     "fill_date": "2026-08-28",
-     "weight": 0.00629,
-     "sessions_left": 31,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -4.1,
-     "pt_vs_close_pct": 13.44
-    }
-   ]
-  },
-  {
-   "ticker": "LIN",
-   "target_weight": 0.05178,
-   "current_weight": 0.05178,
-   "ensemble_rank": 0.3302,
-   "last_close": 461.62,
-   "stop_pct": -3.67,
-   "profit_take_pct": 18.67,
-   "trail_pct": 7.35,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 19,
-   "lots": [
-    {
-     "entry_date": "2026-08-11",
-     "fill_date": "2026-08-12",
-     "weight": 0.02365,
-     "sessions_left": 19,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -3.67,
-     "pt_vs_close_pct": 20.77
-    },
-    {
-     "entry_date": "2026-08-12",
-     "fill_date": "2026-08-13",
-     "weight": 0.01606,
-     "sessions_left": 20,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -4.04,
-     "pt_vs_close_pct": 19.34
-    },
-    {
-     "entry_date": "2026-08-13",
-     "fill_date": "2026-08-14",
-     "weight": 0.01207,
-     "sessions_left": 21,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -3.71,
-     "pt_vs_close_pct": 18.67
-    }
-   ]
-  },
-  {
-   "ticker": "LITE",
-   "target_weight": 0.04217,
-   "current_weight": 0.04217,
-   "ensemble_rank": 0.3187,
-   "last_close": 935.7,
-   "stop_pct": -29.97,
-   "profit_take_pct": 42.86,
-   "trail_pct": 37.37,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 18,
-   "lots": [
-    {
-     "entry_date": "2026-08-10",
-     "fill_date": "2026-08-11",
-     "weight": 0.00824,
-     "sessions_left": 18,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -37.34,
-     "pt_vs_close_pct": 43.26
-    },
-    {
-     "entry_date": "2026-08-11",
-     "fill_date": "2026-08-12",
-     "weight": 0.00556,
-     "sessions_left": 19,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -35.91,
-     "pt_vs_close_pct": 56.03
-    },
-    {
-     "entry_date": "2026-08-13",
-     "fill_date": "2026-08-14",
-     "weight": 0.00266,
-     "sessions_left": 21,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -39.08,
-     "pt_vs_close_pct": 59.06
-    },
-    {
-     "entry_date": "2026-08-19",
-     "fill_date": "2026-08-20",
-     "weight": 0.00212,
-     "sessions_left": 25,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -38.75,
-     "pt_vs_close_pct": 47.49
-    },
-    {
-     "entry_date": "2026-08-21",
-     "fill_date": "2026-08-24",
-     "weight": 0.00394,
-     "sessions_left": 27,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -36.97,
-     "pt_vs_close_pct": 44.21
-    },
-    {
-     "entry_date": "2026-08-24",
-     "fill_date": "2026-08-25",
-     "weight": 0.00323,
-     "sessions_left": 28,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -36.12,
-     "pt_vs_close_pct": 49.19
-    },
-    {
-     "entry_date": "2026-08-25",
-     "fill_date": "2026-08-26",
-     "weight": 0.00143,
-     "sessions_left": 29,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -36.06,
-     "pt_vs_close_pct": 52.92
-    },
-    {
-     "entry_date": "2026-08-28",
-     "fill_date": "2026-08-31",
-     "weight": 0.00414,
-     "sessions_left": 32,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -34.58,
-     "pt_vs_close_pct": 53.51
-    },
-    {
-     "entry_date": "2026-08-31",
-     "fill_date": "2026-09-01",
-     "weight": 0.00051,
-     "sessions_left": 33,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -33.38,
-     "pt_vs_close_pct": 53.04
-    },
-    {
-     "entry_date": "2026-09-01",
-     "fill_date": "2026-09-02",
-     "weight": 0.00205,
-     "sessions_left": 34,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -32.96,
-     "pt_vs_close_pct": 46.86
-    },
-    {
-     "entry_date": "2026-09-02",
-     "fill_date": "2026-09-03",
-     "weight": 0.00266,
-     "sessions_left": 35,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -31.65,
-     "pt_vs_close_pct": 46.24
-    },
-    {
-     "entry_date": "2026-09-03",
-     "fill_date": "2026-09-04",
-     "weight": 0.00416,
-     "sessions_left": 36,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -30.64,
-     "pt_vs_close_pct": 42.86
-    },
-    {
-     "entry_date": "2026-09-04",
-     "fill_date": "2026-09-08",
-     "weight": 0.00147,
-     "sessions_left": 37,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -29.97,
-     "pt_vs_close_pct": 47.98
-    }
-   ]
-  },
-  {
-   "ticker": "MCD",
-   "target_weight": 0.02468,
-   "current_weight": 0.02468,
-   "ensemble_rank": 0.1709,
-   "last_close": 253.05,
-   "stop_pct": -0.78,
-   "profit_take_pct": 21.23,
-   "trail_pct": 7.38,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 14,
-   "lots": [
-    {
-     "entry_date": "2026-08-04",
-     "fill_date": "2026-08-05",
-     "weight": 0.02468,
-     "sessions_left": 14,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -0.78,
-     "pt_vs_close_pct": 21.23
-    }
-   ]
-  },
-  {
-   "ticker": "MDT",
-   "target_weight": 0.02732,
-   "current_weight": 0.02732,
-   "ensemble_rank": 0.0514,
-   "last_close": 91.62,
-   "stop_pct": -7.35,
-   "profit_take_pct": 8.86,
-   "trail_pct": 8.99,
+   "ticker": "ADBE",
+   "target_weight": 0.06485,
+   "current_weight": 0.06485,
+   "ensemble_rank": 0.0157,
+   "last_close": 252.23,
+   "stop_pct": -4.6,
+   "profit_take_pct": 34.3,
+   "trail_pct": 19.07,
    "levels_basis": "last_close",
    "max_hold_sessions": 40,
    "sessions_left": 16,
    "lots": [
     {
-     "entry_date": "2026-08-06",
-     "fill_date": "2026-08-07",
-     "weight": 0.01467,
-     "sessions_left": 16,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -7.46,
-     "pt_vs_close_pct": 8.86
-    },
-    {
      "entry_date": "2026-08-07",
      "fill_date": "2026-08-10",
-     "weight": 0.01265,
-     "sessions_left": 17,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -7.35,
-     "pt_vs_close_pct": 10.87
-    }
-   ]
-  },
-  {
-   "ticker": "MPWR",
-   "target_weight": 0.15992,
-   "current_weight": 0.15992,
-   "ensemble_rank": 0.2065,
-   "last_close": 1186.08,
-   "stop_pct": -1.11,
-   "profit_take_pct": 28.89,
-   "trail_pct": 16.97,
-   "levels_basis": "last_close",
-   "max_hold_sessions": 40,
-   "sessions_left": 1,
-   "lots": [
-    {
-     "entry_date": "2026-07-16",
-     "fill_date": "2026-07-17",
-     "weight": 0.00953,
-     "sessions_left": 1,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -6.09,
-     "pt_vs_close_pct": 50.68
-    },
-    {
-     "entry_date": "2026-07-17",
-     "fill_date": "2026-07-20",
-     "weight": 0.00402,
-     "sessions_left": 2,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -4.92,
-     "pt_vs_close_pct": 59.74
-    },
-    {
-     "entry_date": "2026-07-20",
-     "fill_date": "2026-07-21",
-     "weight": 0.00303,
-     "sessions_left": 3,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -3.87,
-     "pt_vs_close_pct": 64.68
-    },
-    {
-     "entry_date": "2026-07-28",
-     "fill_date": "2026-07-29",
-     "weight": 0.00509,
-     "sessions_left": 9,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -1.11,
-     "pt_vs_close_pct": 46.78
-    },
-    {
-     "entry_date": "2026-08-05",
-     "fill_date": "2026-08-06",
-     "weight": 0.00966,
-     "sessions_left": 15,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -9.33,
-     "pt_vs_close_pct": 54.89
-    },
-    {
-     "entry_date": "2026-08-06",
-     "fill_date": "2026-08-07",
-     "weight": 0.00633,
+     "weight": 0.00792,
      "sessions_left": 16,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -8.38,
-     "pt_vs_close_pct": 62.11
-    },
-    {
-     "entry_date": "2026-08-10",
-     "fill_date": "2026-08-11",
-     "weight": 0.01425,
-     "sessions_left": 18,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -7.12,
-     "pt_vs_close_pct": 63.54
-    },
-    {
-     "entry_date": "2026-08-11",
-     "fill_date": "2026-08-12",
-     "weight": 0.00957,
-     "sessions_left": 19,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -6.32,
-     "pt_vs_close_pct": 66.68
-    },
-    {
-     "entry_date": "2026-08-12",
-     "fill_date": "2026-08-13",
-     "weight": 0.0069,
-     "sessions_left": 20,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -6.61,
-     "pt_vs_close_pct": 62.17
-    },
-    {
-     "entry_date": "2026-08-13",
-     "fill_date": "2026-08-14",
-     "weight": 0.00496,
-     "sessions_left": 21,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -7.0,
-     "pt_vs_close_pct": 55.71
+     "stop_vs_close_pct": -7.2,
+     "pt_vs_close_pct": 36.4
     },
     {
      "entry_date": "2026-08-14",
      "fill_date": "2026-08-17",
-     "weight": 0.00889,
-     "sessions_left": 22,
+     "weight": 0.00754,
+     "sessions_left": 21,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -6.62,
-     "pt_vs_close_pct": 61.79
+     "stop_vs_close_pct": -7.0,
+     "pt_vs_close_pct": 34.51
     },
     {
      "entry_date": "2026-08-17",
      "fill_date": "2026-08-18",
-     "weight": 0.00289,
-     "sessions_left": 23,
+     "weight": 0.00124,
+     "sessions_left": 22,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -10.5,
-     "pt_vs_close_pct": 54.63
+     "stop_vs_close_pct": -7.31,
+     "pt_vs_close_pct": 34.88
     },
     {
      "entry_date": "2026-08-18",
      "fill_date": "2026-08-19",
-     "weight": 0.0046,
-     "sessions_left": 24,
+     "weight": 0.00497,
+     "sessions_left": 23,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -14.37,
-     "pt_vs_close_pct": 51.62
+     "stop_vs_close_pct": -7.43,
+     "pt_vs_close_pct": 36.27
     },
     {
      "entry_date": "2026-08-19",
      "fill_date": "2026-08-20",
-     "weight": 0.00396,
-     "sessions_left": 25,
+     "weight": 0.00374,
+     "sessions_left": 24,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -13.9,
-     "pt_vs_close_pct": 49.8
+     "stop_vs_close_pct": -7.53,
+     "pt_vs_close_pct": 41.88
     },
     {
      "entry_date": "2026-08-20",
      "fill_date": "2026-08-21",
-     "weight": 0.00704,
-     "sessions_left": 26,
+     "weight": 0.00503,
+     "sessions_left": 25,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -13.12,
-     "pt_vs_close_pct": 49.76
-    },
-    {
-     "entry_date": "2026-08-21",
-     "fill_date": "2026-08-24",
-     "weight": 0.00752,
-     "sessions_left": 27,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -12.71,
-     "pt_vs_close_pct": 46.04
-    },
-    {
-     "entry_date": "2026-08-24",
-     "fill_date": "2026-08-25",
-     "weight": 0.00617,
-     "sessions_left": 28,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -12.3,
-     "pt_vs_close_pct": 46.75
+     "stop_vs_close_pct": -6.78,
+     "pt_vs_close_pct": 40.65
     },
     {
      "entry_date": "2026-08-25",
      "fill_date": "2026-08-26",
-     "weight": 0.00279,
-     "sessions_left": 29,
+     "weight": 0.00466,
+     "sessions_left": 28,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -11.68,
-     "pt_vs_close_pct": 44.84
-    },
-    {
-     "entry_date": "2026-08-26",
-     "fill_date": "2026-08-27",
-     "weight": 0.00415,
-     "sessions_left": 30,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -10.95,
-     "pt_vs_close_pct": 45.82
+     "stop_vs_close_pct": -4.82,
+     "pt_vs_close_pct": 34.3
     },
     {
      "entry_date": "2026-08-27",
      "fill_date": "2026-08-28",
-     "weight": 0.00286,
-     "sessions_left": 31,
+     "weight": 0.00402,
+     "sessions_left": 30,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -12.0,
-     "pt_vs_close_pct": 43.28
-    },
-    {
-     "entry_date": "2026-08-28",
-     "fill_date": "2026-08-31",
-     "weight": 0.00812,
-     "sessions_left": 32,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -14.35,
-     "pt_vs_close_pct": 39.22
+     "stop_vs_close_pct": -5.91,
+     "pt_vs_close_pct": 47.55
     },
     {
      "entry_date": "2026-08-31",
      "fill_date": "2026-09-01",
-     "weight": 0.00101,
-     "sessions_left": 33,
+     "weight": 0.00226,
+     "sessions_left": 32,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -15.67,
-     "pt_vs_close_pct": 36.45
+     "stop_vs_close_pct": -4.6,
+     "pt_vs_close_pct": 45.65
     },
     {
      "entry_date": "2026-09-01",
      "fill_date": "2026-09-02",
-     "weight": 0.00398,
-     "sessions_left": 34,
+     "weight": 0.00263,
+     "sessions_left": 33,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -16.08,
-     "pt_vs_close_pct": 34.35
+     "stop_vs_close_pct": -4.9,
+     "pt_vs_close_pct": 42.91
     },
     {
      "entry_date": "2026-09-02",
      "fill_date": "2026-09-03",
-     "weight": 0.00516,
-     "sessions_left": 35,
+     "weight": 0.00564,
+     "sessions_left": 34,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -15.59,
-     "pt_vs_close_pct": 30.79
+     "stop_vs_close_pct": -4.64,
+     "pt_vs_close_pct": 43.54
     },
     {
      "entry_date": "2026-09-03",
      "fill_date": "2026-09-04",
-     "weight": 0.00811,
-     "sessions_left": 36,
+     "weight": 0.00912,
+     "sessions_left": 35,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -14.98,
-     "pt_vs_close_pct": 34.06
+     "stop_vs_close_pct": -9.91,
+     "pt_vs_close_pct": 37.61
     },
     {
      "entry_date": "2026-09-04",
      "fill_date": "2026-09-08",
-     "weight": 0.00289,
-     "sessions_left": 37,
+     "weight": 0.00608,
+     "sessions_left": 36,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -14.42,
-     "pt_vs_close_pct": 32.31
-    },
-    {
-     "entry_date": "2026-09-08",
-     "fill_date": "2026-09-09",
-     "weight": 0.00644,
-     "sessions_left": 38,
-     "stop_kind": "trail",
-     "stop_vs_close_pct": -14.83,
-     "pt_vs_close_pct": 28.89
+     "stop_vs_close_pct": -16.91,
+     "pt_vs_close_pct": 35.84
     }
    ]
   },
   {
-   "ticker": "TER",
-   "target_weight": 0.00647,
-   "current_weight": 0.00647,
-   "ensemble_rank": 0.218,
-   "last_close": 370.19,
-   "stop_pct": -27.63,
-   "profit_take_pct": 64.53,
-   "trail_pct": 27.62,
+   "ticker": "AMAT",
+   "target_weight": 0.01276,
+   "current_weight": 0.01276,
+   "ensemble_rank": 0.108,
+   "last_close": 456.49,
+   "stop_pct": -17.24,
+   "profit_take_pct": 51.48,
+   "trail_pct": 22.44,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 8,
+   "lots": [
+    {
+     "entry_date": "2026-07-28",
+     "fill_date": "2026-07-29",
+     "weight": 0.00454,
+     "sessions_left": 8,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -17.24,
+     "pt_vs_close_pct": 51.48
+    },
+    {
+     "entry_date": "2026-07-29",
+     "fill_date": "2026-07-30",
+     "weight": 0.00822,
+     "sessions_left": 9,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -19.44,
+     "pt_vs_close_pct": 60.54
+    }
+   ]
+  },
+  {
+   "ticker": "APP",
+   "target_weight": 0.00803,
+   "current_weight": 0.00803,
+   "ensemble_rank": 0.239,
+   "last_close": 323.96,
+   "stop_pct": -23.48,
+   "profit_take_pct": 26.11,
+   "trail_pct": 23.35,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 38,
+   "lots": [
+    {
+     "entry_date": "2026-09-09",
+     "fill_date": "2026-09-10",
+     "weight": 0.00803,
+     "sessions_left": 38,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -23.48,
+     "pt_vs_close_pct": 26.11
+    }
+   ]
+  },
+  {
+   "ticker": "C",
+   "target_weight": 0.01113,
+   "current_weight": 0.01113,
+   "ensemble_rank": 0.0314,
+   "last_close": 138.82,
+   "stop_pct": -11.67,
+   "profit_take_pct": 15.48,
+   "trail_pct": 9.1,
    "levels_basis": "last_close",
    "max_hold_sessions": 40,
    "sessions_left": 15,
    "lots": [
     {
-     "entry_date": "2026-08-05",
-     "fill_date": "2026-08-06",
-     "weight": 0.00647,
+     "entry_date": "2026-08-06",
+     "fill_date": "2026-08-07",
+     "weight": 0.01113,
      "sessions_left": 15,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -27.63,
-     "pt_vs_close_pct": 64.53
+     "stop_vs_close_pct": -11.67,
+     "pt_vs_close_pct": 15.48
+    }
+   ]
+  },
+  {
+   "ticker": "CEG",
+   "target_weight": 0.02618,
+   "current_weight": 0.02618,
+   "ensemble_rank": 0.1551,
+   "last_close": 284.75,
+   "stop_pct": -9.18,
+   "profit_take_pct": 17.28,
+   "trail_pct": 13.89,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 13,
+   "lots": [
+    {
+     "entry_date": "2026-08-04",
+     "fill_date": "2026-08-05",
+     "weight": 0.01172,
+     "sessions_left": 13,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -9.65,
+     "pt_vs_close_pct": 17.28
+    },
+    {
+     "entry_date": "2026-08-05",
+     "fill_date": "2026-08-06",
+     "weight": 0.01446,
+     "sessions_left": 14,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -9.18,
+     "pt_vs_close_pct": 20.0
+    }
+   ]
+  },
+  {
+   "ticker": "CIEN",
+   "target_weight": 0.03087,
+   "current_weight": 0.03087,
+   "ensemble_rank": 0.196,
+   "last_close": 349.54,
+   "stop_pct": -11.5,
+   "profit_take_pct": 58.08,
+   "trail_pct": 30.68,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 13,
+   "lots": [
+    {
+     "entry_date": "2026-08-04",
+     "fill_date": "2026-08-05",
+     "weight": 0.00556,
+     "sessions_left": 13,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -11.92,
+     "pt_vs_close_pct": 75.54
+    },
+    {
+     "entry_date": "2026-08-14",
+     "fill_date": "2026-08-17",
+     "weight": 0.00473,
+     "sessions_left": 21,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -11.5,
+     "pt_vs_close_pct": 86.48
+    },
+    {
+     "entry_date": "2026-08-17",
+     "fill_date": "2026-08-18",
+     "weight": 0.0008,
+     "sessions_left": 22,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -16.79,
+     "pt_vs_close_pct": 78.51
+    },
+    {
+     "entry_date": "2026-08-18",
+     "fill_date": "2026-08-19",
+     "weight": 0.00301,
+     "sessions_left": 23,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -21.23,
+     "pt_vs_close_pct": 79.93
+    },
+    {
+     "entry_date": "2026-08-19",
+     "fill_date": "2026-08-20",
+     "weight": 0.00234,
+     "sessions_left": 24,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -20.07,
+     "pt_vs_close_pct": 71.7
+    },
+    {
+     "entry_date": "2026-08-20",
+     "fill_date": "2026-08-21",
+     "weight": 0.00313,
+     "sessions_left": 25,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -18.98,
+     "pt_vs_close_pct": 68.3
+    },
+    {
+     "entry_date": "2026-08-25",
+     "fill_date": "2026-08-26",
+     "weight": 0.00273,
+     "sessions_left": 28,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -18.08,
+     "pt_vs_close_pct": 63.31
+    },
+    {
+     "entry_date": "2026-08-26",
+     "fill_date": "2026-08-27",
+     "weight": 0.00202,
+     "sessions_left": 29,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -17.71,
+     "pt_vs_close_pct": 73.03
+    },
+    {
+     "entry_date": "2026-08-27",
+     "fill_date": "2026-08-28",
+     "weight": 0.00257,
+     "sessions_left": 30,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -20.24,
+     "pt_vs_close_pct": 66.77
+    },
+    {
+     "entry_date": "2026-08-28",
+     "fill_date": "2026-08-31",
+     "weight": 0.00398,
+     "sessions_left": 31,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -24.05,
+     "pt_vs_close_pct": 58.08
+    }
+   ]
+  },
+  {
+   "ticker": "COHR",
+   "target_weight": 0.01631,
+   "current_weight": 0.01631,
+   "ensemble_rank": 0.0828,
+   "last_close": 305.37,
+   "stop_pct": -27.06,
+   "profit_take_pct": 48.74,
+   "trail_pct": 36.02,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 10,
+   "lots": [
+    {
+     "entry_date": "2026-07-30",
+     "fill_date": "2026-07-31",
+     "weight": 0.0002,
+     "sessions_left": 10,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -27.06,
+     "pt_vs_close_pct": 48.74
+    },
+    {
+     "entry_date": "2026-08-04",
+     "fill_date": "2026-08-05",
+     "weight": 0.00404,
+     "sessions_left": 13,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -30.87,
+     "pt_vs_close_pct": 76.86
+    },
+    {
+     "entry_date": "2026-08-10",
+     "fill_date": "2026-08-11",
+     "weight": 0.00579,
+     "sessions_left": 17,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -41.82,
+     "pt_vs_close_pct": 87.13
+    },
+    {
+     "entry_date": "2026-08-13",
+     "fill_date": "2026-08-14",
+     "weight": 0.00256,
+     "sessions_left": 20,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -40.27,
+     "pt_vs_close_pct": 87.75
+    },
+    {
+     "entry_date": "2026-08-14",
+     "fill_date": "2026-08-17",
+     "weight": 0.00319,
+     "sessions_left": 21,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -38.46,
+     "pt_vs_close_pct": 88.08
+    },
+    {
+     "entry_date": "2026-08-17",
+     "fill_date": "2026-08-18",
+     "weight": 0.00053,
+     "sessions_left": 22,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -44.0,
+     "pt_vs_close_pct": 82.99
+    }
+   ]
+  },
+  {
+   "ticker": "COIN",
+   "target_weight": 0.07345,
+   "current_weight": 0.07345,
+   "ensemble_rank": 0.195,
+   "last_close": 175.26,
+   "stop_pct": -15.45,
+   "profit_take_pct": 14.89,
+   "trail_pct": 29.54,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 14,
+   "lots": [
+    {
+     "entry_date": "2026-08-05",
+     "fill_date": "2026-08-06",
+     "weight": 0.00802,
+     "sessions_left": 14,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -19.34,
+     "pt_vs_close_pct": 18.68
+    },
+    {
+     "entry_date": "2026-08-06",
+     "fill_date": "2026-08-07",
+     "weight": 0.00537,
+     "sessions_left": 15,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -18.84,
+     "pt_vs_close_pct": 19.29
+    },
+    {
+     "entry_date": "2026-08-07",
+     "fill_date": "2026-08-10",
+     "weight": 0.00583,
+     "sessions_left": 16,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -19.4,
+     "pt_vs_close_pct": 24.08
+    },
+    {
+     "entry_date": "2026-08-10",
+     "fill_date": "2026-08-11",
+     "weight": 0.01073,
+     "sessions_left": 17,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -18.97,
+     "pt_vs_close_pct": 20.74
+    },
+    {
+     "entry_date": "2026-08-11",
+     "fill_date": "2026-08-12",
+     "weight": 0.00612,
+     "sessions_left": 18,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -18.02,
+     "pt_vs_close_pct": 19.87
+    },
+    {
+     "entry_date": "2026-08-12",
+     "fill_date": "2026-08-13",
+     "weight": 0.00548,
+     "sessions_left": 19,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -17.11,
+     "pt_vs_close_pct": 17.98
+    },
+    {
+     "entry_date": "2026-08-13",
+     "fill_date": "2026-08-14",
+     "weight": 0.00498,
+     "sessions_left": 20,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -16.77,
+     "pt_vs_close_pct": 19.47
+    },
+    {
+     "entry_date": "2026-08-14",
+     "fill_date": "2026-08-17",
+     "weight": 0.00605,
+     "sessions_left": 21,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -16.59,
+     "pt_vs_close_pct": 16.85
+    },
+    {
+     "entry_date": "2026-08-17",
+     "fill_date": "2026-08-18",
+     "weight": 0.00104,
+     "sessions_left": 22,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -15.83,
+     "pt_vs_close_pct": 15.7
+    },
+    {
+     "entry_date": "2026-08-18",
+     "fill_date": "2026-08-19",
+     "weight": 0.00423,
+     "sessions_left": 23,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -15.45,
+     "pt_vs_close_pct": 14.89
+    },
+    {
+     "entry_date": "2026-08-26",
+     "fill_date": "2026-08-27",
+     "weight": 0.00214,
+     "sessions_left": 29,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -21.26,
+     "pt_vs_close_pct": 53.43
+    },
+    {
+     "entry_date": "2026-09-02",
+     "fill_date": "2026-09-03",
+     "weight": 0.00333,
+     "sessions_left": 34,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -22.06,
+     "pt_vs_close_pct": 50.51
+    },
+    {
+     "entry_date": "2026-09-08",
+     "fill_date": "2026-09-09",
+     "weight": 0.00398,
+     "sessions_left": 37,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -28.24,
+     "pt_vs_close_pct": 55.84
+    },
+    {
+     "entry_date": "2026-09-09",
+     "fill_date": "2026-09-10",
+     "weight": 0.00613,
+     "sessions_left": 38,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -28.56,
+     "pt_vs_close_pct": 43.14
+    }
+   ]
+  },
+  {
+   "ticker": "CRWD",
+   "target_weight": 0.01493,
+   "current_weight": 0.01493,
+   "ensemble_rank": 0.327,
+   "last_close": 206.74,
+   "stop_pct": -10.1,
+   "profit_take_pct": 20.76,
+   "trail_pct": 30.34,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 26,
+   "lots": [
+    {
+     "entry_date": "2026-08-21",
+     "fill_date": "2026-08-24",
+     "weight": 0.0091,
+     "sessions_left": 26,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -10.8,
+     "pt_vs_close_pct": 20.76
+    },
+    {
+     "entry_date": "2026-08-24",
+     "fill_date": "2026-08-25",
+     "weight": 0.00582,
+     "sessions_left": 27,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -10.1,
+     "pt_vs_close_pct": 21.23
+    }
+   ]
+  },
+  {
+   "ticker": "DDOG",
+   "target_weight": 0.0037,
+   "current_weight": 0.0037,
+   "ensemble_rank": 0.2715,
+   "last_close": 221.21,
+   "stop_pct": -27.97,
+   "profit_take_pct": 71.62,
+   "trail_pct": 28.02,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 19,
+   "lots": [
+    {
+     "entry_date": "2026-08-12",
+     "fill_date": "2026-08-13",
+     "weight": 0.0037,
+     "sessions_left": 19,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -27.97,
+     "pt_vs_close_pct": 71.62
+    }
+   ]
+  },
+  {
+   "ticker": "DELL",
+   "target_weight": 0.00888,
+   "current_weight": 0.00888,
+   "ensemble_rank": 0.0734,
+   "last_close": 567.29,
+   "stop_pct": -29.95,
+   "profit_take_pct": 13.21,
+   "trail_pct": 36.28,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 18,
+   "lots": [
+    {
+     "entry_date": "2026-08-11",
+     "fill_date": "2026-08-12",
+     "weight": 0.0049,
+     "sessions_left": 18,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -33.23,
+     "pt_vs_close_pct": 21.38
+    },
+    {
+     "entry_date": "2026-08-24",
+     "fill_date": "2026-08-25",
+     "weight": 0.00398,
+     "sessions_left": 27,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -29.95,
+     "pt_vs_close_pct": 13.21
+    }
+   ]
+  },
+  {
+   "ticker": "ETN",
+   "target_weight": 0.0004,
+   "current_weight": 0.0004,
+   "ensemble_rank": 0.001,
+   "last_close": 425.37,
+   "stop_pct": -11.57,
+   "profit_take_pct": 29.97,
+   "trail_pct": 16.57,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 10,
+   "lots": [
+    {
+     "entry_date": "2026-07-30",
+     "fill_date": "2026-07-31",
+     "weight": 0.0004,
+     "sessions_left": 10,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -11.57,
+     "pt_vs_close_pct": 29.97
+    }
+   ]
+  },
+  {
+   "ticker": "FDX",
+   "target_weight": 0.01502,
+   "current_weight": 0.01502,
+   "ensemble_rank": null,
+   "last_close": 311.99,
+   "stop_pct": -2.45,
+   "profit_take_pct": 16.03,
+   "trail_pct": 9.77,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 2,
+   "lots": [
+    {
+     "entry_date": "2026-07-20",
+     "fill_date": "2026-07-21",
+     "weight": 0.01423,
+     "sessions_left": 2,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -3.63,
+     "pt_vs_close_pct": 18.02
+    },
+    {
+     "entry_date": "2026-07-30",
+     "fill_date": "2026-07-31",
+     "weight": 0.00079,
+     "sessions_left": 10,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -2.45,
+     "pt_vs_close_pct": 16.03
+    }
+   ]
+  },
+  {
+   "ticker": "FIX",
+   "target_weight": 0.01229,
+   "current_weight": 0.01229,
+   "ensemble_rank": 0.2212,
+   "last_close": 1690.82,
+   "stop_pct": -15.84,
+   "profit_take_pct": 37.35,
+   "trail_pct": 21.52,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 1,
+   "lots": [
+    {
+     "entry_date": "2026-07-17",
+     "fill_date": "2026-07-20",
+     "weight": 0.01229,
+     "sessions_left": 1,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -15.84,
+     "pt_vs_close_pct": 37.35
+    }
+   ]
+  },
+  {
+   "ticker": "FLEX",
+   "target_weight": 0.00559,
+   "current_weight": 0.00559,
+   "ensemble_rank": null,
+   "last_close": 115.78,
+   "stop_pct": -24.16,
+   "profit_take_pct": 62.62,
+   "trail_pct": 24.54,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 13,
+   "lots": [
+    {
+     "entry_date": "2026-08-04",
+     "fill_date": "2026-08-05",
+     "weight": 0.00559,
+     "sessions_left": 13,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -24.16,
+     "pt_vs_close_pct": 62.62
+    }
+   ]
+  },
+  {
+   "ticker": "GLW",
+   "target_weight": 0.00071,
+   "current_weight": 0.00071,
+   "ensemble_rank": 0.0451,
+   "last_close": 166.4,
+   "stop_pct": -35.02,
+   "profit_take_pct": 38.27,
+   "trail_pct": 27.18,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 6,
+   "lots": [
+    {
+     "entry_date": "2026-07-24",
+     "fill_date": "2026-07-27",
+     "weight": 0.00071,
+     "sessions_left": 6,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -35.02,
+     "pt_vs_close_pct": 38.27
+    }
+   ]
+  },
+  {
+   "ticker": "HOOD",
+   "target_weight": 0.03301,
+   "current_weight": 0.03301,
+   "ensemble_rank": 0.1992,
+   "last_close": 112.57,
+   "stop_pct": -13.95,
+   "profit_take_pct": 13.42,
+   "trail_pct": 31.64,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 6,
+   "lots": [
+    {
+     "entry_date": "2026-07-24",
+     "fill_date": "2026-07-27",
+     "weight": 0.00094,
+     "sessions_left": 6,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -21.19,
+     "pt_vs_close_pct": 23.85
+    },
+    {
+     "entry_date": "2026-08-14",
+     "fill_date": "2026-08-17",
+     "weight": 0.00668,
+     "sessions_left": 21,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -14.28,
+     "pt_vs_close_pct": 13.42
+    },
+    {
+     "entry_date": "2026-08-20",
+     "fill_date": "2026-08-21",
+     "weight": 0.00448,
+     "sessions_left": 25,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -13.95,
+     "pt_vs_close_pct": 20.34
+    },
+    {
+     "entry_date": "2026-08-28",
+     "fill_date": "2026-08-31",
+     "weight": 0.00408,
+     "sessions_left": 31,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -21.98,
+     "pt_vs_close_pct": 33.05
+    },
+    {
+     "entry_date": "2026-08-31",
+     "fill_date": "2026-09-01",
+     "weight": 0.00143,
+     "sessions_left": 32,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -20.97,
+     "pt_vs_close_pct": 34.24
+    },
+    {
+     "entry_date": "2026-09-01",
+     "fill_date": "2026-09-02",
+     "weight": 0.00169,
+     "sessions_left": 33,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -20.05,
+     "pt_vs_close_pct": 31.04
+    },
+    {
+     "entry_date": "2026-09-08",
+     "fill_date": "2026-09-09",
+     "weight": 0.00369,
+     "sessions_left": 37,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -29.36,
+     "pt_vs_close_pct": 62.81
+    },
+    {
+     "entry_date": "2026-09-09",
+     "fill_date": "2026-09-10",
+     "weight": 0.00571,
+     "sessions_left": 38,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -31.3,
+     "pt_vs_close_pct": 50.49
+    },
+    {
+     "entry_date": "2026-09-10",
+     "fill_date": "2026-09-11",
+     "weight": 0.0043,
+     "sessions_left": 39,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -30.34,
+     "pt_vs_close_pct": 49.98
+    }
+   ]
+  },
+  {
+   "ticker": "HPE",
+   "target_weight": 0.04749,
+   "current_weight": 0.04749,
+   "ensemble_rank": -0.2683,
+   "last_close": 62.09,
+   "stop_pct": -20.25,
+   "profit_take_pct": 9.26,
+   "trail_pct": 30.8,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 22,
+   "lots": [
+    {
+     "entry_date": "2026-08-17",
+     "fill_date": "2026-08-18",
+     "weight": 0.00109,
+     "sessions_left": 22,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -23.42,
+     "pt_vs_close_pct": 21.68
+    },
+    {
+     "entry_date": "2026-08-18",
+     "fill_date": "2026-08-19",
+     "weight": 0.00441,
+     "sessions_left": 23,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -23.3,
+     "pt_vs_close_pct": 21.14
+    },
+    {
+     "entry_date": "2026-08-19",
+     "fill_date": "2026-08-20",
+     "weight": 0.00327,
+     "sessions_left": 24,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -23.74,
+     "pt_vs_close_pct": 16.62
+    },
+    {
+     "entry_date": "2026-08-20",
+     "fill_date": "2026-08-21",
+     "weight": 0.00439,
+     "sessions_left": 25,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -23.02,
+     "pt_vs_close_pct": 15.58
+    },
+    {
+     "entry_date": "2026-08-25",
+     "fill_date": "2026-08-26",
+     "weight": 0.00401,
+     "sessions_left": 28,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -21.41,
+     "pt_vs_close_pct": 13.72
+    },
+    {
+     "entry_date": "2026-08-26",
+     "fill_date": "2026-08-27",
+     "weight": 0.00295,
+     "sessions_left": 29,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -21.37,
+     "pt_vs_close_pct": 18.68
+    },
+    {
+     "entry_date": "2026-08-27",
+     "fill_date": "2026-08-28",
+     "weight": 0.00373,
+     "sessions_left": 30,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -20.84,
+     "pt_vs_close_pct": 13.54
+    },
+    {
+     "entry_date": "2026-08-28",
+     "fill_date": "2026-08-31",
+     "weight": 0.00576,
+     "sessions_left": 31,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -21.1,
+     "pt_vs_close_pct": 12.67
+    },
+    {
+     "entry_date": "2026-08-31",
+     "fill_date": "2026-09-01",
+     "weight": 0.00201,
+     "sessions_left": 32,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -20.45,
+     "pt_vs_close_pct": 10.57
+    },
+    {
+     "entry_date": "2026-09-01",
+     "fill_date": "2026-09-02",
+     "weight": 0.00234,
+     "sessions_left": 33,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -20.25,
+     "pt_vs_close_pct": 9.26
+    },
+    {
+     "entry_date": "2026-09-03",
+     "fill_date": "2026-09-04",
+     "weight": 0.00775,
+     "sessions_left": 35,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -20.68,
+     "pt_vs_close_pct": 13.74
+    },
+    {
+     "entry_date": "2026-09-04",
+     "fill_date": "2026-09-08",
+     "weight": 0.00576,
+     "sessions_left": 36,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -21.27,
+     "pt_vs_close_pct": 11.19
+    }
+   ]
+  },
+  {
+   "ticker": "LIN",
+   "target_weight": 0.04363,
+   "current_weight": 0.04363,
+   "ensemble_rank": 0.2621,
+   "last_close": 466.22,
+   "stop_pct": -4.62,
+   "profit_take_pct": 17.5,
+   "trail_pct": 7.29,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 18,
+   "lots": [
+    {
+     "entry_date": "2026-08-11",
+     "fill_date": "2026-08-12",
+     "weight": 0.01668,
+     "sessions_left": 18,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -4.62,
+     "pt_vs_close_pct": 19.58
+    },
+    {
+     "entry_date": "2026-08-12",
+     "fill_date": "2026-08-13",
+     "weight": 0.01399,
+     "sessions_left": 19,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -4.98,
+     "pt_vs_close_pct": 18.16
+    },
+    {
+     "entry_date": "2026-08-13",
+     "fill_date": "2026-08-14",
+     "weight": 0.01296,
+     "sessions_left": 20,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -4.66,
+     "pt_vs_close_pct": 17.5
+    }
+   ]
+  },
+  {
+   "ticker": "MCD",
+   "target_weight": 0.0203,
+   "current_weight": 0.0203,
+   "ensemble_rank": 0.2327,
+   "last_close": 252.53,
+   "stop_pct": -0.57,
+   "profit_take_pct": 21.48,
+   "trail_pct": 7.16,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 13,
+   "lots": [
+    {
+     "entry_date": "2026-08-04",
+     "fill_date": "2026-08-05",
+     "weight": 0.0203,
+     "sessions_left": 13,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -0.57,
+     "pt_vs_close_pct": 21.48
+    }
+   ]
+  },
+  {
+   "ticker": "MCHP",
+   "target_weight": 0.02135,
+   "current_weight": 0.02135,
+   "ensemble_rank": 0.1237,
+   "last_close": 74.2,
+   "stop_pct": -10.89,
+   "profit_take_pct": 42.6,
+   "trail_pct": 18.65,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 1,
+   "lots": [
+    {
+     "entry_date": "2026-07-17",
+     "fill_date": "2026-07-20",
+     "weight": 0.01269,
+     "sessions_left": 1,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -12.12,
+     "pt_vs_close_pct": 49.82
+    },
+    {
+     "entry_date": "2026-07-20",
+     "fill_date": "2026-07-21",
+     "weight": 0.00744,
+     "sessions_left": 2,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -11.3,
+     "pt_vs_close_pct": 49.83
+    },
+    {
+     "entry_date": "2026-07-24",
+     "fill_date": "2026-07-27",
+     "weight": 0.00122,
+     "sessions_left": 6,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -10.89,
+     "pt_vs_close_pct": 42.6
+    }
+   ]
+  },
+  {
+   "ticker": "MPWR",
+   "target_weight": 0.05307,
+   "current_weight": 0.05307,
+   "ensemble_rank": 0.2767,
+   "last_close": 1234.46,
+   "stop_pct": -4.98,
+   "profit_take_pct": 40.32,
+   "trail_pct": 17.59,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 1,
+   "lots": [
+    {
+     "entry_date": "2026-07-17",
+     "fill_date": "2026-07-20",
+     "weight": 0.0107,
+     "sessions_left": 1,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -8.65,
+     "pt_vs_close_pct": 53.48
+    },
+    {
+     "entry_date": "2026-07-20",
+     "fill_date": "2026-07-21",
+     "weight": 0.00626,
+     "sessions_left": 2,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -7.64,
+     "pt_vs_close_pct": 58.23
+    },
+    {
+     "entry_date": "2026-07-24",
+     "fill_date": "2026-07-27",
+     "weight": 0.00107,
+     "sessions_left": 6,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -5.78,
+     "pt_vs_close_pct": 50.61
+    },
+    {
+     "entry_date": "2026-07-28",
+     "fill_date": "2026-07-29",
+     "weight": 0.00593,
+     "sessions_left": 8,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -4.98,
+     "pt_vs_close_pct": 41.02
+    },
+    {
+     "entry_date": "2026-08-05",
+     "fill_date": "2026-08-06",
+     "weight": 0.00839,
+     "sessions_left": 14,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -12.88,
+     "pt_vs_close_pct": 48.82
+    },
+    {
+     "entry_date": "2026-08-06",
+     "fill_date": "2026-08-07",
+     "weight": 0.00569,
+     "sessions_left": 15,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -11.97,
+     "pt_vs_close_pct": 55.76
+    },
+    {
+     "entry_date": "2026-08-07",
+     "fill_date": "2026-08-10",
+     "weight": 0.00638,
+     "sessions_left": 16,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -11.56,
+     "pt_vs_close_pct": 59.92
+    },
+    {
+     "entry_date": "2026-08-21",
+     "fill_date": "2026-08-24",
+     "weight": 0.00865,
+     "sessions_left": 26,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -16.13,
+     "pt_vs_close_pct": 40.32
+    }
+   ]
+  },
+  {
+   "ticker": "TER",
+   "target_weight": 0.00563,
+   "current_weight": 0.00563,
+   "ensemble_rank": 0.2243,
+   "last_close": 379.72,
+   "stop_pct": -29.45,
+   "profit_take_pct": 60.4,
+   "trail_pct": 27.06,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 14,
+   "lots": [
+    {
+     "entry_date": "2026-08-05",
+     "fill_date": "2026-08-06",
+     "weight": 0.00563,
+     "sessions_left": 14,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -29.45,
+     "pt_vs_close_pct": 60.4
+    }
+   ]
+  },
+  {
+   "ticker": "VRT",
+   "target_weight": 0.00665,
+   "current_weight": 0.00665,
+   "ensemble_rank": 0.3333,
+   "last_close": 257.06,
+   "stop_pct": -18.38,
+   "profit_take_pct": 43.41,
+   "trail_pct": 28.8,
+   "levels_basis": "last_close",
+   "max_hold_sessions": 40,
+   "sessions_left": 26,
+   "lots": [
+    {
+     "entry_date": "2026-08-21",
+     "fill_date": "2026-08-24",
+     "weight": 0.00665,
+     "sessions_left": 26,
+     "stop_kind": "trail",
+     "stop_vs_close_pct": -18.38,
+     "pt_vs_close_pct": 43.41
     }
    ]
   },
   {
    "ticker": "VST",
-   "target_weight": 0.01575,
-   "current_weight": 0.01575,
+   "target_weight": 0.02363,
+   "current_weight": 0.02363,
    "ensemble_rank": null,
-   "last_close": 147.05,
-   "stop_pct": -12.92,
-   "profit_take_pct": 29.1,
-   "trail_pct": 15.23,
+   "last_close": 148.38,
+   "stop_pct": -13.7,
+   "profit_take_pct": 27.94,
+   "trail_pct": 14.83,
    "levels_basis": "last_close",
    "max_hold_sessions": 40,
-   "sessions_left": 9,
+   "sessions_left": 8,
    "lots": [
     {
      "entry_date": "2026-07-28",
      "fill_date": "2026-07-29",
-     "weight": 0.00696,
-     "sessions_left": 9,
+     "weight": 0.00811,
+     "sessions_left": 8,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -12.92,
-     "pt_vs_close_pct": 29.1
+     "stop_vs_close_pct": -13.7,
+     "pt_vs_close_pct": 27.94
     },
     {
      "entry_date": "2026-07-29",
      "fill_date": "2026-07-30",
-     "weight": 0.00719,
-     "sessions_left": 10,
+     "weight": 0.01507,
+     "sessions_left": 9,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -13.44,
-     "pt_vs_close_pct": 29.2
+     "stop_vs_close_pct": -14.21,
+     "pt_vs_close_pct": 28.05
     },
     {
      "entry_date": "2026-07-30",
      "fill_date": "2026-07-31",
-     "weight": 0.0016,
-     "sessions_left": 11,
+     "weight": 0.00044,
+     "sessions_left": 10,
      "stop_kind": "trail",
-     "stop_vs_close_pct": -13.91,
-     "pt_vs_close_pct": 33.25
+     "stop_vs_close_pct": -14.68,
+     "pt_vs_close_pct": 32.05
     }
    ]
   }
@@ -1817,39 +1861,39 @@
   {
    "ticker": "FIX",
    "target_weight": 0.0,
-   "current_weight": 0.01021,
-   "last_close": 1590.81,
-   "reason": "vertical barrier: MOO sell at the next open (entered 2026-07-15)",
+   "current_weight": 0.01332,
+   "last_close": 1690.82,
+   "reason": "vertical barrier: MOO sell at the next open (entered 2026-07-16)",
    "lots": [
     {
-     "entry_date": "2026-07-15",
-     "weight": 0.01021
+     "entry_date": "2026-07-16",
+     "weight": 0.01332
     }
    ]
   },
   {
-   "ticker": "MCK",
+   "ticker": "MCHP",
    "target_weight": 0.0,
-   "current_weight": 0.02433,
-   "last_close": 880.86,
-   "reason": "vertical barrier: MOO sell at the next open (entered 2026-07-15)",
+   "current_weight": 0.01377,
+   "last_close": 74.2,
+   "reason": "vertical barrier: MOO sell at the next open (entered 2026-07-16)",
    "lots": [
     {
-     "entry_date": "2026-07-15",
-     "weight": 0.02433
+     "entry_date": "2026-07-16",
+     "weight": 0.01377
     }
    ]
   },
   {
    "ticker": "MPWR",
    "target_weight": 0.0,
-   "current_weight": 0.00887,
-   "last_close": 1186.08,
-   "reason": "vertical barrier: MOO sell at the next open (entered 2026-07-15)",
+   "current_weight": 0.0116,
+   "last_close": 1234.46,
+   "reason": "vertical barrier: MOO sell at the next open (entered 2026-07-16)",
    "lots": [
     {
-     "entry_date": "2026-07-15",
-     "weight": 0.00887
+     "entry_date": "2026-07-16",
+     "weight": 0.0116
     }
    ]
   }

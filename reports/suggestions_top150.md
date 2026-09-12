@@ -1,42 +1,43 @@
-# Event-engine book for next open (signals @ close 2026-09-10)
+# Event-engine book for next open (signals @ close 2026-09-11)
 
-- Names: 29, gross long 1.00 (entering 0.06 + held 0.94), budget x1.04, cap scale x0.87
-- Heads valid RankIC: lgbm_h5 0.040, lgbm_h20 0.058, lgbm_h60 0.034
+- Names: 30, gross long 1.00 (entering 0.05 + held 0.95), budget x0.91, cap scale x0.78
+- Heads valid RankIC: lgbm_h5 0.039, lgbm_h20 0.061, lgbm_h60 0.037
 - Training: update (warm update on champions (last full fit 4 sessions old)) — lgbm_h5 kept champion, lgbm_h20 kept champion, lgbm_h60 kept champion
 
 | ticker | action | weight | rank | last close | stop % | PT % | trail % | sessions left | levels vs |
 |---|---|---|---|---|---|---|---|---|---|
-| SBUX | BUY (new lot 1.548% + held 5.637%) | 7.185% | +0.367 | 99.22 | -13.43% | +13.43% | -8.95% | 40 | fill |
-| AZO | BUY (new lot 1.453% + held 14.136%) | 15.589% | +0.458 | 2881.47 | -14.31% | +14.31% | -9.54% | 40 | fill |
-| HD | BUY (new lot 1.446% + held 7.256%) | 8.702% | +0.384 | 305.69 | -14.38% | +14.38% | -9.58% | 40 | fill |
-| DASH | BUY (new lot 0.832%) | 0.832% | +0.409 | 201.03 | -24.99% | +24.99% | -16.66% | 40 | fill |
-| ADBE | BUY (new lot 0.709%) | 0.709% | +0.395 | 248.83 | -29.34% | +29.34% | -19.56% | 40 | fill |
-| AMAT | HOLD (2 lots) | 0.782% | +0.104 | 454.01 | -16.79% | +52.3% | -23.13% | 9 | last close |
-| APP | HOLD (1 lot) | 0.721% | +0.290 | 314.49 | -23.1% | +29.9% | -23.61% | 39 | last close |
-| CEG | HOLD (2 lots) | 3.088% | +0.123 | 285.97 | -9.57% | +16.78% | -14.31% | 14 | last close |
-| CIEN | HOLD (9 lots) | 3.153% | +0.223 | 334.56 | -7.54% | +65.16% | -30.86% | 22 | last close |
-| CMCSA | HOLD (1 lot) | 0.023% | +0.167 | 25.17 | -9.94% | +21.83% | -15.4% | 13 | last close |
-| COHR | HOLD (6 lots) | 1.838% | +0.185 | 293.17 | -24.02% | +54.93% | -36.58% | 11 | last close |
-| COIN | HOLD (18 lots) | 9.568% | +0.243 | 172.28 | -13.99% | +16.88% | -30.35% | 13 | last close |
-| CRWD | HOLD (3 lots) | 2.192% | +0.163 | 208.86 | -11.01% | +19.53% | -31.26% | 26 | last close |
-| CVNA | HOLD (3 lots) | 1.175% | nan | 70.28 | -17.18% | +24.38% | -21.47% | 2 | last close |
-| DE | HOLD (2 lots) | 2.192% | +0.009 | 677.94 | -7.56% | +5.32% | -14.07% | 20 | last close |
-| DELL | HOLD (2 lots) | 1.145% | +0.087 | 506.62 | -22.22% | +26.77% | -32.72% | 19 | last close |
-| FDX | HOLD (2 lots) | 0.971% | nan | 311.8 | -2.39% | +16.1% | -10.08% | 3 | last close |
-| FIX | HOLD (5 lots) | 3.395% | +0.297 | 1590.81 | -9.18% | +36.49% | -19.92% | 1 | last close |
-| FLEX | HOLD (2 lots) | 0.691% | nan | 108.01 | -17.27% | +69.72% | -22.72% | 13 | last close |
-| GLW | HOLD (1 lot) | 0.075% | -0.113 | 163.12 | -36.67% | +42.76% | -27.86% | 11 | last close |
-| HOOD | HOLD (5 lots) | 2.537% | +0.361 | 113.33 | -14.53% | +12.66% | -32.63% | 22 | last close |
-| JNJ | HOLD (1 lot) | 0.629% | +0.072 | 266.35 | -4.1% | +13.44% | -8.8% | 31 | last close |
-| LIN | HOLD (3 lots) | 5.178% | +0.330 | 461.62 | -3.67% | +18.67% | -7.35% | 19 | last close |
-| LITE | HOLD (13 lots) | 4.217% | +0.319 | 935.7 | -29.97% | +42.86% | -37.37% | 18 | last close |
-| MCD | HOLD (1 lot) | 2.468% | +0.171 | 253.05 | -0.78% | +21.23% | -7.38% | 14 | last close |
-| MDT | HOLD (2 lots) | 2.732% | +0.051 | 91.62 | -7.35% | +8.86% | -8.99% | 16 | last close |
-| MPWR | HOLD (27 lots) | 15.992% | +0.206 | 1186.08 | -1.11% | +28.89% | -16.97% | 1 | last close |
-| TER | HOLD (1 lot) | 0.647% | +0.218 | 370.19 | -27.63% | +64.53% | -27.62% | 15 | last close |
-| VST | HOLD (3 lots) | 1.575% | nan | 147.05 | -12.92% | +29.1% | -15.23% | 9 | last close |
-| FIX | SELL at open | 0 |  | 1590.81 |  |  |  | 0 | vertical barrier: MOO sell at the next o |
-| MCK | SELL at open | 0 |  | 880.86 |  |  |  | 0 | vertical barrier: MOO sell at the next o |
-| MPWR | SELL at open | 0 |  | 1186.08 |  |  |  | 0 | vertical barrier: MOO sell at the next o |
+| SBUX | BUY (new lot 1.328% + held 8.491%) | 9.819% | +0.380 | 98.74 | -13.07% | +13.07% | -8.71% | 40 | fill |
+| AZO | BUY (new lot 1.250% + held 16.330%) | 17.581% | +0.463 | 2876.75 | -13.88% | +13.88% | -9.25% | 40 | fill |
+| COF | BUY (new lot 1.116% + held 9.767%) | 10.882% | +0.362 | 208.3 | -15.55% | +15.55% | -10.37% | 40 | fill |
+| DASH | BUY (new lot 0.716% + held 0.843%) | 1.558% | +0.403 | 201.95 | -24.24% | +24.24% | -16.16% | 40 | fill |
+| LITE | BUY (new lot 0.319% + held 3.855%) | 4.174% | +0.388 | 927.03 | -54.37% | +54.37% | -36.25% | 40 | fill |
+| ADBE | HOLD (13 lots) | 6.485% | +0.016 | 252.23 | -4.6% | +34.3% | -19.07% | 16 | last close |
+| AMAT | HOLD (2 lots) | 1.276% | +0.108 | 456.49 | -17.24% | +51.48% | -22.44% | 8 | last close |
+| APP | HOLD (1 lot) | 0.803% | +0.239 | 323.96 | -23.48% | +26.11% | -23.35% | 38 | last close |
+| C | HOLD (1 lot) | 1.113% | +0.031 | 138.82 | -11.67% | +15.48% | -9.1% | 15 | last close |
+| CEG | HOLD (2 lots) | 2.618% | +0.155 | 284.75 | -9.18% | +17.28% | -13.89% | 13 | last close |
+| CIEN | HOLD (10 lots) | 3.087% | +0.196 | 349.54 | -11.5% | +58.08% | -30.68% | 13 | last close |
+| COHR | HOLD (6 lots) | 1.631% | +0.083 | 305.37 | -27.06% | +48.74% | -36.02% | 10 | last close |
+| COIN | HOLD (14 lots) | 7.345% | +0.195 | 175.26 | -15.45% | +14.89% | -29.54% | 14 | last close |
+| CRWD | HOLD (2 lots) | 1.493% | +0.327 | 206.74 | -10.1% | +20.76% | -30.34% | 26 | last close |
+| DDOG | HOLD (1 lot) | 0.370% | +0.272 | 221.21 | -27.97% | +71.62% | -28.02% | 19 | last close |
+| DELL | HOLD (2 lots) | 0.888% | +0.073 | 567.29 | -29.95% | +13.21% | -36.28% | 18 | last close |
+| ETN | HOLD (1 lot) | 0.040% | +0.001 | 425.37 | -11.57% | +29.97% | -16.57% | 10 | last close |
+| FDX | HOLD (2 lots) | 1.502% | nan | 311.99 | -2.45% | +16.03% | -9.77% | 2 | last close |
+| FIX | HOLD (1 lot) | 1.229% | +0.221 | 1690.82 | -15.84% | +37.35% | -21.52% | 1 | last close |
+| FLEX | HOLD (1 lot) | 0.559% | nan | 115.78 | -24.16% | +62.62% | -24.54% | 13 | last close |
+| GLW | HOLD (1 lot) | 0.071% | +0.045 | 166.4 | -35.02% | +38.27% | -27.18% | 6 | last close |
+| HOOD | HOLD (9 lots) | 3.301% | +0.199 | 112.57 | -13.95% | +13.42% | -31.64% | 6 | last close |
+| HPE | HOLD (12 lots) | 4.749% | -0.268 | 62.09 | -20.25% | +9.26% | -30.8% | 22 | last close |
+| LIN | HOLD (3 lots) | 4.363% | +0.262 | 466.22 | -4.62% | +17.5% | -7.29% | 18 | last close |
+| MCD | HOLD (1 lot) | 2.030% | +0.233 | 252.53 | -0.57% | +21.48% | -7.16% | 13 | last close |
+| MCHP | HOLD (3 lots) | 2.135% | +0.124 | 74.2 | -10.89% | +42.6% | -18.65% | 1 | last close |
+| MPWR | HOLD (8 lots) | 5.307% | +0.277 | 1234.46 | -4.98% | +40.32% | -17.59% | 1 | last close |
+| TER | HOLD (1 lot) | 0.563% | +0.224 | 379.72 | -29.45% | +60.4% | -27.06% | 14 | last close |
+| VRT | HOLD (1 lot) | 0.665% | +0.333 | 257.06 | -18.38% | +43.41% | -28.8% | 26 | last close |
+| VST | HOLD (3 lots) | 2.363% | nan | 148.38 | -13.7% | +27.94% | -14.83% | 8 | last close |
+| FIX | SELL at open | 0 |  | 1690.82 |  |  |  | 0 | vertical barrier: MOO sell at the next o |
+| MCHP | SELL at open | 0 |  | 74.2 |  |  |  | 0 | vertical barrier: MOO sell at the next o |
+| MPWR | SELL at open | 0 |  | 1234.46 |  |  |  | 0 | vertical barrier: MOO sell at the next o |
 
 _Vertical exit: MOO 40 sessions after entry. Trailing stop: each night raise the stop to the high since fill minus trail %, never below the fixed stop. HOLD rows price the most binding lot's levels off the last close. Research tooling, not financial advice._
