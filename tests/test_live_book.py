@@ -11,7 +11,7 @@ from src.config import Cfg, load_config
 
 
 def _cfg(h=10, tranches=10):
-    cfg, _ = load_config('configs/system_top150.yaml')
+    cfg, _ = load_config('configs/system_core105.yaml')
     d = cfg.to_dict()
     d["barrier"]["h_days"] = h
     d["port"]["tranches"] = tranches

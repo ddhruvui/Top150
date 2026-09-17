@@ -10,14 +10,19 @@ Runs ON the pod (the day-files only exist on the volume). Steps:
     10% hysteresis + min_price filter (Q-003 mechanics, next-session inclusion
     applied downstream) -> universe_membership.parquet (date, ticker  rows at
     monthly refresh granularity).
+    FIXED-LIST MODE: when the config named by SYSTEM_CONFIG carries
+    universe.tickers, that list IS the universe — no ranking, no hysteresis, no
+    min_price, no fund exclusion — and each name is a member from the first
+    month-end it has prices (never back-dated to before it listed).
  3. Workset = every name ever selected  (+ Sharadar SP500 ever-members)  ->
     workset_prices/part-YYYY.parquet — the compact panel Stage 1+ actually loads.
+    In fixed-list mode the workset is exactly the list.
 
-Outputs land in MARKET_DIR (default /workspace/results/Top150/m1x150). EODHD `adjusted_close` is
+Outputs land in MARKET_DIR (default /workspace/results/Core105/m1x105). EODHD `adjusted_close` is
 the fallback total-return factor source for names Sharadar doesn't cover; the
 M1 adjustment_factors override where present (handled at panel-build time).
 
-Env: EOD_BULK_DIR, MARKET_DIR, M1_DIR, UNIVERSE_SIZE, MIN_PRICE.
+Env: EOD_BULK_DIR, MARKET_DIR, M1_DIR, UNIVERSE_SIZE, MIN_PRICE, SYSTEM_CONFIG.
 """
 from __future__ import annotations
 
@@ -35,7 +40,7 @@ import pandas as pd
 BULK_DIR = Path(os.environ.get("EOD_BULK_DIR", "/workspace/data/eod_bulk/US"))
 # Never the volume-root m1x/: on the mounted data volume that is the download
 # system's parsed tree, which this repo only reads.
-MARKET_DIR = Path(os.environ.get("MARKET_DIR", "/workspace/results/Top150/m1x150"))
+MARKET_DIR = Path(os.environ.get("MARKET_DIR", "/workspace/results/Core105/m1x105"))
 # Read location for the per-year market_prices parts. Defaults to this build's
 # own output; point it at an EXISTING build (e.g. the production m1x pulled
 # read-only over S3) together with SKIP_BULK=1 to re-derive membership/workset
@@ -55,6 +60,40 @@ PRUNE_K = int(os.environ.get("PRUNE_K", "3000"))
 ENTITIES_PATH = os.environ.get("ENTITIES_PATH", "")
 
 KEEP = ["date", "ticker", "open", "high", "low", "close", "adjusted_close", "volume"]
+
+
+def _fixed_universe() -> list[str] | None:
+    """universe.tickers from SYSTEM_CONFIG, or None for the dollar-volume ranking.
+
+    The list lives in the hashed config on purpose: config_hash is the SHA-256 of
+    that file, so changing the universe forces a full refit downstream.
+    """
+    cfg_path = os.environ.get("SYSTEM_CONFIG", "")
+    if not cfg_path:
+        return None
+    p = Path(cfg_path)
+    if not p.is_absolute():
+        p = Path(__file__).resolve().parents[2] / cfg_path
+    if not p.exists():
+        print(f"WARN SYSTEM_CONFIG={cfg_path} not found — using the ranking path",
+              flush=True)
+        return None
+    import yaml
+    cfg = yaml.safe_load(p.read_text()) or {}
+    raw = ((cfg.get("universe") or {}).get("tickers")) or None
+    if raw is None:
+        return None
+    # YAML 1.1 turns an unquoted ON into True (ON Semiconductor) — the config
+    # quotes every ticker, and a stray bool here means someone unquoted one.
+    bad = [t for t in raw if not isinstance(t, str) or not t.strip()]
+    if bad:
+        sys.exit(f"FATAL: universe.tickers holds non-string entries {bad!r} — "
+                 "quote every ticker in the config (YAML reads ON/NO as booleans)")
+    out, seen = [], set()
+    for t in (str(x).strip().upper() for x in raw):
+        if t not in seen:
+            seen.add(t); out.append(t)
+    return out
 
 
 def _load_json(p: str):
@@ -134,6 +173,41 @@ def _eligible_stocks() -> set[str] | None:
     return stocks
 
 
+def step2_universe_fixed(years: list[int], tickers: list[str]) -> pd.DataFrame:
+    """The configured list IS the universe; membership starts at first price."""
+    frames = []
+    for y in years:
+        p = MP_DIR / f"part-{y}.parquet"
+        if not p.exists():
+            continue
+        frames.append(pd.read_parquet(p, columns=["date", "ticker"],
+                                      filters=[("ticker", "in", tickers)]))
+    if not frames:
+        sys.exit(f"FATAL: no market_prices parts under {MP_DIR}")
+    px = pd.concat(frames, ignore_index=True)
+    px["date"] = pd.to_datetime(px["date"])
+    first = px.groupby(px["ticker"].astype(str))["date"].min()
+    missing = [t for t in tickers if t not in first.index]
+    if missing:
+        sys.exit(f"FATAL: {len(missing)} configured ticker(s) have no prices on the "
+                 f"tape at all: {missing} — fix universe.tickers (tape spelling, "
+                 "e.g. BRK-B not BRK.B) or wait for the download system to cover them")
+    sess = pd.DatetimeIndex(sorted(px["date"].unique()))
+    me = pd.DatetimeIndex(sess.to_series().groupby([sess.year, sess.month]).max())
+    rows = [{"refresh_date": d, "ticker": t} for d in me for t in tickers if first[t] <= d]
+    mem = pd.DataFrame(rows)
+    MARKET_DIR.mkdir(parents=True, exist_ok=True)
+    mem.to_parquet(MARKET_DIR / "universe_membership.parquet", index=False)
+    late = {t: str(first[t].date()) for t in tickers if first[t] > me[0]}
+    print(f"universe_membership (FIXED list): {len(mem):,} rows over {len(me)} "
+          f"refreshes, {mem['ticker'].nunique()} names; {len(late)} joined after the "
+          f"first refresh", flush=True)
+    if late:
+        print("  first price: " + ", ".join(f"{t}@{d}" for t, d in sorted(late.items())),
+              flush=True)
+    return mem
+
+
 def step2_universe(years: list[int]) -> pd.DataFrame:
     """Monthly top-N by 63d median dollar volume, hysteresis, min_price."""
     eligible = _eligible_stocks()
@@ -198,9 +272,11 @@ def step2_universe(years: list[int]) -> pd.DataFrame:
     return mem
 
 
-def step3_workset(years: list[int], mem: pd.DataFrame) -> None:
+def step3_workset(years: list[int], mem: pd.DataFrame, fixed: bool = False) -> None:
     workset = set(mem["ticker"].unique())
-    sp = _load_json(str(NASDAQ_DIR / "SP500" / "SHARADAR.json"))
+    # A fixed universe is exactly itself: no SP500 union, which would drag in
+    # hundreds of names the book must never hold.
+    sp = None if fixed else _load_json(str(NASDAQ_DIR / "SP500" / "SHARADAR.json"))
     if sp:
         workset |= {r.get("ticker") for r in sp if r.get("ticker")}
     print(f"workset: {len(workset):,} names", flush=True)
@@ -217,7 +293,8 @@ def step3_workset(years: list[int], mem: pd.DataFrame) -> None:
         "hysteresis": HYSTERESIS, "dv_window": DV_WINDOW,
         "workset_names": len(workset),
         "market_prices_dir": str(MP_DIR),
-        "eligible_stock_filter": bool(ENTITIES_PATH)}))
+        "universe_mode": "fixed_list" if fixed else "top_dollar_volume",
+        "eligible_stock_filter": bool(ENTITIES_PATH) and not fixed}))
     print("workset_prices written", flush=True)
 
 
@@ -238,8 +315,15 @@ def main() -> int:
         if not years:
             print("FATAL: no day-files parsed", file=sys.stderr)
             return 1
-    mem = step2_universe(years)
-    step3_workset(years, mem)
+    fixed = _fixed_universe()
+    if fixed:
+        print(f"universe: FIXED list of {len(fixed)} names from "
+              f"{os.environ.get('SYSTEM_CONFIG')} (no ranking, no fund exclusion)",
+              flush=True)
+        mem = step2_universe_fixed(years, fixed)
+    else:
+        mem = step2_universe(years)
+    step3_workset(years, mem, fixed=bool(fixed))
     return 0
 
 

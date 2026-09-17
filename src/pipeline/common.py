@@ -52,12 +52,22 @@ def prepare(cfg, m1_dir: str, eod_dir: str, market_dir: str | None = None,
     if market_dir:
         from src.data.market import membership_mask, fund_tickers
         ents = m1.entities()
-        known = set(ents["ticker"].astype(str)) |             {t.replace(".", "-") for t in ents["ticker"].astype(str)}
-        aliens = {t for t in map(str, panel.tickers) if t not in known}
-        print(f"universe discipline: {len(aliens)} names lack a Sharadar entity "
-              f"identity -> excluded (D-13/G-05)", flush=True)
+        # A fixed universe (cfg.universe.tickers) is an explicit list: nothing in
+        # it needs excluding — and the fund rule would drop deliberate ETF
+        # members such as SPY and QQQ.
+        fixed = list(getattr(cfg.universe, "tickers", []) or [])
+        if fixed:
+            print(f"universe: FIXED list of {len(fixed)} names — fund/entity "
+                  f"exclusions do not apply", flush=True)
+            exclude: set[str] = set()
+        else:
+            known = set(ents["ticker"].astype(str)) |             {t.replace(".", "-") for t in ents["ticker"].astype(str)}
+            aliens = {t for t in map(str, panel.tickers) if t not in known}
+            print(f"universe discipline: {len(aliens)} names lack a Sharadar entity "
+                  f"identity -> excluded (D-13/G-05)", flush=True)
+            exclude = fund_tickers(ents) | aliens
         mask = membership_mask(market_dir, panel.dates, panel.tickers,
-                               exclude=fund_tickers(ents) | aliens)
+                               exclude=exclude)
         mask &= panel.raw_close.notna()
     else:
         mask = top_dollar_volume_mask(

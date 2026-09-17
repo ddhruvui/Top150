@@ -7,7 +7,7 @@
 # VOLUME CONTRACT. /workspace is crimtr8kbf — the one data volume. Its root (data/,
 # m1/, m1x/, ...) belongs to a SEPARATE download system and is never written from
 # here. EVERYTHING this pod writes goes under RESULTS_DIR: its log and restart
-# marker, m1x150, derived, models, ledger, reports. Enforced below, not by habit:
+# marker, m1x105, derived, models, ledger, reports. Enforced below, not by habit:
 #   - the code bundle unpacks onto CONTAINER disk and the job runs from there, so a
 #     relative path can never land on the volume;
 #   - every input path is a /scratch copy pulled by read-only S3 GETs — the job
@@ -15,7 +15,7 @@
 #   - every write path is resolved (symlinks included) and must sit under
 #     RESULTS_DIR, or the job does not run (ec=95).
 set +e
-RESULTS_DIR="/workspace/results/Top150"      # == VOL_RESULTS in scripts/_common.sh
+RESULTS_DIR="/workspace/results/Core105"      # == VOL_RESULTS in scripts/_common.sh
 VOLUME_OK=1
 # Stat only: proves the data volume is what is mounted (a missing mount would make
 # /workspace a container dir and every output would vanish with the pod).
@@ -44,7 +44,7 @@ else
 
   # Container disk, never the volume: per-pod, so concurrent pods cannot delete
   # each other's code, and no relative write from the job can reach /workspace.
-  WORKDIR="/opt/top150/src_${JOB:-stage1}"
+  WORKDIR="/opt/core105/src_${JOB:-stage1}"
   case "$WORKDIR" in /workspace/*) echo "FATAL: code must not unpack onto the volume"; WORKDIR="" ;; esac
   if [ -n "$WORKDIR" ] && rm -rf "$WORKDIR" && mkdir -p "$WORKDIR" && cd "$WORKDIR" && \
      tar xzf "$RESULTS_DIR/code/predict/bundle.tgz" --no-same-owner -m; then
@@ -67,7 +67,7 @@ else
     if [ -z "${SRC_VOLUME_ID:-}" ]; then
       echo "FATAL: SRC_VOLUME_ID unset — refusing to run."
       echo "  Without it there is no /scratch snapshot to compute on. Launch through"
-      echo "  scripts/launch_top150.sh, which always wires the read-only source."
+      echo "  scripts/launch_core105.sh, which always wires the read-only source."
       PREFETCH_FAIL="SRC_VOLUME_ID unset"
     else
       echo "prefetch: s3://${SRC_VOLUME_ID} -> /scratch (read-only GETs)"
@@ -96,7 +96,7 @@ else
             || PREFETCH_FAIL="data_finbert"
           export FINBERT_DIR=/scratch/data_finbert
           # F9 news slice: only the workset tickers of this experiment's universe
-          MEM="${MARKET_DIR:-$RESULTS_DIR/m1x150}/universe_membership.parquet"
+          MEM="${MARKET_DIR:-$RESULTS_DIR/m1x105}/universe_membership.parquet"
           if [ -f "$MEM" ]; then
             INC=()
             while IFS= read -r t; do [ -n "$t" ] && INC+=(--include "${t}.json"); done \
@@ -133,7 +133,7 @@ print("\n".join(sorted(pd.read_parquet(os.environ["MEM"])["ticker"].astype(str).
     export NASDAQ_DIR=/scratch/data_nasdaq EOD_BULK_DIR=/scratch/data/eod_bulk/US
     export FINBERT_DIR="${FINBERT_DIR:-/scratch/data_finbert}"
     # ---- outputs: RESULTS_DIR only -------------------------------------------
-    export MARKET_DIR="${MARKET_DIR:-$RESULTS_DIR/m1x150}"
+    export MARKET_DIR="${MARKET_DIR:-$RESULTS_DIR/m1x105}"
     export OUT_DIR="${OUT_DIR:-$RESULTS_DIR/derived/${JOB:-stage1}}"
     export SCORES_DIR="${SCORES_DIR:-$RESULTS_DIR/derived/stage2}"
     export SCORES_DIR_ALT="${SCORES_DIR_ALT:-$RESULTS_DIR/derived/stage1}"
@@ -143,7 +143,7 @@ print("\n".join(sorted(pd.read_parquet(os.environ["MEM"])["ticker"].astype(str).
     # set: predict otherwise falls back to the config's /workspace/models, which on
     # this mount is the volume root.
     export MODEL_DIR="${MODEL_DIR:-$RESULTS_DIR/models}"
-    export BUNDLE_OUT="$RESULTS_DIR/reports/${BUNDLE:-top150}"
+    export BUNDLE_OUT="$RESULTS_DIR/reports/${BUNDLE:-core105}"
     export REFIT="${REFIT:-auto}"
     GUARD_FAIL=""
     for k in M1_DIR EOD_DIR NASDAQ_DIR EOD_BULK_DIR FINBERT_DIR MARKET_PRICES_DIR ENTITIES_PATH; do
@@ -151,7 +151,7 @@ print("\n".join(sorted(pd.read_parquet(os.environ["MEM"])["ticker"].astype(str).
       case "${!k}/" in /scratch/?*) ;; *) GUARD_FAIL="$GUARD_FAIL $k=${!k}(input-not-scratch)" ;; esac
     done
     # Both sides resolved (symlinks included), so neither a link planted under
-    # results/Top150 nor a '..' can carry a write path out of it.
+    # results/Core105 nor a '..' can carry a write path out of it.
     realp() { python -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$1" 2>/dev/null; }
     RESULTS_REAL=$(realp "$RESULTS_DIR")
     [ -n "$RESULTS_REAL" ] || GUARD_FAIL="$GUARD_FAIL RESULTS_DIR(unresolvable)"
@@ -162,7 +162,7 @@ print("\n".join(sorted(pd.read_parquet(os.environ["MEM"])["ticker"].astype(str).
     if [ -z "$PREFETCH_FAIL" ] && [ -n "$GUARD_FAIL" ]; then
       echo "FATAL: path outside the contract —$GUARD_FAIL"
       echo "  inputs must be /scratch copies; outputs must resolve under $RESULTS_DIR."
-      echo "  Refusing to run: nothing on the data volume outside results/Top150 is writable from here."
+      echo "  Refusing to run: nothing on the data volume outside results/Core105 is writable from here."
       ec=95
     elif [ -z "$PREFETCH_FAIL" ]; then
       echo "paths OK: inputs /scratch, outputs under $RESULTS_DIR"
@@ -198,13 +198,13 @@ print("\n".join(sorted(pd.read_parquet(os.environ["MEM"])["ticker"].astype(str).
       case "${JOB:-stage1}" in predict) PUB_MODE=book ;; stage3) PUB_MODE=research ;; esac
       if [ -n "$PUB_MODE" ] && [ "$ec" -eq 0 ]; then
         if [ "${PUBLISH_MONGO:-1}" = "1" ] && [ -n "${MONGO_URI:-}" ]; then
-          PUBLISH_MODE="$PUB_MODE" BUNDLE="${BUNDLE:-top150}" \
+          PUBLISH_MODE="$PUB_MODE" BUNDLE="${BUNDLE:-core105}" \
             BUNDLE_OUT="$BUNDLE_OUT" bash tools/pod_publish.sh
           pub=$?
           case "$pub" in
             0) echo "publish=0 ($PUB_MODE PUBLISHED — deployed UI updates within ~30 s)" ;;
             3) echo "publish=3 (G-02 FAIL — stale close, NOT published; rerun market + predict)" ;;
-            *) echo "publish=$pub (FAILED — output intact on the volume; mirror_top150.sh publishes it)" ;;
+            *) echo "publish=$pub (FAILED — output intact on the volume; mirror_core105.sh publishes it)" ;;
           esac
         else
           echo "publish=skipped (PUBLISH_MONGO=${PUBLISH_MONGO:-1}, MONGO_URI $([ -n "${MONGO_URI:-}" ] && echo set || echo unset))"

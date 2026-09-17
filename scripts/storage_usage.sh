@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Show what this repo keeps on the data volume (results/Top150): per-object listing + totals.
+# Show what this repo keeps on the data volume (results/Core105): per-object listing + totals.
 . "$(dirname "$0")/_common.sh"
 
 if [ -n "${RUNPOD_API_KEY:-}" ]; then

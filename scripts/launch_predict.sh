@@ -10,7 +10,7 @@
 # KEEP_POD=1 leaves the pod alive for inspection.
 #
 # VOLUME CONTRACT: the pod mounts the one data volume (crimtr8kbf) at /workspace and
-# writes ONLY under /workspace/results/Top150. Its inputs are read STRICTLY via S3
+# writes ONLY under /workspace/results/Core105. Its inputs are read STRICTLY via S3
 # GETs into container-local /scratch (the prefetch block in pod_bootstrap_predict.sh),
 # never from the mount. Every path handed to the pod is asserted under that prefix
 # below, the code bundle goes up through res_s3 (which cannot write outside it), and
@@ -71,11 +71,11 @@ GPU_FALLBACK_TYPES="${RUNPOD_GPU_FALLBACK_TYPES:-NVIDIA RTX A4500|NVIDIA RTX 400
 PIP_CPU="pandas pyarrow numpy PyYAML scipy lightgbm scikit-learn optuna pytest pymongo dnspython certifi"
 PIP_GPU="pandas pyarrow numpy PyYAML scipy lightgbm scikit-learn optuna pytest transformers==4.44.2 sentencepiece"
 
-# Pods are named top150-predict-<job>. Until 2026-09-17 they were
+# Pods are named core105-predict-<job>. Until 2026-09-17 they were
 # investopediaclaude-predict-<job> — the SAME name the InvestOpediaClaude repo
 # gives its own pods on the same account and volume — so this check SKIPped on
 # the sibling's pods and killpod.sh deleted them. Exact match on the parsed name.
-POD_NAME="top150-predict-${JOB}"
+POD_NAME="core105-predict-${JOB}"
 RUNNING=$(curl -sS --max-time 30 https://rest.runpod.io/v1/pods \
   -H "Authorization: Bearer ${RUNPOD_API_KEY}" 2>/dev/null) || RUNNING=""
 if printf '%s' "$RUNNING" | POD_NAME="$POD_NAME" python3 -c '
@@ -97,13 +97,13 @@ SCORES_DIR="${SCORES_DIR:-$VOL_RESULTS/derived/stage2}"
 SCORES_DIR_ALT="${SCORES_DIR_ALT:-$VOL_RESULTS/derived/stage1}"
 LEDGER_PATH="${LEDGER_PATH:-$VOL_RESULTS/ledger/trials.parquet}"
 MODEL_DIR="${MODEL_DIR:-$VOL_RESULTS/models}"
-MARKET_DIR="${MARKET_DIR:-$VOL_RESULTS/m1x150}"
+MARKET_DIR="${MARKET_DIR:-$VOL_RESULTS/m1x105}"
 for _k in OUT_DIR SCORES_DIR SCORES_DIR_ALT LEDGER_PATH MODEL_DIR MARKET_DIR; do
   _p="${!_k}"
   case "/$_p/" in *"/../"*|*"/./"*)
     echo "REFUSING: $_k=$_p has a '.' or '..' segment" >&2; exit 2 ;; esac
   case "$_p" in "$VOL_RESULTS"/?*) ;; *)
-    echo "REFUSING: $_k=$_p is outside $VOL_RESULTS — the pod may only write under results/Top150" >&2
+    echo "REFUSING: $_k=$_p is outside $VOL_RESULTS — the pod may only write under results/Core105" >&2
     exit 2 ;; esac
 done
 unset _k _p
@@ -139,7 +139,7 @@ ENV_COMMON="${ENV_COMMON},
     \"RUNPOD_S3_ENDPOINT\": \"${RUNPOD_S3_ENDPOINT}\",
     \"RUNPOD_S3_REGION\": \"${RUNPOD_S3_REGION}\",
     \"MARKET_DIR\": \"${MARKET_DIR}\",
-    \"UNIVERSE_SIZE\": \"${UNIVERSE_SIZE:-150}\""
+    \"UNIVERSE_SIZE\": \"${UNIVERSE_SIZE:-105}\""
 # Pod-side publish: the predict pod (daily book) and the stage3 pod (quarterly
 # research refresh) get the MongoDB credentials from .env at the repo root and
 # publish the bundle themselves; nothing comes down to a laptop.
@@ -150,8 +150,8 @@ if { [ "$JOB" = "predict" ] || [ "$JOB" = "stage3" ]; } && [ "${PUBLISH_MONGO:-1
     \"PUBLISH_MONGO\": \"1\",
     \"MONGO_URI\": $(jstr "$MONGO_URI"),
     \"DB_PASSWORD\": $(jstr "${DB_PASSWORD:-}"),
-    \"MONGO_DB\": $(jstr "${MONGO_DB:-Top150}"),
-    \"BUNDLE\": $(jstr "${BUNDLE:-top150}")"
+    \"MONGO_DB\": $(jstr "${MONGO_DB:-Core105}"),
+    \"BUNDLE\": $(jstr "${BUNDLE:-core105}")"
 else
   ENV_COMMON="${ENV_COMMON},
     \"PUBLISH_MONGO\": \"0\""
@@ -283,5 +283,5 @@ fi
 printf '%s\tpredict-%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$JOB" "$POD_ID" \
   >> "$ROOT/runpod/launched-pods.log"
 echo "launched predict-${JOB} pod: ${POD_ID}  [${PLACED_ON}]"
-echo "log:     .claude/skills/top150-pipeline/scripts/podlog150 predict-${JOB}-${POD_ID}"
+echo "log:     .claude/skills/core105-pipeline/scripts/podlog105 predict-${JOB}-${POD_ID}"
 echo "outputs: $RESULTS/${OUT_DIR#"$VOL_RESULTS"/}/"

@@ -1,9 +1,9 @@
 {
-  "name": "top150-api",
+  "name": "core105-api",
   "version": "1.1.0",
   "private": true,
   "type": "module",
-  "description": "Report + paper-trading API for the Top-150 EOD trading system — reads the published bundle from MongoDB, deploys as one Vercel function",
+  "description": "Report + paper-trading API for the Core-105 EOD trading system — reads the published bundle from MongoDB, deploys as one Vercel function",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

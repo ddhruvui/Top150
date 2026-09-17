@@ -2,7 +2,7 @@
 # Pod-side publish: turn a finished pod job into the bundle the deployed UI
 # reads, without anything leaving the cloud. pod_bootstrap_predict.sh runs this
 # once the job has exited 0 — after `predict` (daily) and after `stage3` (the
-# quarterly research refresh). The laptop path (mirror_top150.sh) remains for
+# quarterly research refresh). The laptop path (mirror_core105.sh) remains for
 # pulling the record into git.
 #
 # Two modes, because two different things are being published:
@@ -10,7 +10,7 @@
 #   PUBLISH_MODE=book      (predict)  The target book changed. G-02 is enforced:
 #         as_of_close must equal the newest data/eod_bulk/US/ day-file ON THE
 #         SOURCE — a read-only LIST of the source bucket, the same call
-#         mirror_top150.sh makes; nothing here ever writes there (volume
+#         mirror_core105.sh makes; nothing here ever writes there (volume
 #         contract: scripts/_common.sh). Every section is published.
 #   PUBLISH_MODE=research  (stage3)   The research sections changed (gates
 #         verdict, members, equity curve, CPCV, trade ledger). The book did NOT,
@@ -20,8 +20,8 @@
 #         to sit on the volume. G-02 is therefore not applicable here.
 #
 # Either way the bundle is built with tools/build_reports.py over a flat staging
-# dir (last predict output + stage1/2/3 artifacts under results/Top150 + the D-11
-# session grid from the source prefetch) and left under results/Top150
+# dir (last predict output + stage1/2/3 artifacts under results/Core105 + the D-11
+# session grid from the source prefetch) and left under results/Core105
 # (BUNDLE_OUT) so the exact published record can be pulled into git.
 #
 # Inputs (env):
@@ -30,8 +30,8 @@
 #   PREDICT_DIR    dir holding suggestions.json                           default: $DERIVED_ROOT/predict
 #   PUBLISH_MODE   book | research                                        default: book
 #   SESSIONS_PATH  D-11 session grid parquet                              default: /scratch/m1/sessions.parquet
-#   BUNDLE         bundle name                                            default: top150
-#   BUNDLE_OUT     where the built bundle is written                      default: /workspace/results/Top150/reports/$BUNDLE
+#   BUNDLE         bundle name                                            default: core105
+#   BUNDLE_OUT     where the built bundle is written                      default: /workspace/results/Core105/reports/$BUNDLE
 #   SRC_VOLUME_ID, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
 #   RUNPOD_S3_ENDPOINT, RUNPOD_S3_REGION                                  G-02 listing (book mode)
 #   MONGO_URI, DB_PASSWORD, MONGO_DB                                      publish
@@ -47,16 +47,16 @@ say() { echo "[$(date -u +%H:%M:%SZ)] publish: $*"; }
 : "${OUT_DIR:?OUT_DIR (job output dir) is required}"
 MODE="${PUBLISH_MODE:-book}"
 case "$MODE" in book|research) ;; *) say "FATAL: PUBLISH_MODE must be book or research, not '$MODE'"; exit 2 ;; esac
-BUNDLE="${BUNDLE:-top150}"
+BUNDLE="${BUNDLE:-core105}"
 DERIVED_ROOT="${DERIVED_ROOT:-$(dirname "$OUT_DIR")}"
 PREDICT_DIR="${PREDICT_DIR:-$DERIVED_ROOT/predict}"
 SESSIONS_PATH="${SESSIONS_PATH:-/scratch/m1/sessions.parquet}"
-BUNDLE_OUT="${BUNDLE_OUT:-/workspace/results/Top150/reports/$BUNDLE}"
+BUNDLE_OUT="${BUNDLE_OUT:-/workspace/results/Core105/reports/$BUNDLE}"
 # On the pod /workspace is the data volume: the bundle may only land under
-# results/Top150 there (a path off the volume is a local rehearsal and is fine).
+# results/Core105 there (a path off the volume is a local rehearsal and is fine).
 case "$("$PY" -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$BUNDLE_OUT")/" in
-  /workspace/results/Top150/?*) ;;
-  /workspace/*) say "FATAL: BUNDLE_OUT=$BUNDLE_OUT is on the data volume outside results/Top150 — refusing"; exit 2 ;;
+  /workspace/results/Core105/?*) ;;
+  /workspace/*) say "FATAL: BUNDLE_OUT=$BUNDLE_OUT is on the data volume outside results/Core105 — refusing"; exit 2 ;;
 esac
 REQUIRED="MONGO_URI"
 [ "$MODE" = "book" ] && REQUIRED="$REQUIRED SRC_VOLUME_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY RUNPOD_S3_ENDPOINT"
@@ -116,7 +116,7 @@ mkdir -p "$BUNDLE_OUT"
 EXCLUDE=()
 [ "$MODE" = "research" ] && EXCLUDE=(--exclude suggestions)
 "$PY" "$REPO/tools/publish_mongo.py" --src "$BUNDLE_OUT" --bundle "$BUNDLE" --seed-paper '' ${EXCLUDE[@]+"${EXCLUDE[@]}"} \
-  || { say "FATAL: publish_mongo.py failed — bundle intact at $BUNDLE_OUT; mirror_top150.sh can publish it"; exit 5; }
+  || { say "FATAL: publish_mongo.py failed — bundle intact at $BUNDLE_OUT; mirror_core105.sh can publish it"; exit 5; }
 if [ "$MODE" = "book" ]; then
   say "PUBLISHED bundle '$BUNDLE' as of $AS_OF — the deployed UI shows it within ~30 s"
 else

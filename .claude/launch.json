@@ -12,10 +12,10 @@
       "port": 8787
     },
     {
-      "name": "top150-console",
+      "name": "core105-console",
       "runtimeExecutable": "bash",
       "runtimeArgs": [
-        "scripts/serve_top150_console.sh"
+        "scripts/serve_core105_console.sh"
       ],
       "port": 8790
     }

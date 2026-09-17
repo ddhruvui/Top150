@@ -1,6 +1,6 @@
-# Top150 API
+# Core105 API
 
-Report + paper-trading API for the Top-150 EOD swing/position trading system. A
+Report + paper-trading API for the Core-105 EOD swing/position trading system. A
 read-only slice over the report bundle the research pipeline published to MongoDB,
 plus the paper-trading book the blueprint requires before real capital (BP15).
 
@@ -29,10 +29,10 @@ disk instead (the monorepo's local console).
 
 `api/index.js` exports the Express app as one function; `vercel.json` rewrites every
 path to it, so the app's `/api/*` routes work unchanged. Framework preset *Other*, no
-build step. Environment variables: `DB_PASSWORD`, `MONGO_URI`, `MONGO_DB=Top150`,
-`BUNDLE=top150`, optionally `CORS_ORIGIN=https://<ui-host>`.
+build step. Environment variables: `DB_PASSWORD`, `MONGO_URI`, `MONGO_DB=Core105`,
+`BUNDLE=core105`, optionally `CORS_ORIGIN=https://<ui-host>`.
 
-## Data layout (database `Top150`)
+## Data layout (database `Core105`)
 
 | collection | document |
 |---|---|

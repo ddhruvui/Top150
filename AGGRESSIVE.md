@@ -48,7 +48,7 @@ last-3y and was explicitly declined (no borrowed money).
 
 > **Historical note.** These rounds were run when `crimtr8kbf` was an *experiment*
 > volume that this repo mounted and wrote. It is now the **data source**, read-only
-> except for this repo's own `results/Top150/` prefix, and the commands below have
+> except for this repo's own `results/Core105/` prefix, and the commands below have
 > changed accordingly. The old
 > `scripts/launch_sync_volume.sh` and `scripts/launch_exp_aggressive.sh` are gone —
 > both defaulted to mounting `crimtr8kbf`, and the guards in `scripts/_common.sh`
@@ -56,16 +56,16 @@ last-3y and was explicitly declined (no borrowed money).
 > read-only into `/scratch` on every run.
 
 ```sh
-# reproduce any experiment round (outputs -> results/Top150)
-OUT_DIR=/workspace/results/Top150/derived/top150/exp_aggr/roundF \
+# reproduce any experiment round (outputs -> results/Core105)
+OUT_DIR=/workspace/results/Core105/derived/core105/exp_aggr/roundF \
 VARIANTS_B64="$(base64 < scripts/variants/roundF.json | tr -d '\n')" \
-  scripts/launch_top150.sh exp
+  scripts/launch_core105.sh exp
 
-# daily suggestions for a book (the config hash differs from the adopted top150
+# daily suggestions for a book (the config hash differs from the adopted core105
 # config, so predict will full-refit its own champion store)
 SYSTEM_CONFIG=configs/system_aggressive.yaml \
-OUT_DIR=/workspace/results/Top150/derived/top150/predict_aggr \
-  scripts/launch_top150.sh predict
+OUT_DIR=/workspace/results/Core105/derived/core105/predict_aggr \
+  scripts/launch_core105.sh predict
 ```
 
 Engine levers added on this branch (all default-off, symmetric path

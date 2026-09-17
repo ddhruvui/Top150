@@ -34,8 +34,8 @@ export default function Backtest() {
   if (d.error) {
     return <ErrorBox error={d.error} hint={d.error.body?.hint || (
       <>The trade ledger comes from Stage 3. Run it on a pod, then publish:{' '}
-        <code>scripts/launch_top150.sh stage3</code> →{' '}
-        <code>FULL_MIRROR=1 mirror_top150.sh</code></>)} />;
+        <code>scripts/launch_core105.sh stage3</code> →{' '}
+        <code>FULL_MIRROR=1 mirror_core105.sh</code></>)} />;
   }
 
   const s = d.s;

@@ -6,7 +6,7 @@
 
 Writes <out>/summary.md (ranked table + deltas vs the anchor) and copies the
 report JSON beside it, so a sweep's result lives in git separately from the
-production bundle under reports/top150. Research tooling, not financial advice.
+production bundle under reports/core105. Research tooling, not financial advice.
 """
 from __future__ import annotations
 

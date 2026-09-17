@@ -1,11 +1,11 @@
 # Run prompt — the daily loop
 
-Paste one of these into Claude Code from the repo root. The `top150-pipeline` skill
-(`.claude/skills/top150-pipeline/`) carries the ordering rules, the volume contract and the
+Paste one of these into Claude Code from the repo root. The `core105-pipeline` skill
+(`.claude/skills/core105-pipeline/`) carries the ordering rules, the volume contract and the
 verification steps, so the prompt itself can stay short.
 
 **This repo does not download anything.** A separate system fills the source volume
-`crimtr8kbf`; this repo reads it strictly read-only and writes only under `results/Top150` on
+`crimtr8kbf`; this repo reads it strictly read-only and writes only under `results/Core105` on
 that same volume. So the
 run starts by *checking* the source is complete, not by fetching it.
 
@@ -43,22 +43,22 @@ first.
 
 **Quarterly research refresh:**
 
-> Run the top150 quarterly refresh.
+> Run the core105 quarterly refresh.
 
 ## What "done" looks like
 
 Ask for these back, and treat anything missing as not-done:
 
 - `verify_source.py` — every tree **FRESH**, `fail=0`
-- `market job=0` and `predict job=0` — logs under **`results/Top150/_pod_logs`** (`podlog150`)
+- `market job=0` and `predict job=0` — logs under **`results/Core105/_pod_logs`** (`podlog105`)
 - **G-02**: `suggestions.json`'s `as_of_close` equals the newest source day-file
 - `publish=0` in the predict pod log — the pod built the bundle and published it to MongoDB;
   the deployed UI (see `DEPLOY.md`) shows it within about 30 seconds. `publish=3` means G-02
   failed on the pod (stale close): rerun market + predict.
 
-Nothing has to come down to this machine. `mirror_top150.sh` is optional: it pulls the
-artifacts, rebuilds `reports/top150` for the git record and re-publishes the same content.
-Locally: `scripts/serve_top150_console.sh` (:8790).
+Nothing has to come down to this machine. `mirror_core105.sh` is optional: it pulls the
+artifacts, rebuilds `reports/core105` for the git record and re-publishes the same content.
+Locally: `scripts/serve_core105_console.sh` (:8790).
 
 A pod exiting is not evidence a stage succeeded — a stage can be OOM-killed (`exit=-9`) while
 its pod still self-terminates normally and leaves yesterday's output in place. Ask for exit
@@ -76,4 +76,4 @@ they are rerun on code or config changes, or on the quarterly cadence to refresh
 The dashboard's verdict, equity curve and trade counts come from their existing reports, so
 those numbers not moving after a daily run is expected. Ask for them explicitly:
 
-> Run the top150 quarterly refresh.
+> Run the core105 quarterly refresh.

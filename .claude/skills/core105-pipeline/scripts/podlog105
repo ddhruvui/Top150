@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# podlog105 <pattern> [lines] — newest _pod_logs entry under results/Core105.
+# Pods write their logs to /workspace/results/Core105/_pod_logs on the data volume.
+# Works after the pod self-terminated.
+set -euo pipefail
+. "$(dirname "$0")/_env105.sh"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+PAT="$1"; N="${2:-25}"
+KEY=$("$HERE/vol105" ls _pod_logs/ | awk '{print $4}' | grep -- "$PAT" | sort | tail -1)
+[ -n "$KEY" ] || { echo "no pod log matching '$PAT' under $RESULTS/_pod_logs" >&2; exit 1; }
+OUT="${TMPDIR:-/tmp}/podlog105_$(echo "$PAT" | tr -c 'A-Za-z0-9._-' '_').txt"
+"$HERE/vol105" cp "_pod_logs/$KEY" "$OUT" --quiet
+echo "--- $KEY ($(wc -l < "$OUT" | tr -d ' ') lines) -> $OUT"
+tail -n "$N" "$OUT"

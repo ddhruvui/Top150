@@ -1,6 +1,6 @@
-# Top150 research console (UI)
+# Core105 research console (UI)
 
-React + Vite front end for the Top-150 EOD trading system: **Today** (the trade
+React + Vite front end for the Core-105 EOD trading system: **Today** (the trade
 ticket for the next open), **Dashboard** (G-11 verdict, gates, equity curve),
 **Suggestions** (the target book with barrier levels), **Backtest** (what was
 suggested vs what happened), **Paper trading** (BP15). It renders whatever the API

@@ -5,21 +5,21 @@
 # VOLUME CONTRACT (non-negotiable). This repo COMPUTES; it does not ingest.
 #
 # ONE volume since 2026-09-17: crimtr8kbf. The old calc volume k4cli3aj48 is
-# retired; everything it held now lives under results/Top150/ on crimtr8kbf, with
-# the same relative layout (k4cli3aj48:/X == crimtr8kbf:/results/Top150/X).
+# retired; everything it held now lives under results/Core105/ on crimtr8kbf, with
+# the same relative layout (k4cli3aj48:/X == crimtr8kbf:/results/Core105/X).
 #
 #   SRC_BUCKET  s3://crimtr8kbf                 the volume root. data/, m1/, m1x/ and
 #                                               every other root tree belong to the
 #                                               SEPARATE download system and are
 #                                               STRICTLY READ-ONLY here: only ever
 #                                               read, through src_s3.
-#   RESULTS     s3://crimtr8kbf/results/Top150  the ONLY place this repo writes,
+#   RESULTS     s3://crimtr8kbf/results/Core105  the ONLY place this repo writes,
 #                                               through res_s3. Other projects keep
 #                                               their own results/<name>/ and are
 #                                               never touched.
 #
 # Pods mount crimtr8kbf at /workspace and write only under VOL_RESULTS
-# (/workspace/results/Top150); pod_bootstrap_predict.sh refuses any write path
+# (/workspace/results/Core105); pod_bootstrap_predict.sh refuses any write path
 # outside it. Their inputs still arrive as read-only S3 GETs into container-local
 # /scratch, so the job processes never open a file under /workspace/data or m1.
 set -euo pipefail
@@ -40,7 +40,7 @@ set -a; . "$ENV_FILE"; set +a
 # pre-2026-09-17 procedure: stop it rather than guess what it meant.
 for _v in CALC_VOLUME_ID RUNPOD_VOLUME_ID_OVERRIDE; do
   if [ -n "${!_v:-}" ]; then
-    echo "refusing: $_v is retired — k4cli3aj48 is gone and outputs live under results/Top150 on the data volume; unset it" >&2
+    echo "refusing: $_v is retired — k4cli3aj48 is gone and outputs live under results/Core105 on the data volume; unset it" >&2
     exit 2
   fi
 done
@@ -63,7 +63,7 @@ unset _v
 RUNPOD_VOLUME_ID="$SRC_VOLUME_ID"
 
 # Fixed, not an env knob: a different prefix could only ever be another project's.
-RESULTS_PREFIX="results/Top150"
+RESULTS_PREFIX="results/Core105"
 
 S3FLAGS="--region $RUNPOD_S3_REGION --endpoint-url $RUNPOD_S3_ENDPOINT"
 SRC_BUCKET="s3://$SRC_VOLUME_ID"             # READS ONLY — never a write/rm target
@@ -125,7 +125,7 @@ _res_path() {
   esac
   case "$p" in
     s3://*)
-      # A key like results/Top150/../../data/x must not count as "under RESULTS".
+      # A key like results/Core105/../../data/x must not count as "under RESULTS".
       case "/${p#s3://}/" in *"/../"*|*"/./"*)
         echo "refusing: '.' or '..' segment in $p" >&2; return 2 ;; esac
       case "$p" in

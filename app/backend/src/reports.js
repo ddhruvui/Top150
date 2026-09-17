@@ -3,7 +3,7 @@
 // tools/build_reports.py produced (and tools/publish_mongo.py published): no
 // metric is recomputed here, so the API can never disagree with the pipeline.
 //
-// Mongo layout (database MONGO_DB, default Top150):
+// Mongo layout (database MONGO_DB, default Core105):
 //   reports      { _id: "<bundle>/<section>", bundle, section, data, built_utc, published_utc }
 //   trades       one document per backtest trade: { bundle, version, seq, ...row }
 //                (the `trades_sample` report document carries the live `version`)
@@ -16,7 +16,7 @@ import { BUNDLE, DB_NAME, hasMongo, col } from './db.js';
 const TTL_MS = Number(process.env.REPORTS_CACHE_MS ?? 30_000);
 
 // ---------------------------------------------------------------- source
-// An explicit REPORTS_DIR always means files (scripts/serve_top150_console.sh
+// An explicit REPORTS_DIR always means files (scripts/serve_core105_console.sh
 // relies on that). Otherwise Mongo when configured, else the monorepo's
 // reports/ tree: reports/<bundle> if it exists, reports/latest if not.
 function defaultReportsDir() {

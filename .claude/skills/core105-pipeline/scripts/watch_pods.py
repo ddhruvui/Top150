@@ -7,7 +7,7 @@ to a Monitor without flooding it:
     STALL <name>    pod alive but its _pod_logs entry has not grown for STALL_CHECKS polls
     IDLE            no pods running (printed once per idle stretch)
 
-Reads pod logs from results/Top150/_pod_logs on the data volume (vol150) — that
+Reads pod logs from results/Core105/_pod_logs on the data volume (vol105) — that
 is where this pipeline's pods write. It is REPORT-ONLY by design: it never relaunches anything. The predecessor
 that did (watch_jobs.sh) relaunched with prod wiring, which is how an unattended
 run could end up writing the read-only source tape.
@@ -15,19 +15,19 @@ run could end up writing the read-only source tape.
 Written in Python because macOS ships bash 3.2, which has no associative arrays —
 a bash version of this silently mis-tracked state.
 
-Only this repo's pods (name prefix top150-predict-) are watched: the account also runs
-InvestOpediaClaude and ResearchGate pods, whose logs are not under results/Top150 and
+Only this repo's pods (name prefix core105-predict-) are watched: the account also runs
+InvestOpediaClaude and ResearchGate pods, whose logs are not under results/Core105 and
 would all read as STALL.
 
 Env: POLL (default 180s), STALL_CHECKS (default 5, so ~15 min),
-     WATCH_MATCH (name prefix, default top150-predict-).
+     WATCH_MATCH (name prefix, default core105-predict-).
 """
 import json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 POLL = int(os.environ.get("POLL", "180"))
 STALL_CHECKS = int(os.environ.get("STALL_CHECKS", "5"))
-MATCH = os.environ.get("WATCH_MATCH", "top150-predict-")
+MATCH = os.environ.get("WATCH_MATCH", "core105-predict-")
 EXEMPT = set()   # (the old "post" ingest job is gone — this repo does not ingest)
 
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
@@ -59,7 +59,7 @@ def pods():
 
 
 def logsizes():
-    r = subprocess.run([os.path.join(HERE, "vol150"), "ls", "_pod_logs/"],
+    r = subprocess.run([os.path.join(HERE, "vol105"), "ls", "_pod_logs/"],
                        capture_output=True, text=True)
     m = {}
     for ln in r.stdout.splitlines():

@@ -18,7 +18,7 @@ def _cfg_without(cfg, key):
 
 
 def test_config_carries_the_trail_and_engine_opts_pick_it_up():
-    cfg, _ = load_config('configs/system_top150.yaml')
+    cfg, _ = load_config('configs/system_core105.yaml')
     assert float(cfg.barrier.trail_m) == 1.0
     assert engine_opts_from_cfg(cfg)["trail_m"] == 1.0
     assert engine_opts_from_cfg(_cfg_without(cfg, "trail_m"))["trail_m"] is None
@@ -42,7 +42,7 @@ def test_trail_zero_is_off_and_matches_no_trail():
 def test_event_engine_defaults_to_the_config_trail(rng, synth_panel):
     from src.primitives.ewma import ewma_sigma
     from src.primitives.returns import daily_return, log_return
-    cfg, _ = load_config('configs/system_top150.yaml')
+    cfg, _ = load_config('configs/system_core105.yaml')
     p = synth_panel
     sig = ewma_sigma(log_return(daily_return(p.adj_close)), span=32)
     ens = pd.DataFrame(rng.random(p.adj_close.shape), index=p.adj_close.index,
@@ -57,7 +57,7 @@ def test_event_engine_defaults_to_the_config_trail(rng, synth_panel):
 
 
 def test_order_file_repegs_the_stop_nightly():
-    cfg, _ = load_config('configs/system_top150.yaml')
+    cfg, _ = load_config('configs/system_core105.yaml')
     m, h = float(cfg.barrier.m), int(cfg.barrier.h_days)
     sig = 0.02
     w = trail_width(sig, cfg)

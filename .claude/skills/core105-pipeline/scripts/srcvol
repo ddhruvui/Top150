@@ -9,7 +9,7 @@
 # A separate system owns everything outside results/; nothing here may add to,
 # change or delete from it.
 #
-# For this repo's own outputs (results/Top150: pod logs, derived, models) use vol150.
+# For this repo's own outputs (results/Core105: pod logs, derived, models) use vol105.
 set -euo pipefail
-. "$(dirname "$0")/_env150.sh"
+. "$(dirname "$0")/_env105.sh"
 src_s3 "$@"

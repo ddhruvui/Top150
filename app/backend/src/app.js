@@ -35,7 +35,7 @@ const wrap = (fn) => async (req, res) => {
 };
 
 const NOT_PUBLISHED_HINT = reports.SOURCE === 'mongo'
-  ? 'publish the bundle: python3 tools/publish_mongo.py --src reports/top150 --bundle top150'
+  ? 'publish the bundle: python3 tools/publish_mongo.py --src reports/core105 --bundle core105'
   : 'build the bundle: python3 tools/build_reports.py --src derived --out reports/latest';
 
 const send = (res, data, name) => (data

@@ -267,7 +267,7 @@ if __name__ == "__main__":
     ap.add_argument("--eod", default=os.environ.get("EOD_DIR", "/workspace/data"))
     ap.add_argument("--out", default=os.environ.get("OUT_DIR", "artifacts/reports/stage3"))
     ap.add_argument("--scores", default=os.environ.get(
-        "SCORES_DIR", "/workspace/results/Top150/derived/stage1"))
+        "SCORES_DIR", "/workspace/results/Core105/derived/stage1"))
     ap.add_argument("--config", default=None)
     ap.add_argument("--max-tickers", type=int, default=None)
     ap.add_argument("--market", default=os.environ.get("MARKET_DIR") or None)

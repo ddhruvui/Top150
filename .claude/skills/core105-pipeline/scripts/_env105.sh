@@ -4,7 +4,7 @@
 # helpers and the launchers can never drift apart on what is writable.
 #
 #   SRC_BUCKET  s3://crimtr8kbf                 the data volume root — READ-ONLY (src_s3)
-#   RESULTS     s3://crimtr8kbf/results/Top150  every output lives here (res_s3)
+#   RESULTS     s3://crimtr8kbf/results/Core105  every output lives here (res_s3)
 #
 # Sourced, not executed.
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"

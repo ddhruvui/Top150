@@ -5,7 +5,7 @@ Reads reports/<bundle>/*.json (what tools/build_reports.py wrote) and upserts it
 into the database the deployed API reads, so a number on the deployed UI always
 equals the number the pipeline produced. Nothing is recomputed here.
 
-Collections (database MONGO_DB, default Top150):
+Collections (database MONGO_DB, default Core105):
 
     reports       one document per section:
                   { _id: "<bundle>/<section>", bundle, section, data, built_utc, published_utc }
@@ -18,7 +18,7 @@ Collections (database MONGO_DB, default Top150):
     paper_books   the paper book. Seeded ONCE from the local file (--seed-paper)
                   if no document exists yet; the API owns it from then on.
 
-    python3 tools/publish_mongo.py --src reports/top150 --bundle top150
+    python3 tools/publish_mongo.py --src reports/core105 --bundle core105
     python3 tools/publish_mongo.py --dry-run            # show what would go up
     python3 tools/publish_mongo.py --exclude suggestions  # research refresh: leave the
                                                           # book (and its history) untouched
@@ -234,8 +234,8 @@ def publish(db, src: Path, bundle: str, dry: bool, seed_paper: Path | None,
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--src", default=None, help="bundle dir (default reports/<bundle>)")
-    ap.add_argument("--bundle", default=None, help="bundle name (default $BUNDLE or top150)")
-    ap.add_argument("--db", default=None, help="database (default $MONGO_DB or Top150)")
+    ap.add_argument("--bundle", default=None, help="bundle name (default $BUNDLE or core105)")
+    ap.add_argument("--db", default=None, help="database (default $MONGO_DB or Core105)")
     ap.add_argument("--seed-paper", default=str(REPO / "app/backend/data/paper_book.json"),
                     help="local paper book to seed Mongo with, once ('' to skip)")
     ap.add_argument("--exclude", default="",
@@ -248,7 +248,7 @@ def main() -> int:
         sys.exit(f"--exclude: unknown section(s) {sorted(unknown)}; known: {SECTIONS + ['trades_sample']}")
 
     load_dotenv(REPO / ".env")
-    bundle = args.bundle or os.environ.get("BUNDLE") or "top150"
+    bundle = args.bundle or os.environ.get("BUNDLE") or "core105"
     src = Path(args.src) if args.src else REPO / "reports" / bundle
     if not src.is_dir():
         sys.exit(f"no bundle directory at {src}")
@@ -257,7 +257,7 @@ def main() -> int:
     if args.dry_run:
         return publish(None, src, bundle, True, seed, exclude)
     client = connect()
-    db = client[args.db or os.environ.get("MONGO_DB") or "Top150"]
+    db = client[args.db or os.environ.get("MONGO_DB") or "Core105"]
     try:
         return publish(db, src, bundle, False, seed, exclude)
     finally:

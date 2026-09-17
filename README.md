@@ -4,9 +4,9 @@ Implementation of [stock_prediction_implementation_blueprint_v1_0_1.md](stock_pr
 (verified by [blueprint_verification_report_v1.md](blueprint_verification_report_v1.md)).
 **This repo computes; it does not ingest.** A **separate system** downloads all vendor
 data onto the volume `crimtr8kbf`, whose root (`data/`, `m1/`, `m1x/`, …) this repo reads
-**strictly read-only**. Everything computed here lands under `results/Top150/` on that
+**strictly read-only**. Everything computed here lands under `results/Core105/` on that
 same volume and nowhere else (the old calc volume `k4cli3aj48` is retired). See
-[dailyuse.md](dailyuse.md) and the `top150-pipeline` skill;
+[dailyuse.md](dailyuse.md) and the `core105-pipeline` skill;
 `scripts/test_volume_guards.sh` proves the write boundary.
 
 ## Layout (blueprint §8)
@@ -39,30 +39,30 @@ ledger/trials.parquet   # every evaluated config -> DSR's N (G-09)
 
 ## RunPod jobs
 
-Every job goes through `launch_top150.sh`, which wires `results/Top150` for output and
+Every job goes through `launch_core105.sh`, which wires `results/Core105` for output and
 the rest of the volume for read-only input. There is no fetch stage and no `daily.sh`.
 
 ```sh
 # gate first: has the separate download system finished for this session?
-.claude/skills/top150-pipeline/scripts/verify_source.py
+.claude/skills/core105-pipeline/scripts/verify_source.py
 
-scripts/launch_top150.sh test       # T-suite on a CPU pod (validates pod env)
-scripts/launch_top150.sh market     # -> m1x150: point-in-time top-150 dollar-volume
-                                    # universe, survivorship-free (G-05). Resumable.
-scripts/launch_top150.sh stage1     # features -> LGBM heads (purged WF) -> ensemble
+scripts/launch_core105.sh test       # T-suite on a CPU pod (validates pod env)
+scripts/launch_core105.sh market     # -> m1x105: the FIXED 105-name universe from
+                                    # configs/system_core105.yaml. Resumable.
+scripts/launch_core105.sh stage1     # features -> LGBM heads (purged WF) -> ensemble
                                     # -> portfolio -> backtest -> G-11 gates
-scripts/launch_top150.sh stage2     # + GRU + JKX CNN + FinBERT (GPU pod)
-scripts/launch_top150.sh stage3     # meta gate + barrier book + CPCV
-scripts/launch_top150.sh predict    # latest-date scores -> target book -> suggestions.
+scripts/launch_core105.sh stage2     # + GRU + JKX CNN + FinBERT (GPU pod)
+scripts/launch_core105.sh stage3     # meta gate + barrier book + CPCV
+scripts/launch_core105.sh predict    # latest-date scores -> target book -> suggestions.
                                     # Continual: warm-updates champions stored under
-                                    # results/Top150; full refit auto every 21 sessions or
+                                    # results/Core105; full refit auto every 21 sessions or
                                     # on config/feature change; REFIT=full forces it.
 
 # the predict pod then publishes on its own: G-02 against the source tape -> bundle
 # -> MongoDB -> deployed UI (tools/pod_publish.sh); the stage3 pod publishes the
 # research sections the same way (book untouched). Optional laptop path for the git
 # record (re-publishes the same content):
-.claude/skills/top150-pipeline/scripts/mirror_top150.sh
+.claude/skills/core105-pipeline/scripts/mirror_core105.sh
 ```
 
 The research console (`app/`) is deployed — API on Vercel, UI on Render — and reads

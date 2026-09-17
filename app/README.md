@@ -13,7 +13,7 @@ app/
 
 **Live: UI at https://top150fe.onrender.com, API at https://top150-be.vercel.app.
 Deployment, end to end: [DEPLOY.md](../DEPLOY.md).** The deployed UI reads only what
-`tools/publish_mongo.py` has published to the `Top150` database; the mirror step
+`tools/publish_mongo.py` has published to the `Core105` database; the mirror step
 publishes automatically.
 
 ## Run it locally
@@ -42,9 +42,9 @@ drift from it.
 To refresh after a pipeline run (pull, rebuild, G-02 check, publish — one command):
 
 ```bash
-.claude/skills/top150-pipeline/scripts/mirror_top150.sh
+.claude/skills/core105-pipeline/scripts/mirror_core105.sh
 # or, just the publish of an already-built bundle:
-python3 tools/publish_mongo.py --src reports/top150 --bundle top150
+python3 tools/publish_mongo.py --src reports/core105 --bundle core105
 ```
 
 ## Pages

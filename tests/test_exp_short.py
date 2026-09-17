@@ -103,7 +103,7 @@ def test_fill_max_redeploys_freed_capital_under_the_cap(rng, synth_panel):
     from src.backtest.engines.barriers_event import run_event_backtest
     from src.primitives.ewma import ewma_sigma
     from src.primitives.returns import daily_return, log_return
-    cfg, _ = load_config('configs/system_top150.yaml')
+    cfg, _ = load_config('configs/system_core105.yaml')
     p = synth_panel
     sig = ewma_sigma(log_return(daily_return(p.adj_close)), span=32)
     ens = pd.DataFrame(rng.random(p.adj_close.shape), index=p.adj_close.index,
