@@ -267,8 +267,7 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
         raise RuntimeError(f"Q-004 BLOCKING failure: {d['health']}")
     cm = CostModel(per_trade_bps=float(cfg.cost.per_trade_bps),
                    borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
-                   borrow_table=d["m1"].borrow_fees()
-                   if hasattr(d["m1"], "borrow_fees") else None)
+                   borrow_table=d.get("borrow"))
     fwd = forward_return(panel.adj_close, IC_HORIZON).where(mask)
 
     # earnings_within_2d as raw booleans (the F8 feature pre-normalization)
@@ -377,8 +376,7 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
         if v.get("cost_bps") is not None:
             cm_v = CostModel(per_trade_bps=float(v["cost_bps"]),
                              borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
-                             borrow_table=d["m1"].borrow_fees()
-                             if hasattr(d["m1"], "borrow_fees") else None)
+                             borrow_table=d.get("borrow"))
 
         gm_series = gm.reindex(test_dates).fillna(1.0)
         kw = dict(m=v.get("m"), h=v.get("h"), thr_cap=v.get("thr_cap"),

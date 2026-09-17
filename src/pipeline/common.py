@@ -9,6 +9,7 @@ from src.data.panel import build_panel
 from src.data.universe import top_dollar_volume_mask
 from src.data.health import health_report
 from src.data.index_prices import load_spy
+from src.data.borrow import borrow_table
 from src.features.pipeline import build_features
 from src.labels.heads import horizon_labels
 from src.primitives.returns import daily_return, log_return
@@ -84,10 +85,13 @@ def prepare(cfg, m1_dir: str, eod_dir: str, market_dir: str | None = None,
     spy = load_spy(eod_dir).reindex(panel.dates)
     idx_blk = index_block(spy["adj_close"], r, beta_window=int(cfg.port.hedge_beta_window))
 
+    # D-10 borrow fees: M1's 517 equities + the watchlist tree's ETFs (SPY, QQQ).
+    # Built once here so every cost model in the run prices shorts off the same table.
+    borrow = borrow_table(m1.borrow_fees())
     if not features:      # light mode: backtest-only callers (experiments) skip
         return {"m1": m1, "sessions": sessions, "panel": panel, "mask": mask,
                 "health": health, "r": r, "sigma32": sigma32, "spy": spy,
-                "idx_blk": idx_blk}
+                "idx_blk": idx_blk, "borrow": borrow}
     feats, manifest = build_features(
         panel, mask, fundamentals=m1.fundamentals_pit(), surprises=m1.earnings_surprises(),
         estimates=m1.estimates_pit(), sessions=sessions)
@@ -118,7 +122,7 @@ def prepare(cfg, m1_dir: str, eod_dir: str, market_dir: str | None = None,
     return {"m1": m1, "sessions": sessions, "panel": panel, "mask": mask,
             "health": health, "r": r, "sigma32": sigma32, "spy": spy,
             "idx_blk": idx_blk, "feats": feats, "manifest": manifest,
-            "labels": labels, "ys": ys}
+            "labels": labels, "ys": ys, "borrow": borrow}
 
 
 def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed: int,
@@ -193,10 +197,10 @@ def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed
         hedge = tgt.pop(HEDGE_COL)
         tgt["SPY"] = (tgt["SPY"].fillna(0.0) if "SPY" in tgt.columns else 0.0) + hedge
 
-    # Per-name borrow fees (m1/borrow_fees, iBorrowDesk) for every cost model in
-    # this evaluation; names it does not cover fall back to cost.borrow_gc_bps_yr.
+    # Per-name borrow fees from prepare(): M1's equities + the watchlist ETFs.
+    # Names the table does not cover fall back to cost.borrow_gc_bps_yr.
     # Only ever charged on a SHORT leg — inert while the book is long_only.
-    borrow = d["m1"].borrow_fees()
+    borrow = d.get("borrow")
     results = {}
     for bps in list(cfg.cost.sensitivity_bps):
         cm = CostModel(per_trade_bps=float(bps), slippage_bps=float(cfg.cost.slippage_bps),

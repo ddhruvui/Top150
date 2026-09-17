@@ -60,8 +60,7 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
     ledger = TrialsLedger()
     cm = CostModel(per_trade_bps=float(cfg.cost.per_trade_bps),
                    borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
-                   borrow_table=d["m1"].borrow_fees() if hasattr(d["m1"], "borrow_fees")
-                   else None)
+                   borrow_table=d.get("borrow"))
 
     members = [f"lgbm_h{n}" for n in cfg.labels.horizons] \
         + [f"gru_h{n}" for n in cfg.labels.horizons] + ["cnn_I5R20"]

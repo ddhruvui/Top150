@@ -129,7 +129,17 @@ Since 2026-09-17 this is NOT a ranked universe. `configs/system_core105.yaml` ca
   list picked in 2026 and run back to 2000 flatters itself. Say so when reporting
   numbers, and don't compare them with the old top-150 record.
 
-`scripts/test_volume_guards.sh` and `tests/test_fixed_universe.py` cover the mechanics.
+**Borrow fees (D-10).** `m1/borrow_fees.parquet` is built from `data_borrow/history/`,
+which holds the 517 equities and no ETFs, so SPY and QQQ come from
+`data_borrow/watchlist/history/<TICKER>.json` — the predict/stage prefetch pulls that
+tree into `/scratch/data_borrow` (`BORROW_DIR`) and `src/data/borrow.py` merges it into
+one table (M1 wins on a date both carry). Anything neither covers falls back to
+`cost.borrow_gc_bps_yr` = **30 bps/yr (0.3%)**. Borrow is charged on SHORT legs only, so
+with `long_only: true` and `hedge: none` it does not move today's numbers — it is there
+for the day a hedge or short sleeve is switched on.
+
+`scripts/test_volume_guards.sh`, `tests/test_fixed_universe.py` and
+`tests/test_borrow_fees.py` cover the mechanics.
 
 ## Daily loop
 

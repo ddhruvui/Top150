@@ -89,7 +89,13 @@ else
           "$SRC/m1" /scratch/m1 --exclude 'qlib/*' || PREFETCH_FAIL="m1"
         timeout 1200 aws s3 sync "${EP[@]}" --only-show-errors \
           "$SRC/data/market" /scratch/data/market || PREFETCH_FAIL="data/market"
-        export M1_DIR=/scratch/m1 EOD_DIR=/scratch/data
+        # D-10 watchlist borrow fees (~1.4 MB): SPY and QQQ are NOT in m1/borrow_fees
+        # — the M1 table is built from data_borrow/history/, which holds equities
+        # only — and core105 trades both. src/data/borrow.py merges these in.
+        timeout 600 aws s3 sync "${EP[@]}" --only-show-errors \
+          "$SRC/data_borrow/watchlist/history" /scratch/data_borrow/watchlist/history \
+          || PREFETCH_FAIL="data_borrow/watchlist"
+        export M1_DIR=/scratch/m1 EOD_DIR=/scratch/data BORROW_DIR=/scratch/data_borrow
         if [ "${JOB:-stage1}" = "stage2" ]; then
           timeout 3600 aws s3 sync "${EP[@]}" --only-show-errors \
             "$SRC/data_finbert" /scratch/data_finbert --exclude 'logs/*' \
@@ -132,6 +138,7 @@ print("\n".join(sorted(pd.read_parquet(os.environ["MEM"])["ticker"].astype(str).
     export M1_DIR=/scratch/m1 EOD_DIR=/scratch/data
     export NASDAQ_DIR=/scratch/data_nasdaq EOD_BULK_DIR=/scratch/data/eod_bulk/US
     export FINBERT_DIR="${FINBERT_DIR:-/scratch/data_finbert}"
+    export BORROW_DIR="${BORROW_DIR:-/scratch/data_borrow}"
     # ---- outputs: RESULTS_DIR only -------------------------------------------
     export MARKET_DIR="${MARKET_DIR:-$RESULTS_DIR/m1x105}"
     export OUT_DIR="${OUT_DIR:-$RESULTS_DIR/derived/${JOB:-stage1}}"
@@ -146,7 +153,8 @@ print("\n".join(sorted(pd.read_parquet(os.environ["MEM"])["ticker"].astype(str).
     export BUNDLE_OUT="$RESULTS_DIR/reports/${BUNDLE:-core105}"
     export REFIT="${REFIT:-auto}"
     GUARD_FAIL=""
-    for k in M1_DIR EOD_DIR NASDAQ_DIR EOD_BULK_DIR FINBERT_DIR MARKET_PRICES_DIR ENTITIES_PATH; do
+    for k in M1_DIR EOD_DIR NASDAQ_DIR EOD_BULK_DIR FINBERT_DIR BORROW_DIR \
+             MARKET_PRICES_DIR ENTITIES_PATH; do
       [ -n "${!k:-}" ] || continue
       case "${!k}/" in /scratch/?*) ;; *) GUARD_FAIL="$GUARD_FAIL $k=${!k}(input-not-scratch)" ;; esac
     done
