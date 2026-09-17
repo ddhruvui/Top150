@@ -10,6 +10,12 @@
 //      diff. Every name reads as a "buy" until it is compared with the current
 //      book — so a name already held shows as HOLD, and a held name that has
 //      dropped out of the target shows as SELL.
+//
+// Short sleeve (2026-09-17): the file also carries shorts_or_increases /
+// short_holds / covers_or_exits. Those are matched against the paper book's
+// side -1 positions the same way: SHORT (sell borrowed shares at the open) when
+// not held, DO NOTHING when held, COVER (buy back) when held but dropped. Every
+// row states its side.
 import * as reports from './reports.js';
 import { state as paperState } from './paper.js';
 import { storeLocation } from './store.js';
@@ -66,9 +72,13 @@ export async function ticket(now = new Date()) {
   if (!sug) return { session: ctx, error: 'no suggestions in the report bundle' };
 
   const nav = Number(book.nav) > 0 ? Number(book.nav) : 100000;
-  const held = new Map();
+  // Paper positions by side: a short (side -1) lives in its own map, so a name
+  // is matched against the long target and the short target independently.
+  const heldL = new Map();
+  const heldS = new Map();
   for (const p of book.positions) {
-    if (p.status === 'open' || p.status === 'ordered') held.set(p.ticker, p);
+    if (p.status !== 'open' && p.status !== 'ordered') continue;
+    (Number(p.side) < 0 ? heldS : heldL).set(p.ticker, p);
   }
 
   const iNextOpen = ctx.next_open ? cal.indexOf(ctx.next_open) : -1;
@@ -79,29 +89,22 @@ export async function ticket(now = new Date()) {
     return i >= 0 ? cal[i + h + 1] ?? null : null;
   };
 
-  // The target book = today's new lots + the open lots the engine still holds
-  // (event-engine ticket, 2026-09-08+). A held name shows DO NOTHING when the
-  // paper book has it and BUY (open lot, to replicate the book) when it does not.
-  const target = new Map();
-  for (const r of sug.buys_or_increases || []) target.set(r.ticker, r);
-  for (const r of sug.holds || []) if (!target.has(r.ticker)) target.set(r.ticker, r);
-
-  const buys = [];
-  const holds = [];
-  for (const [ticker, r] of target) {
-    const pos = held.get(ticker);
+  // Plain-terms sizing: weight × NAV → whole shares at the last close, and the
+  // barrier %s → the prices a broker ticket actually wants. Approximate until
+  // the real fill (barriers hang off the fill, not this close). The %s are
+  // signed per side, so px × (1 + pct/100) is the level for longs and shorts
+  // alike: a short's stop sits above the price and its profit-take below.
+  const rowFor = (ticker, r, side) => {
     const h = r.max_hold_sessions ?? cfg.barrier.h_days;
-    // Plain-terms sizing: weight × NAV → whole shares at the last close, and
-    // the barrier %s → the prices a broker ticket actually wants. Approximate
-    // until the real fill (barriers hang off the fill, not this close).
     const px = r.last_close > 0 ? r.last_close : null;
     const dollars = r.target_weight != null ? r.target_weight * nav : null;
     const shares = px && dollars != null ? Math.floor(dollars / px) : null;
     // A ±40%+ barrier is unreachable inside h sessions — the trade is
     // time-exit only, so trigger prices would be nonsense (even negative).
     const unreachable = Math.abs(r.stop_pct ?? 0) > 40;
-    const row = {
+    return {
       ticker,
+      side,
       target_weight: r.target_weight,
       ensemble_rank: r.ensemble_rank,
       last_close: r.last_close,
@@ -111,8 +114,9 @@ export async function ticket(now = new Date()) {
       new_lot_weight: r.new_lot_weight ?? null,
       sessions_left: r.sessions_left ?? null,
       lots: r.lots ?? null,
-      // trailing stop (barrier.trail_m): each night the GTC stop is raised to
-      // high_since_fill x (1 - trail_pct/100), never below the fixed stop
+      // trailing stop (barrier.trail_m): each night a long's GTC stop is raised
+      // to high_since_fill x (1 - trail_pct/100), a short's lowered to
+      // low_since_fill x (1 + trail_pct/100), never past the fixed stop
       trail_pct: r.trail_pct ?? null,
       max_hold_sessions: h,
       shares,
@@ -124,54 +128,80 @@ export async function ticket(now = new Date()) {
         ? px * (1 + r.profit_take_pct / 100) : null,
       barrier_unreachable: unreachable,
     };
-    // Event-engine book (2026-09-08+): a row may be an OPEN lot the backtest
-    // already holds — sessions_left counts to its vertical from the next open,
-    // and its stop/profit-take are priced off the last close (levels_basis).
-    const sellBy = r.sessions_left != null && iNextOpen >= 0
-      ? cal[iNextOpen + r.sessions_left] ?? null : sellByFrom(null, h);
-    if (!pos) {
-      buys.push({ ...row, action: 'BUY',
-                  reason: r.lots ? `open lot in the backtested book (${r.lots.length} lot${r.lots.length === 1 ? '' : 's'}) — not held here`
-                                 : 'new — not held',
-                  sell_by_date: sellBy });
-    } else if (r.new_lot_weight > 0) {
-      // held here AND the engine adds a lot today: buy the increment only
-      const addDollars = r.new_lot_weight * nav;
-      const addShares = px ? Math.floor(addDollars / px) : null;
-      buys.push({
-        ...row, action: 'BUY', position_id: pos.id, status: pos.status,
-        shares: addShares, est_cost: addShares ? addShares * px : addDollars,
-        reason: `add a lot (${(r.new_lot_weight * 100).toFixed(2)}% of NAV) to an open position`,
-        sell_by_date: sellByFrom(null, h) });
-    } else {
-      holds.push({
-        ...row, action: 'HOLD', position_id: pos.id, status: pos.status,
-        fill_price: pos.fill_price ?? null,
-        // A filled position's barriers are the real ones from the fill.
-        stop_price: pos.stop_price ?? row.stop_price,
-        profit_take_price: pos.profit_take_price ?? row.profit_take_price,
-        sell_by_date: r.sessions_left != null && iNextOpen >= 0
-          ? cal[iNextOpen + r.sessions_left] ?? null
-          : sellByFrom(pos.fill_date ?? null, pos.max_hold_sessions ?? h),
-      });
+  };
+
+  // The target book = today's new lots + the open lots the engine still holds
+  // (event-engine ticket, 2026-09-08+). A held name shows DO NOTHING when the
+  // paper book has it and BUY (open lot, to replicate the book) when it does
+  // not. The short sleeve is the same story against the side -1 positions.
+  const buildSleeve = (newRows, holdRows, heldMap, side) => {
+    const target = new Map();
+    for (const r of newRows || []) target.set(r.ticker, r);
+    for (const r of holdRows || []) if (!target.has(r.ticker)) target.set(r.ticker, r);
+    const verb = side < 0 ? 'SHORT' : 'BUY';
+    const opens = [];
+    const keeps = [];
+    for (const [ticker, r] of target) {
+      const pos = heldMap.get(ticker);
+      const h = r.max_hold_sessions ?? cfg.barrier.h_days;
+      const row = rowFor(ticker, r, side);
+      const px = row.last_close > 0 ? row.last_close : null;
+      // Event-engine book: a row may be an OPEN lot the backtest already holds —
+      // sessions_left counts to its vertical from the next open, and its
+      // stop/profit-take are priced off the last close (levels_basis).
+      const sellBy = r.sessions_left != null && iNextOpen >= 0
+        ? cal[iNextOpen + r.sessions_left] ?? null : sellByFrom(null, h);
+      if (!pos) {
+        opens.push({ ...row, action: verb,
+                     reason: r.lots ? `open lot in the backtested book (${r.lots.length} lot${r.lots.length === 1 ? '' : 's'}) — not held here`
+                                    : 'new — not held',
+                     sell_by_date: sellBy });
+      } else if (r.new_lot_weight > 0) {
+        // held here AND the engine adds a lot today: trade the increment only
+        const addDollars = r.new_lot_weight * nav;
+        const addShares = px ? Math.floor(addDollars / px) : null;
+        opens.push({
+          ...row, action: verb, position_id: pos.id, status: pos.status,
+          shares: addShares, est_cost: addShares ? addShares * px : addDollars,
+          reason: `add a lot (${(r.new_lot_weight * 100).toFixed(2)}% of NAV) to an open ${side < 0 ? 'short ' : ''}position`,
+          sell_by_date: sellByFrom(null, h) });
+      } else {
+        keeps.push({
+          ...row, action: 'HOLD', position_id: pos.id, status: pos.status,
+          fill_price: pos.fill_price ?? null,
+          // A filled position's barriers are the real ones from the fill.
+          stop_price: pos.stop_price ?? row.stop_price,
+          profit_take_price: pos.profit_take_price ?? row.profit_take_price,
+          sell_by_date: r.sessions_left != null && iNextOpen >= 0
+            ? cal[iNextOpen + r.sessions_left] ?? null
+            : sellByFrom(pos.fill_date ?? null, pos.max_hold_sessions ?? h),
+        });
+      }
     }
-  }
+    return { target, opens, keeps };
+  };
+  const L = buildSleeve(sug.buys_or_increases, sug.holds, heldL, 1);
+  const S = buildSleeve(sug.shorts_or_increases, sug.short_holds, heldS, -1);
+  const buys = L.opens;
+  const shorts = S.opens;
+  const holds = [...L.keeps, ...S.keeps];
 
   // Held but no longer wanted, plus anything the source file explicitly exits.
-  // A sold name is outside the target book, so its close must be scraped from
-  // whichever suggestion section still prices it (sells carry their own
+  // A closed-out name is outside the target book, so its close must be scraped
+  // from whichever suggestion section still prices it (sells carry their own
   // last_close in files written after 2026-09-02).
   const closeOf = new Map();
-  for (const section of [sug.buys_or_increases, sug.holds, sug.sells_or_exits]) {
+  for (const section of [sug.buys_or_increases, sug.holds, sug.sells_or_exits,
+                         sug.shorts_or_increases, sug.short_holds, sug.covers_or_exits]) {
     for (const r of section || []) {
       if (r.last_close != null) closeOf.set(r.ticker, r.last_close);
     }
   }
   const sells = [];
-  for (const [ticker, pos] of held) {
-    if (!target.has(ticker)) {
+  for (const [ticker, pos] of heldL) {
+    if (!L.target.has(ticker)) {
       sells.push({
-        ticker, action: 'SELL', position_id: pos.id, status: pos.status,
+        ticker, side: 1, action: 'SELL', position_id: pos.id, status: pos.status,
         fill_price: pos.fill_price ?? null, target_weight: 0,
         last_close: closeOf.get(ticker) ?? null,
         reason: 'dropped out of the target book',
@@ -180,25 +210,47 @@ export async function ticket(now = new Date()) {
   }
   for (const r of sug.sells_or_exits || []) {
     if (!sells.some((x) => x.ticker === r.ticker)) {
-      sells.push({ ticker: r.ticker, action: 'SELL', target_weight: 0,
+      sells.push({ ticker: r.ticker, side: 1, action: 'SELL', target_weight: 0,
                    current_weight: r.current_weight,
                    last_close: closeOf.get(r.ticker) ?? null,
                    reason: 'model flagged an exit' });
     }
   }
+  const covers = [];
+  for (const [ticker, pos] of heldS) {
+    if (!S.target.has(ticker)) {
+      covers.push({
+        ticker, side: -1, action: 'COVER', position_id: pos.id, status: pos.status,
+        fill_price: pos.fill_price ?? null, target_weight: 0,
+        last_close: closeOf.get(ticker) ?? null,
+        reason: 'dropped out of the short book',
+      });
+    }
+  }
+  for (const r of sug.covers_or_exits || []) {
+    if (!covers.some((x) => x.ticker === r.ticker)) {
+      covers.push({ ticker: r.ticker, side: -1, action: 'COVER', target_weight: 0,
+                    current_weight: r.current_weight,
+                    last_close: closeOf.get(r.ticker) ?? null,
+                    reason: 'model flagged a cover' });
+    }
+  }
 
   // Barrier obligations on open positions: the vertical exit is a scheduled MOO
   // at fill + h sessions (M5.2) — it is due regardless of what the model says.
+  // A short's vertical is a buy-to-cover.
   const dueExits = [];
-  for (const pos of held.values()) {
+  for (const pos of [...heldL.values(), ...heldS.values()]) {
     if (pos.status !== 'open' || !pos.fill_date) continue;
     const h = pos.max_hold_sessions ?? cfg.barrier.h_days;
     const verticalDate = sellByFrom(pos.fill_date, h);
     if (verticalDate && ctx.next_open && verticalDate <= ctx.next_open) {
+      const short = Number(pos.side) < 0;
       dueExits.push({
-        ticker: pos.ticker, position_id: pos.id, action: 'EXIT (time barrier)',
+        ticker: pos.ticker, side: short ? -1 : 1, position_id: pos.id,
+        action: short ? 'COVER (time barrier)' : 'EXIT (time barrier)',
         fill_date: pos.fill_date, vertical_date: verticalDate,
-        reason: `${h}-session vertical barrier reached — market-on-open exit`,
+        reason: `${h}-session vertical barrier reached — market-on-open ${short ? 'cover' : 'exit'}`,
       });
     }
   }
@@ -218,14 +270,16 @@ export async function ticket(now = new Date()) {
       execute_at: sug.execute_at,
     },
     counts: { buy: buys.length, sell: sells.length, hold: holds.length,
-              due_exit: dueExits.length, held_total: held.size },
+              short: shorts.length, cover: covers.length,
+              due_exit: dueExits.length, held_total: heldL.size + heldS.size },
     // Sizing basis for the plain-English view: everything above is scaled to
     // the paper book's NAV, so the page can say "shares" and "dollars".
     plan: {
       nav,
       invest_total: buys.reduce((a, r) => a + (r.est_cost ?? 0), 0),
+      short_total: shorts.reduce((a, r) => a + (r.est_cost ?? 0), 0),
     },
-    buys, sells, holds, due_exits: dueExits,
+    buys, sells, holds, due_exits: dueExits, shorts, covers,
     gate_warning: 'The G-11 gates on this book return ITERATE — research output, '
       + 'not a recommendation to trade.',
     holdings_source: `the paper book (${storeLocation()}). Positions you hold `

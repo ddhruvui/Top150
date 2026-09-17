@@ -137,7 +137,7 @@ def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed
     from pathlib import Path
 
     from src.config import git_sha
-    from src.ensemble.rank import ensemble_rank, deciles
+    from src.ensemble.rank import ensemble_rank, deciles, select_short
     from src.portfolio.construct import construct_targets, vol_target_scale, HEDGE_COL
     from src.backtest.costs import CostModel
     from src.backtest.engine import run_backtest
@@ -175,6 +175,26 @@ def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed
                         mask.loc[test_dates])
     dec = deciles(ens, mask.loc[test_dates])
 
+    # ---- short sleeve (2026-09-17, blueprint [MAY]) ----
+    # Bottom-of-ranking names enter the fast-path book with NEGATIVE weights under
+    # their own budget; the two budgets are the sleeve caps as fractions of the
+    # cash cap (core105: 0.5 / 0.5). Off (all-False, budget 0) unless
+    # port.short_selection is set — then the long-only path is bit-identical.
+    borrow = d.get("borrow")
+    cm_b = CostModel(per_trade_bps=15.0, borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
+                     borrow_table=borrow)
+    borrowable = cm_b.borrowable(test_dates, panel.tickers,
+                                 cfg.port.get("short_max_borrow_bps_yr"))
+    sel_short = select_short(ens, mask.loc[test_dates], cfg, borrowable)
+    short_on = bool(sel_short.to_numpy().any())
+    gc = float(cfg.port.get("gross_cap") or 1.0)
+    long_budget = float(cfg.port.get("long_gross_cap", gc)) / gc
+    short_budget = float(cfg.port.get("short_gross_cap", 0.0) or 0.0) / gc
+    if short_on:
+        print(f"short sleeve: ON ({cfg.port.get('short_selection')}, avg "
+              f"{sel_short.sum(axis=1).mean():.1f} names/day, budgets long "
+              f"{long_budget:.2f} / short {short_budget:.2f})", flush=True)
+
     gross_mult = None
     if regime_on:
         gm = regime_multiplier(idx_blk, float(cfg.regime.vol_threshold_ann),
@@ -186,7 +206,9 @@ def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed
         dec, mask.loc[test_dates], sigma32.loc[test_dates], beta, gross_mult,
         tranches=int(cfg.port.tranches), single_name_cap=float(cfg.port.single_name_cap),
         no_trade_band=float(cfg.port.no_trade_band),
-        nav_band=float(cfg.port.no_trade_band_nav_bps) / 1e4)
+        nav_band=float(cfg.port.no_trade_band_nav_bps) / 1e4,
+        short_sel=sel_short if short_on else None,
+        long_budget=long_budget, short_budget=short_budget)
     open_panel = panel.adj_open.loc[test_dates].copy()
     if "SPY" in open_panel.columns:                    # SPY is itself a universe member
         open_panel["SPY"] = open_panel["SPY"].fillna(spy["adj_open"].reindex(test_dates))
@@ -250,6 +272,14 @@ def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed
                       "beats_spy": bool(beats_spy), "beats_mom": bool(beats_mom)},
         "dsr": dsr,
         "gates": gates,
+        "short_sleeve": {
+            "enabled": short_on,
+            "selection": str(cfg.port.get("short_selection", "none")),
+            "avg_names_short": float(sel_short.sum(axis=1).mean()) if short_on else 0.0,
+            "long_budget": long_budget, "short_budget": short_budget,
+            "avg_long_exposure": float(tgt.clip(lower=0.0).sum(axis=1).mean()),
+            "avg_short_exposure": float((-tgt.clip(upper=0.0)).sum(axis=1).mean()),
+        },
     }
     (out / f"{stage}_report.json").write_text(json.dumps(report, indent=2, default=str))
     def _save(frame, path):

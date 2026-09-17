@@ -232,8 +232,15 @@ export async function recordFill(id, { fill_price, official_open, fill_date }) {
   // trailing stop: the first re-peg level is off the fill itself (the running
   // high is at least the fill); later nights use the high since fill
   if (p.trail_pct != null) {
-    p.high_since_fill = fill;
-    p.trail_stop_price = Math.max(p.stop_price ?? 0, fill * (1 - p.trail_pct / 100));
+    if (p.side < 0) {
+      // short: the GTC buy-stop ratchets DOWN off the low since fill, never
+      // above the fixed stop (mirror of the long rule)
+      p.low_since_fill = fill;
+      p.trail_stop_price = Math.min(p.stop_price ?? Infinity, fill * (1 + p.trail_pct / 100));
+    } else {
+      p.high_since_fill = fill;
+      p.trail_stop_price = Math.max(p.stop_price ?? 0, fill * (1 - p.trail_pct / 100));
+    }
   }
   p.status = 'open';
   await save(s);

@@ -231,6 +231,12 @@ def build_trades(src: Path) -> tuple[dict | None, dict | None]:
     tr["year"] = tr["entry_date"].dt.year
     tr = tr[tr["exit_ret_net"].notna()]
     won = tr["exit_ret_net"] > 0
+    # a short's stop is the UPPER barrier and its profit-take the LOWER one
+    side = tr["side"] if "side" in tr else pd.Series(1, index=tr.index)
+    is_stop = ((side > 0) & (tr["barrier_hit"] == "lower")) \
+        | ((side < 0) & (tr["barrier_hit"] == "upper"))
+    is_pt = ((side > 0) & (tr["barrier_hit"] == "upper")) \
+        | ((side < 0) & (tr["barrier_hit"] == "lower"))
 
     def _blk(g: pd.DataFrame) -> dict:
         return {"n": int(len(g)),
@@ -241,6 +247,8 @@ def build_trades(src: Path) -> tuple[dict | None, dict | None]:
 
     by_year = [{"year": int(y), **_blk(g)} for y, g in tr.groupby("year")]
     by_exit = [{"exit": k, **_blk(g)} for k, g in tr.groupby("barrier_hit")]
+    by_side = [{"side": "long" if k > 0 else "short", **_blk(g)}
+               for k, g in tr.groupby(side)]
 
     # Conviction: does a stronger ensemble rank actually pay?
     by_conv = []
@@ -269,8 +277,9 @@ def build_trades(src: Path) -> tuple[dict | None, dict | None]:
         "avg_ret": float(tr["exit_ret_net"].mean()),
         "median_ret": float(tr["exit_ret_net"].median()),
         "avg_hold": float(tr["holding_days"].mean()),
-        "total_pt": int((tr["barrier_hit"] == "upper").sum()),
-        "total_stop": int((tr["barrier_hit"] == "lower").sum()),
+        "total_pt": int(is_pt.sum()),
+        "total_stop": int(is_stop.sum()),
+        "n_short": int((side < 0).sum()),
         "total_time": int((tr["barrier_hit"] == "vertical").sum()),
         "total_trail": int((tr["barrier_hit"] == "trail").sum()),
         "day_trades": int(tr["day_trade"].sum()) if "day_trade" in tr else 0,
@@ -278,6 +287,7 @@ def build_trades(src: Path) -> tuple[dict | None, dict | None]:
                        tr["entry_date"].max().strftime("%Y-%m-%d")],
         "by_year": sorted(by_year, key=lambda x: x["year"]),
         "by_exit": by_exit,
+        "by_side": by_side,
         "by_conviction_decile": by_conv,
         "by_holding_bucket": by_hold,
         "return_distribution": dist,
@@ -324,9 +334,11 @@ def main() -> int:
         (out / "suggestions.json").write_text(json.dumps(_clean(sug), indent=1))
         manifest["sections"]["suggestions"] = {
             "as_of": sug.get("as_of_close"),
-            "n": len(sug.get("buys_or_increases", []))}
+            "n": len(sug.get("buys_or_increases", [])),
+            "n_short": len(sug.get("shorts_or_increases", []))}
         print(f"OK suggestions.json  as_of={sug.get('as_of_close')} "
-              f"n={len(sug.get('buys_or_increases', []))}")
+              f"n={len(sug.get('buys_or_increases', []))} "
+              f"shorts={len(sug.get('shorts_or_increases', []))}")
 
     # config the app must not re-invent (C-08 costs, barriers, compliance limits)
     try:

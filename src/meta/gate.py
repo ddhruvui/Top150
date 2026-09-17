@@ -33,6 +33,19 @@ def candidates_from_deciles(dec: pd.DataFrame, dates: pd.DatetimeIndex,
     return pd.DataFrame(rows, columns=["date", "ticker", "side"])
 
 
+def candidates_from_selection(sel: pd.DataFrame, dates: pd.DatetimeIndex,
+                              side: int = -1) -> pd.DataFrame:
+    """Daily selections (bool frame, e.g. select_short) -> (date, ticker, side)
+    candidate entries. The short sleeve's candidates join the long ones in the
+    same meta model: `side` is a feature (M11 [IMPL list])."""
+    rows = []
+    sub = sel.loc[sel.index.isin(dates)]
+    for d, row in sub.iterrows():
+        for t in row.index[row.astype(bool)]:
+            rows.append((d, t, side))
+    return pd.DataFrame(rows, columns=["date", "ticker", "side"])
+
+
 def meta_context(entries: pd.DataFrame, ens_rank: pd.DataFrame, sigma32: pd.DataFrame,
                  vol20: pd.DataFrame, mom: pd.DataFrame, size_f: pd.DataFrame | None,
                  regime: pd.Series | None, days_to: pd.DataFrame | None,

@@ -33,19 +33,24 @@ const STATE_TEXT = {
 
 /* ------------------------------------------------- simple (default) rows */
 
+/* A short row (side -1) reads "Sell short": the stop column is the price it
+   must be bought back at if it climbs, the profit-take the price to buy it
+   back at if it drops. Same cells, mirrored meaning; the card headers say so. */
 function BuyRowSimple({ r, onAct, busy }) {
   const noTriggers = r.barrier_unreachable;
   const fractional = r.shares === 0;
+  const short = r.side < 0;
+  const verb = short ? 'Sell short' : 'Buy';
   return (
     <tr>
       <td><strong>{r.ticker}</strong></td>
       <td>
-        <strong>{fractional ? `Buy ${fmtMoney(r.est_cost)} worth`
-          : r.shares != null ? `Buy ${fmtInt(r.shares)} shares` : 'Buy'}</strong>
+        <strong>{fractional ? `${verb} ${fmtMoney(r.est_cost)} worth`
+          : r.shares != null ? `${verb} ${fmtInt(r.shares)} shares` : verb}</strong>
         <div className="small muted">
           {fractional
             ? 'less than one whole share — needs fractional shares, or skip it'
-            : 'at the open'}
+            : short ? 'at the open — borrowed shares (margin account)' : 'at the open'}
         </div>
       </td>
       <td className="n">{fmtPrice(r.last_close)}</td>
@@ -55,7 +60,7 @@ function BuyRowSimple({ r, onAct, busy }) {
       </td>
       {noTriggers ? (
         <td colSpan="2" className="small muted">
-          no price triggers — just sell by the date →
+          no price triggers — just {short ? 'buy back' : 'sell'} by the date →
         </td>
       ) : (
         <>
@@ -80,25 +85,32 @@ function BuyRowSimple({ r, onAct, busy }) {
   );
 }
 
+/* Hold rows are keyed by price direction ("if it drops to" / "if it climbs
+   to"), so a short's cells swap: dropping reaches its profit-take, climbing
+   its stop. */
 function HoldRowSimple({ r }) {
+  const short = r.side < 0;
+  const dropTo = short ? r.profit_take_price : r.stop_price;
+  const climbTo = short ? r.stop_price : r.profit_take_price;
   return (
     <tr>
-      <td><strong>{r.ticker}</strong></td>
+      <td><strong>{r.ticker}</strong>{short && <span className="small muted"> short</span>}</td>
       <td>
         <strong>Do nothing</strong>
         <div className="small muted">
-          {r.status === 'ordered' ? 'order already placed, waiting to fill' : 'keep holding it'}
+          {r.status === 'ordered' ? 'order already placed, waiting to fill'
+            : short ? 'keep the short open' : 'keep holding it'}
         </div>
       </td>
       <td className="n">{r.fill_price != null ? fmtPrice(r.fill_price) : '—'}</td>
       {r.barrier_unreachable ? (
         <td colSpan="2" className="small muted">
-          no price triggers — just sell by the date →
+          no price triggers — just {short ? 'buy back' : 'sell'} by the date →
         </td>
       ) : (
         <>
-          <td className="n neg">{fmtPrice(r.stop_price)}</td>
-          <td className="n pos">{fmtPrice(r.profit_take_price)}</td>
+          <td className={`n ${short ? 'pos' : 'neg'}`}>{fmtPrice(dropTo)}</td>
+          <td className={`n ${short ? 'neg' : 'pos'}`}>{fmtPrice(climbTo)}</td>
         </>
       )}
       <td>{r.sell_by_date ? pretty(r.sell_by_date) : '—'}</td>
@@ -108,25 +120,36 @@ function HoldRowSimple({ r }) {
 
 /* --------------------------------------------------- detailed-view row */
 
+const KIND = {
+  BUY: ['pass', '▲', 'Buy'],
+  SHORT: ['fail', '▼', 'Sell short'],
+  SELL: ['fail', '▼', 'Sell'],
+  COVER: ['pass', '▲', 'Buy back'],
+  HOLD: ['neutral', '=', 'Hold'],
+};
+const signed = (v) => (v == null ? '—' : `${v > 0 ? '+' : ''}${fmtNum(v, 2)}%`);
+
 function ActionRow({ r, kind }) {
   const wide = r.barrier_unreachable;
+  const short = r.side < 0;
+  const k = kind === 'HOLD' && short ? 'HOLD' : kind;
+  const [tone, glyph, label] = KIND[k] ?? KIND.HOLD;
   return (
     <tr>
-      <td><strong>{r.ticker}</strong></td>
+      <td><strong>{r.ticker}</strong>{short && kind === 'HOLD' && <span className="small muted"> short</span>}</td>
       <td>
-        <Badge kind={kind === 'BUY' ? 'pass' : kind === 'SELL' ? 'fail' : 'neutral'}
-               glyph={kind === 'BUY' ? '▲' : kind === 'SELL' ? '▼' : '='}>
-          {kind === 'BUY' ? 'Buy' : kind === 'SELL' ? 'Sell' : 'Hold'}
-        </Badge>
+        <Badge kind={tone} glyph={glyph}>{label}</Badge>
       </td>
       <td className="n">{r.target_weight ? fmtPct(r.target_weight, 2) : '—'}</td>
       <td className="n">{r.ensemble_rank != null ? fmtNum(r.ensemble_rank, 3) : '—'}</td>
       <td className="n">{r.last_close != null ? fmtNum(r.last_close, 2)
         : r.fill_price != null ? fmtNum(r.fill_price, 2) : '—'}</td>
-      <td className="n neg">{r.stop_pct != null ? `${fmtNum(r.stop_pct, 2)}%` : '—'}</td>
-      <td className="n pos">{r.profit_take_pct != null ? `+${fmtNum(r.profit_take_pct, 2)}%` : '—'}</td>
-      <td className="n" title="Trailing stop: each night raise the stop to the high since fill minus this, never below the fixed stop">
-        {r.trail_pct != null ? `-${fmtNum(r.trail_pct, 2)}%` : '—'}</td>
+      <td className="n neg">{signed(r.stop_pct)}</td>
+      <td className="n pos">{signed(r.profit_take_pct)}</td>
+      <td className="n" title={short
+        ? 'Trailing stop: each night lower the buy-stop to the low since fill plus this, never above the fixed stop'
+        : 'Trailing stop: each night raise the stop to the high since fill minus this, never below the fixed stop'}>
+        {r.trail_pct != null ? `${short ? '+' : '-'}${fmtNum(r.trail_pct, 2)}%` : '—'}</td>
       <td className="small muted" style={{ whiteSpace: 'normal', maxWidth: 260 }}>
         {wide ? <Badge kind="neutral">⏱ time-exit only</Badge> : r.reason}
       </td>
@@ -172,6 +195,8 @@ export default function Today() {
   const sellSort = useSort(t.sells ?? EMPTY);
   const holdSort = useSort(t.holds ?? EMPTY);
   const dueSort = useSort(t.due_exits ?? EMPTY);
+  const shortSort = useSort(t.shorts ?? EMPTY);
+  const coverSort = useSort(t.covers ?? EMPTY);
 
   if (d.loading) return <Loading what="today's plan" />;
   if (d.error) return <ErrorBox error={d.error} hint={d.error.body?.hint || "Is the API reachable, and has a report been published?"} />;
@@ -183,13 +208,13 @@ export default function Today() {
     setBusy(r.ticker); setMsg(null);
     try {
       await api.paperOpen({
-        ticker: r.ticker, side: 1, target_weight: r.target_weight,
+        ticker: r.ticker, side: r.side ?? 1, target_weight: r.target_weight,
         signal_date: t.signals.as_of_close, ref_close: r.last_close,
         stop_pct: r.stop_pct, profit_take_pct: r.profit_take_pct,
         trail_pct: r.trail_pct ?? null,
         max_hold_sessions: r.max_hold_sessions, ensemble_rank: r.ensemble_rank,
       });
-      setMsg({ ok: true, text: `${r.ticker} is now tracked in your practice book — it "fills" at the ${pretty(s.next_open)} open.` });
+      setMsg({ ok: true, text: `${r.ticker} is now tracked in your practice book — it "${r.side < 0 ? 'sells short' : 'fills'}" at the ${pretty(s.next_open)} open.` });
       load();
     } catch (e) { setMsg({ ok: false, text: `${r.ticker}: ${e.message}` }); }
     finally { setBusy(null); }
@@ -197,13 +222,22 @@ export default function Today() {
 
   // The one-sentence version of the whole page.
   const planBits = [];
-  if (t.counts.due_exit) planBits.push(`sell ${t.counts.due_exit} whose time is up`);
+  const anyShort = Boolean(t.counts.short || t.counts.cover
+    || (t.holds ?? EMPTY).some((r) => r.side < 0) || (t.due_exits ?? EMPTY).some((r) => r.side < 0));
+  if (t.counts.due_exit) planBits.push(`${anyShort ? 'close' : 'sell'} ${t.counts.due_exit} whose time is up`);
   if (t.counts.sell) planBits.push(`sell ${t.counts.sell} the model dropped`);
+  if (t.counts.cover) planBits.push(`buy back ${t.counts.cover} short${t.counts.cover === 1 ? '' : 's'} the model dropped`);
   if (t.counts.buy) {
     planBits.push(`buy ${t.counts.buy} stock${t.counts.buy === 1 ? '' : 's'} for about ${
       fmtMoney(t.plan?.invest_total)}`);
   }
+  if (t.counts.short) {
+    planBits.push(`sell short ${t.counts.short} stock${t.counts.short === 1 ? '' : 's'} worth about ${
+      fmtMoney(t.plan?.short_total)}`);
+  }
   if (t.counts.hold) planBits.push(`leave ${t.counts.hold} alone`);
+  const anyShortHold = (t.holds ?? EMPTY).some((r) => r.side < 0);
+  const exitWord = anyShortHold ? 'Get out' : 'Sell';
   const planText = planBits.length
     ? `${planBits.join(', then ')}.` : 'nothing — there are no orders for this open.';
 
@@ -302,8 +336,16 @@ export default function Today() {
                   sub="new stocks to purchase" tone="pos" />
         <StatTile label="Sell" value={fmtInt(t.counts.sell)}
                   sub="you own, model dropped them" tone={t.counts.sell ? 'neg' : ''} />
-        <StatTile label="Sell — time is up" value={fmtInt(t.counts.due_exit)}
-                  sub="reached their sell-by date" tone={t.counts.due_exit ? 'neg' : ''} />
+        {(t.counts.short > 0 || anyShort) && (
+          <StatTile label="Sell short" value={fmtInt(t.counts.short)}
+                    sub="new stocks to bet against" tone="neg" />
+        )}
+        {t.counts.cover > 0 && (
+          <StatTile label="Buy back" value={fmtInt(t.counts.cover)}
+                    sub="shorts the model dropped" tone="pos" />
+        )}
+        <StatTile label="Close — time is up" value={fmtInt(t.counts.due_exit)}
+                  sub="reached their exit date" tone={t.counts.due_exit ? 'neg' : ''} />
         <StatTile label="Do nothing" value={fmtInt(t.counts.hold)}
                   sub="you own, still on the list" />
         <StatTile label="You own" value={fmtInt(t.counts.held_total)}
@@ -330,21 +372,22 @@ export default function Today() {
       )}
 
       {t.due_exits.length > 0 && (
-        <Card title={`Sell first — time is up (${t.due_exits.length})`}
-              subtitle="These reached their sell-by date. Sell them at the open no matter what the price is — the deadline is part of the strategy, even if the model still likes the stock.">
+        <Card title={`Close first — time is up (${t.due_exits.length})`}
+              subtitle="These reached their exit date. Close them at the open no matter what the price is — the deadline is part of the strategy, even if the model still likes the position.">
           <div className="table-wrap">
             <table>
               <thead><tr>
                 <Th k="ticker" sort={dueSort.sort} onSort={dueSort.onSort}>Stock</Th>
                 <th>What to do</th>
-                <Th k="fill_date" sort={dueSort.sort} onSort={dueSort.onSort}>Bought</Th>
-                <Th k="vertical_date" sort={dueSort.sort} onSort={dueSort.onSort}>Sell-by date</Th>
+                <Th k="fill_date" sort={dueSort.sort} onSort={dueSort.onSort}>Opened</Th>
+                <Th k="vertical_date" sort={dueSort.sort} onSort={dueSort.onSort}>Exit-by date</Th>
               </tr></thead>
               <tbody>
                 {dueSort.rows.map((r) => (
                   <tr key={r.position_id}>
                     <td><strong>{r.ticker}</strong></td>
-                    <td><strong>Sell all your shares at the open</strong></td>
+                    <td><strong>{r.side < 0 ? 'Buy back all the borrowed shares at the open'
+                      : 'Sell all your shares at the open'}</strong></td>
                     <td className="muted">{pretty(r.fill_date)}</td>
                     <td className="muted">{pretty(r.vertical_date)}</td>
                   </tr>
@@ -375,6 +418,34 @@ export default function Today() {
                     <td className="n">{fmtPrice(r.last_close)}</td>
                     <td className="n">{r.fill_price != null ? fmtPrice(r.fill_price) : '—'}</td>
                     <td className="small muted">{SELL_REASON[r.reason] || r.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {t.covers.length > 0 && (
+        <Card title={`Buy back (${t.covers.length})`}
+              subtitle="Shorts you have open that the model no longer wants. Buy back all the borrowed shares at the open.">
+          <div className="table-wrap">
+            <table>
+              <thead><tr>
+                <Th k="ticker" sort={coverSort.sort} onSort={coverSort.onSort}>Stock</Th>
+                <th>What to do</th>
+                <Th k="last_close" num sort={coverSort.sort} onSort={coverSort.onSort}>Latest close</Th>
+                <Th k="fill_price" num sort={coverSort.sort} onSort={coverSort.onSort}>You sold at</Th>
+                <th>Why</th>
+              </tr></thead>
+              <tbody>
+                {coverSort.rows.map((r) => (
+                  <tr key={r.ticker}>
+                    <td><strong>{r.ticker}</strong></td>
+                    <td><strong>Buy back all the borrowed shares at the open</strong></td>
+                    <td className="n">{fmtPrice(r.last_close)}</td>
+                    <td className="n">{r.fill_price != null ? fmtPrice(r.fill_price) : '—'}</td>
+                    <td className="small muted">{r.reason}</td>
                   </tr>
                 ))}
               </tbody>
@@ -418,6 +489,43 @@ export default function Today() {
         )}
       </Card>
 
+      {(t.shorts ?? EMPTY).length > 0 && (
+        <Card title={`Sell short (${t.shorts.length})`}
+              subtitle={detail
+                ? `Quant view of the short sleeve. Each is sold short market-on-open on ${pretty(s.next_open)}; its stop sits above the fill, its profit-take below.`
+                : `Bet against these: sell borrowed shares at the ${pretty(s.next_open)} open (needs a margin account). Buy them back when the first of the two prices or the date is reached — whichever comes first.`}>
+          <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
+            <table>
+              <thead>
+                {detail ? <DetailHead sort={shortSort.sort} onSort={shortSort.onSort} /> : (
+                  <tr>
+                    <Th k="ticker" sort={shortSort.sort} onSort={shortSort.onSort}>Stock</Th>
+                    <Th k="shares" sort={shortSort.sort} onSort={shortSort.onSort}>What to do</Th>
+                    <Th k="last_close" num sort={shortSort.sort} onSort={shortSort.onSort}>Latest close</Th>
+                    <Th k="est_cost" num sort={shortSort.sort} onSort={shortSort.onSort}>Worth about</Th>
+                    <Th k="stop_price" num sort={shortSort.sort} onSort={shortSort.onSort}>Buy back if it climbs to</Th>
+                    <Th k="profit_take_price" num sort={shortSort.sort} onSort={shortSort.onSort}>Buy back if it drops to</Th>
+                    <Th k="sell_by_date" sort={shortSort.sort} onSort={shortSort.onSort}>Buy back by (latest)</Th>
+                    <th></th>
+                  </tr>
+                )}
+              </thead>
+              <tbody>
+                {shortSort.rows.map((r) => (detail
+                  ? <ActionRow key={r.ticker} r={r} kind="SHORT" />
+                  : <BuyRowSimple key={r.ticker} r={r} onAct={buy} busy={busy} />))}
+              </tbody>
+            </table>
+          </div>
+          {!detail && t.counts.short > 0 && (
+            <div className="note">
+              All {t.counts.short} shorts together come to about{' '}
+              <strong>{fmtMoney(t.plan?.short_total)}</strong> of borrowed stock against your {fmtMoney(nav)}.
+            </div>
+          )}
+        </Card>
+      )}
+
       {t.holds.length > 0 && (
         <Card title={`Do nothing (${t.holds.length})`}
               subtitle="You already own these and the model still likes them. No action — just keep an eye on their sell prices and dates."
@@ -433,9 +541,9 @@ export default function Today() {
                       <Th k="ticker" sort={holdSort.sort} onSort={holdSort.onSort}>Stock</Th>
                       <Th k="status" sort={holdSort.sort} onSort={holdSort.onSort}>What to do</Th>
                       <Th k="fill_price" num sort={holdSort.sort} onSort={holdSort.onSort}>You paid</Th>
-                      <Th k="stop_price" num sort={holdSort.sort} onSort={holdSort.onSort}>Sell if it drops to</Th>
-                      <Th k="profit_take_price" num sort={holdSort.sort} onSort={holdSort.onSort}>Sell if it climbs to</Th>
-                      <Th k="sell_by_date" sort={holdSort.sort} onSort={holdSort.onSort}>Sell by (latest)</Th>
+                      <Th k="stop_price" num sort={holdSort.sort} onSort={holdSort.onSort}>{exitWord} if it drops to</Th>
+                      <Th k="profit_take_price" num sort={holdSort.sort} onSort={holdSort.onSort}>{exitWord} if it climbs to</Th>
+                      <Th k="sell_by_date" sort={holdSort.sort} onSort={holdSort.onSort}>{exitWord} by (latest)</Th>
                     </tr>
                   )}
                 </thead>

@@ -33,13 +33,19 @@ export default function Suggestions() {
     refreshPaper();
   }, []);
 
+  // long picks first, then the short sleeve (side -1) — every row states its side
   const rows = useMemo(() => {
-    const all = d.s?.buys_or_increases || [];
+    const all = [...(d.s?.buys_or_increases || []).map((r) => ({ side: 1, ...r })),
+                 ...(d.s?.shorts_or_increases || []).map((r) => ({ side: -1, ...r }))];
     const t = q.trim().toUpperCase();
     return t ? all.filter((r) => r.ticker.toUpperCase().includes(t)) : all;
   }, [d.s, q]);
   const pickSort = useSort(rows);
-  const exitSort = useSort(d.s?.sells_or_exits ?? EMPTY);
+  const exits = useMemo(() => [
+    ...(d.s?.sells_or_exits || []).map((r) => ({ side: 1, ...r })),
+    ...(d.s?.covers_or_exits || []).map((r) => ({ side: -1, ...r })),
+  ], [d.s]);
+  const exitSort = useSort(exits);
 
   if (d.loading) return <Loading what="suggestions" />;
   if (d.error) return <ErrorBox error={d.error} hint={d.error.body?.hint || "Run the predict job on a pod, then mirror + publish the bundle."} />;
@@ -60,12 +66,13 @@ export default function Suggestions() {
     setMsg(null);
     try {
       await api.paperOpen({
-        ticker: r.ticker, side: 1, target_weight: r.target_weight,
+        ticker: r.ticker, side: r.side ?? 1, target_weight: r.target_weight,
         signal_date: s.as_of_close, ref_close: r.last_close,
         stop_pct: r.stop_pct, profit_take_pct: r.profit_take_pct,
+        trail_pct: r.trail_pct ?? null,
         max_hold_sessions: r.max_hold_sessions, ensemble_rank: r.ensemble_rank,
       });
-      setMsg({ ok: true, text: `${r.ticker} is now tracked in your practice book — it "fills" at the next open.` });
+      setMsg({ ok: true, text: `${r.ticker} is now tracked in your practice book — it "${r.side < 0 ? 'sells short' : 'fills'}" at the next open.` });
       refreshPaper();
     } catch (err) {
       setMsg({ ok: false, text: `${r.ticker}: ${err.message}` });
@@ -88,11 +95,13 @@ export default function Suggestions() {
       <div className="tiles" style={{ marginBottom: 16 }}>
         <StatTile label="Picked after" value={s.as_of_close} sub="that day's market close" />
         <StatTile label="Stocks picked" value={fmtInt(book.n_names)}
-                  sub="the model's top-decile names" />
+                  sub="long — the model's top-decile names" />
         <StatTile label="Money invested" value={fmtPct(book.gross_long, 0)}
-                  sub="of the pot (rest stays cash)" />
-        <StatTile label="Short hedge" value={fmtNum(book.spy_hedge_weight, 2)}
-                  sub="0 = no bet against the market" />
+                  sub="of the pot, long (rest stays cash)" />
+        <StatTile label="Stocks shorted" value={fmtInt(book.n_short_names ?? 0)}
+                  sub="bottom-of-ranking names sold short" />
+        <StatTile label="Money short" value={fmtPct(book.gross_short ?? 0, 0)}
+                  sub="of the pot, in borrowed shares" />
       </div>
 
       <div className="verdict warn">
@@ -152,12 +161,13 @@ export default function Suggestions() {
                 return (
                   <tr key={r.ticker}>
                     <td><strong>{r.ticker}</strong></td>
-                    <td><Badge kind="pass">Buy / add</Badge></td>
+                    <td>{r.side < 0 ? <Badge kind="fail" glyph="▼">Sell short</Badge>
+                      : <Badge kind="pass">Buy / add</Badge>}</td>
                     <td className="n">{fmtPct(r.target_weight, 2)}</td>
                     <td className="n">{fmtNum(r.ensemble_rank, 3)}</td>
                     <td className="n">{fmtNum(r.last_close, 2)}</td>
-                    <td className="n neg">{fmtNum(r.stop_pct, 2)}%</td>
-                    <td className="n pos">+{fmtNum(r.profit_take_pct, 2)}%</td>
+                    <td className="n neg">{r.stop_pct > 0 ? '+' : ''}{fmtNum(r.stop_pct, 2)}%</td>
+                    <td className="n pos">{r.profit_take_pct >= 0 ? '+' : ''}{fmtNum(r.profit_take_pct, 2)}%</td>
                     <td className="n">
                       {Math.abs(r.stop_pct) > WIDE_BARRIER_PCT
                         ? <span title={`The ±${fmtNum(Math.abs(r.stop_pct), 0)}% triggers are `
@@ -182,8 +192,8 @@ export default function Suggestions() {
         </div>
       </Card>
 
-      {s.sells_or_exits?.length > 0 && (
-        <Card title="Get out of these" subtitle="Stocks the model held before and no longer wants.">
+      {exits.length > 0 && (
+        <Card title="Get out of these" subtitle="Positions the model held before and no longer wants — sell the longs, buy back the shorts.">
           <div className="table-wrap">
             <table>
               <thead><tr>
@@ -196,7 +206,8 @@ export default function Suggestions() {
                 {exitSort.rows.map((r) => (
                   <tr key={r.ticker}>
                     <td><strong>{r.ticker}</strong></td>
-                    <td><Badge kind="fail">Sell</Badge></td>
+                    <td>{r.side < 0 ? <Badge kind="pass" glyph="▲">Buy back</Badge>
+                      : <Badge kind="fail">Sell</Badge>}</td>
                     <td className="n">{r.last_close != null ? fmtNum(r.last_close, 2) : '—'}</td>
                     <td className="n">{fmtPct(r.current_weight, 2)}</td>
                   </tr>

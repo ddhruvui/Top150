@@ -24,6 +24,15 @@ toward the top of the ranking instead of pure inverse-vol), `trail_m`
 overlay), `fill_max` (scale the entering tranche up, to at most fill_max x
 nominal, to re-deploy capital freed by early exits under the exact cash cap).
 All default-off.
+
+Short-sleeve levers (2026-09-17, blueprint port.selection [MAY]): `short_n`
+(short the N lowest-ranked names per day) or `short_decile` (decile 1),
+`short_cap` (the short sleeve's live-gross cap; None/0 = no sleeve), `long_cap`
+(the long sleeve's cap, default = `gross_cap`), `short_max_borrow` (bps/yr:
+skip a name whose borrow fee is above it). The book is the long sleeve plus
+the short sleeve of the ONE engine (run_long_short); `sleeves` in the metrics
+carries each side's own Sharpe/CAGR so the short leg's contribution is
+attributable. Without these keys every variant is bit-identical.
 """
 from __future__ import annotations
 
@@ -36,9 +45,9 @@ import pandas as pd
 
 from src.config import Cfg, load_config, git_sha
 from src.pipeline.common import prepare
-from src.ensemble.rank import member_ranks, deciles
+from src.ensemble.rank import member_ranks, deciles, select_short
 from src.backtest.costs import CostModel
-from src.backtest.engines.barriers_event import run_event_backtest
+from src.backtest.engines.barriers_event import run_event_backtest, run_long_short
 from src.features.events import event_features
 from src.portfolio.construct import vol_target_scale
 from src.primitives.fwd import forward_return
@@ -119,9 +128,10 @@ def weighted_ensemble(ranks: dict[str, pd.DataFrame], mask: pd.DataFrame,
     return (num / den.where(den > 0)).where(mask)
 
 
-def _patch_cfg(cfg, tranches: int | None = None, name_cap: float | None = None):
+def _patch_cfg(cfg, tranches: int | None = None, name_cap: float | None = None,
+               **port_overrides):
     """Read-only Cfg with per-variant port overrides (engine reads cfg.port.*)."""
-    if tranches is None and name_cap is None:
+    if tranches is None and name_cap is None and not port_overrides:
         return cfg
     d = cfg.to_dict()
     port = dict(d["port"])
@@ -129,6 +139,7 @@ def _patch_cfg(cfg, tranches: int | None = None, name_cap: float | None = None):
         port["tranches"] = int(tranches)
     if name_cap is not None:
         port["single_name_cap"] = float(name_cap)
+    port.update(port_overrides)
     d["port"] = port
     return Cfg(d)
 
@@ -212,15 +223,29 @@ def _book_metrics(res: dict, dates_active: pd.DatetimeIndex) -> dict:
     yrs = max(1e-9, len(dates_active) / 252)
     eq = (1 + dn.fillna(0.0)).cumprod()
     cagr = float(eq.iloc[-1] ** (252 / max(1, len(dn))) - 1) if len(dn) else float("nan")
-    return {"sharpe_net": sharpe(dn), "mdd": max_drawdown(dn),
-            "ann_return": float(dn.mean() * 252), "cagr": cagr,
-            "ann_vol": float(dn.std() * np.sqrt(252)),
-            "n_trades": int(res["n_trades"]), "avg_hold": res["avg_hold"],
-            "hit_counts": res["hit_counts"],
-            "cost_nav_per_yr": cost_nav / yrs,
-            "win_rate": float((tr["exit_ret_net"] > 0).mean()) if len(tr) else float("nan"),
-            **_gross_exposure(tr, dates_active),
-            "periods": _sub_metrics(dn)}
+    out = {"sharpe_net": sharpe(dn), "mdd": max_drawdown(dn),
+           "ann_return": float(dn.mean() * 252), "cagr": cagr,
+           "ann_vol": float(dn.std() * np.sqrt(252)),
+           "n_trades": int(res["n_trades"]), "avg_hold": res["avg_hold"],
+           "hit_counts": res["hit_counts"],
+           "cost_nav_per_yr": cost_nav / yrs,
+           "win_rate": float((tr["exit_ret_net"] > 0).mean()) if len(tr) else float("nan"),
+           **_gross_exposure(tr, dates_active),
+           "periods": _sub_metrics(dn)}
+    if res.get("sleeves"):        # long/short book: each side on its own
+        out["sleeves"] = {}
+        for k, r in res["sleeves"].items():
+            dk = r["daily_net"].reindex(dates_active).dropna()
+            ek = (1 + dk.fillna(0.0)).cumprod()
+            out["sleeves"][k] = {
+                "sharpe_net": sharpe(dk), "mdd": max_drawdown(dk),
+                "ann_return": float(dk.mean() * 252),
+                "cagr": float(ek.iloc[-1] ** (252 / max(1, len(dk))) - 1) if len(dk) else float("nan"),
+                "n_trades": int(r["n_trades"]), "avg_hold": r["avg_hold"],
+                "win_rate": (float((r["trades"]["exit_ret_net"] > 0).mean())
+                             if len(r["trades"]) else float("nan")),
+                **_gross_exposure(r["trades"], dates_active)}
+    return out
 
 
 def default_variants() -> list[dict]:
@@ -371,18 +396,33 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
             else:                        # linear: N, N-1, ..., 1 over the N entrants
                 conv = r_sel.rsub(r_sel.max(axis=1) + 1.0, axis=0)
 
-        cfg_v = _patch_cfg(cfg, v.get("tranches"), v.get("name_cap"))
+        port_over = {}
+        if v.get("short_n"):
+            port_over.update(short_selection="bottom_n", short_n=int(v["short_n"]))
+        elif v.get("short_decile"):
+            port_over.update(short_selection="bottom_decile")
+        cfg_v = _patch_cfg(cfg, v.get("tranches"), v.get("name_cap"), **port_over)
         cm_v = cm
         if v.get("cost_bps") is not None:
             cm_v = CostModel(per_trade_bps=float(v["cost_bps"]),
                              borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
                              borrow_table=d.get("borrow"))
+        sel_short = None
+        if port_over:
+            # short sleeve: bottom of the ranking, §I.4 borrow screen, the same
+            # earnings-skip as the longs
+            sel_short = select_short(ens, msk, cfg_v,
+                                     cm_v.borrowable(test_dates, panel.tickers,
+                                                     v.get("short_max_borrow")))
+            if v.get("skip_earnings") and earn2 is not None:
+                sel_short = sel_short & ~earn2.reindex(test_dates) \
+                    .reindex(columns=sel_short.columns).fillna(False)
 
         gm_series = gm.reindex(test_dates).fillna(1.0)
         kw = dict(m=v.get("m"), h=v.get("h"), thr_cap=v.get("thr_cap"),
                   m_up=v.get("m_up"), m_dn=v.get("m_dn"),
                   net_moo_costs=bool(v.get("net_moo")),
-                  gross_cap=v.get("gross_cap"),
+                  gross_cap=v.get("long_cap", v.get("gross_cap")),
                   gross_cap_exact=bool(v.get("gc_exact")),
                   trail_m=v.get("trail_m"), flat_k=v.get("flat_k"),
                   flat_m=v.get("flat_m"), fill_max=v.get("fill_max"))
@@ -393,12 +433,13 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
             # forces the exit (NaN rank = no information = stay)
             r_all = ens.rank(axis=1, ascending=False, method="first")
             kw["stay_mask"] = ~r_all.gt(float(v["exit_rank"]))
-        pre = run_event_backtest(sel, panel, sigma32, cm_v, cfg_v,
-                                 day_budget_mult=gm_series, **kw)
+        short_cap = v.get("short_cap") if sel_short is not None else None
+        pre = run_long_short(sel, sel_short, panel, sigma32, cm_v, cfg_v,
+                             short_cap=short_cap, day_budget_mult=gm_series, **kw)
         vt = vol_target_scale(pre["daily_net"], vt_target, vt_cap)
         budget = (gm_series * vt.reindex(test_dates).fillna(1.0)).clip(lower=0.0)
-        res = run_event_backtest(sel, panel, sigma32, cm_v, cfg_v,
-                                 day_budget_mult=budget, **kw)
+        res = run_long_short(sel, sel_short, panel, sigma32, cm_v, cfg_v,
+                             short_cap=short_cap, day_budget_mult=budget, **kw)
 
         if v.get("fin_bps_yr"):
             # margin financing on gross above 1x NAV (the engine models no
@@ -420,7 +461,8 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                   "vol_thr", "vt", "vt_cap", "top_n", "tranches", "name_cap",
                   "m_up", "m_dn", "cost_bps", "sent_gate", "net_moo",
                   "fin_bps_yr", "gross_cap", "gc_exact", "exit_rank",
-                  "trend", "conv_weight", "trail_m", "flat_k", "flat_m", "fill_max")
+                  "trend", "conv_weight", "trail_m", "flat_k", "flat_m", "fill_max",
+                  "short_n", "short_decile", "short_cap", "long_cap", "short_max_borrow")
         row = {"name": name, **{k: v.get(k) for k in LEVERS},
                "members": members, **met}
         results.append(row)

@@ -20,11 +20,13 @@ import pandas as pd
 from src.config import load_config, git_sha
 from src.pipeline.common import prepare
 from src.models.lgbm import LGBMHead
-from src.ensemble.rank import ensemble_rank, deciles, select_long
+from src.ensemble.rank import ensemble_rank, deciles, select_long, select_short
 from src.backtest.costs import CostModel
-from src.backtest.engines.barriers_event import engine_opts_from_cfg, run_event_backtest
-from src.meta.gate import (candidates_from_deciles, meta_context, meta_outcomes,
-                           train_meta, meta_multiplier, META_FEATURES)
+from src.backtest.engines.barriers_event import (engine_opts_from_cfg, run_event_backtest,
+                                                 run_long_short, sleeve_caps)
+from src.meta.gate import (candidates_from_deciles, candidates_from_selection,
+                           meta_context, meta_outcomes, train_meta, meta_multiplier,
+                           META_FEATURES)
 from src.primitives.monthly import mom_12_1
 from src.primitives.rolling import RollingCache
 from src.primitives.returns import daily_return
@@ -100,17 +102,30 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
     # selection + engine options are config-driven; the default system.yaml
     # reproduces the original decile book bit-for-bit (keys absent -> defaults)
     eng_kw = engine_opts_from_cfg(cfg)
+    long_cap, short_cap = sleeve_caps(cfg)
+    eng_kw["gross_cap"] = long_cap
     sel_ungated = select_long(ens, mask.loc[test_dates], cfg)
+    # short sleeve (2026-09-17, blueprint [MAY]): all-False unless
+    # port.short_selection is set; §I.4 borrow screen at the decision date. The
+    # book is then long sleeve + short sleeve, each under its own cap, with the
+    # regime/vol-target budget applied to both alike.
+    max_borrow = cfg.port.get("short_max_borrow_bps_yr")
+    borrowable = cm.borrowable(dates, panel.tickers, max_borrow)
+    sel_short = select_short(ens, mask.loc[test_dates], cfg, borrowable)
+    short_on = short_cap > 0 and bool(sel_short.to_numpy().any())
+    print(f"short sleeve: {'ON' if short_on else 'off'} "
+          f"({cfg.port.get('short_selection', 'none')}; caps long {long_cap} / "
+          f"short {short_cap})", flush=True)
     gm_series = gm.reindex(test_dates).fillna(1.0)
-    pre = run_event_backtest(sel_ungated, panel, sigma32, cm, cfg,
-                             day_budget_mult=gm_series,
-                             account_equity=account_equity, **eng_kw)
+    pre = run_long_short(sel_ungated, sel_short, panel, sigma32, cm, cfg,
+                         short_cap=short_cap, day_budget_mult=gm_series,
+                         account_equity=account_equity, **eng_kw)
     vt = vol_target_scale(pre["daily_net"], float(cfg.port.vol_target_ann),
                           float(cfg.port.vol_target_scale_cap))
     budget = (gm_series * vt.reindex(test_dates).fillna(1.0)).clip(lower=0.0)
-    res_ungated = run_event_backtest(sel_ungated, panel, sigma32, cm, cfg,
-                                     day_budget_mult=budget,
-                                     account_equity=account_equity, **eng_kw)
+    res_ungated = run_long_short(sel_ungated, sel_short, panel, sigma32, cm, cfg,
+                                 short_cap=short_cap, day_budget_mult=budget,
+                                 account_equity=account_equity, **eng_kw)
 
     # ---------------- meta gate, causally per fold (M11-04) ----------------
     meta_mult = pd.DataFrame(np.nan, index=test_dates, columns=panel.tickers)
@@ -122,6 +137,10 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
         if not len(fold_test):
             continue
         cand = candidates_from_deciles(dec, fold_test)
+        if short_on:      # the short sleeve's candidates join the same meta model
+            cand = pd.concat([cand, candidates_from_selection(sel_short, fold_test,
+                                                              side=-1)],
+                             ignore_index=True)
         if k > 0 and train_pool:
             tr_cand = pd.concat(train_pool, ignore_index=True)
             tr_out = pd.concat(outcomes_pool, ignore_index=True)
@@ -154,10 +173,11 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
     mm_filled = meta_mult.copy()
     mm_filled.loc[~has_meta] = 1.0
     sel_gated = sel_ungated & (mm_filled.fillna(0.0) > 0)
-    res_gated = run_event_backtest(sel_gated, panel, sigma32, cm,
-                                   cfg, meta_mult=mm_filled,
-                                   day_budget_mult=budget,
-                                   account_equity=account_equity, **eng_kw)
+    sel_gated_short = sel_short & (mm_filled.fillna(0.0) > 0)
+    res_gated = run_long_short(sel_gated, sel_gated_short, panel, sigma32, cm, cfg,
+                               short_cap=short_cap, meta_mult=mm_filled,
+                               day_budget_mult=budget,
+                               account_equity=account_equity, **eng_kw)
 
     # ---------------- M11-02 adoption gate ----------------
     s_un, s_gt = sharpe(res_ungated["daily_net"]), sharpe(res_gated["daily_net"])
@@ -212,9 +232,11 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                 gd = dates[bounds[g]:bounds[g + 1]]
                 segs.append(split_scores[ci].reindex(gd))
             path_ens = pd.concat(segs)
-            psel = select_long(path_ens, mask.reindex(path_ens.index)
-                               .fillna(False), cfg)
-            pres = run_event_backtest(psel, panel, sigma32, cm, cfg, **eng_kw)
+            pmask = mask.reindex(path_ens.index).fillna(False)
+            psel = select_long(path_ens, pmask, cfg)
+            psel_s = select_short(path_ens, pmask, cfg, borrowable) if short_on else None
+            pres = run_long_short(psel, psel_s, panel, sigma32, cm, cfg,
+                                  short_cap=short_cap, **eng_kw)
             path_stats.append({"path": pi, "sharpe": sharpe(pres["daily_net"]),
                                "mdd": max_drawdown(pres["daily_net"]),
                                "n_trades": pres["n_trades"]})
@@ -232,7 +254,14 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                                       git_sha(), seed),
               "adoption": adoption, "meta_folds": meta_stats,
               "cpcv": cpcv_report, "dsr": dsr,
-              "book": perf_summary(book["daily_net"])}
+              "book": perf_summary(book["daily_net"]),
+              "short_sleeve": {"enabled": short_on, "long_cap": long_cap,
+                               "short_cap": short_cap,
+                               "selection": str(cfg.port.get("short_selection", "none"))},
+              "sleeves": ({k: {**perf_summary(v["daily_net"]), "n_trades": v["n_trades"],
+                               "avg_hold": v["avg_hold"], "hit_counts": v["hit_counts"]}
+                           for k, v in book["sleeves"].items()}
+                          if "sleeves" in book else None)}
     (out / "stage3_report.json").write_text(json.dumps(report, indent=2, default=str))
     book["daily_net"].to_frame("net").to_parquet(out / "stage3_daily_net.parquet")
 

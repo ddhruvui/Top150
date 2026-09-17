@@ -15,6 +15,14 @@ netting, trailing stop) and emits the book to hold at the NEXT open — open
 lots with their live stop levels, lots whose vertical falls at the open, and
 today's tranche sized under the cap — plus the suggestion report.
 
+Short sleeve (2026-09-17, blueprint port.selection [MAY]): when the config sets
+`port.short_selection`, the bottom of the same ranking is sold short under its
+own cap (`port.short_gross_cap`), exits by the same barrier engine (stop above
+the fill, trail ratcheting down off the low since fill, profit-take below), and
+the ticket carries `shorts_or_increases` / `short_holds` / `covers_or_exits`
+next to the long rows. Every row now states its `side` (+1 / -1). Without the
+config keys the long-only ticket is unchanged.
+
 Output is research tooling for the system's operator — not financial advice
 (blueprint CAV: "nothing here guarantees profit").
 """
@@ -32,11 +40,11 @@ from src.data.m1 import M1
 from src.pipeline.common import prepare
 from src.models.lgbm import LGBMHead
 from src.models.store import ModelStore, decide_refit
-from src.ensemble.rank import ensemble_rank, select_long
+from src.ensemble.rank import ensemble_rank, select_long, select_short
 from src.portfolio.construct import vol_target_scale
 from src.backtest.costs import CostModel
 from src.backtest.engines.barriers_event import (engine_opts_from_cfg, run_event_backtest,
-                                                 live_book)
+                                                 run_long_short, live_book, sleeve_caps)
 from src.regime.overlay import regime_multiplier
 from src.validation.splits import _purge_embargo
 from src.hpo.determinism import seed_everything, artifact_stamp
@@ -49,6 +57,104 @@ WARM_SESSIONS = 90            # trailing replay window for the event-engine book
 def _rk(x) -> str:
     """Rank column for the markdown ticket: signed number, or 'nan' when unscored."""
     return f"{float(x):+.3f}" if x is not None and np.isfinite(x) else "nan"
+
+
+def _fnum(x, nd: int = 2):
+    """Rounded number for the ticket; None when missing or non-finite."""
+    try:
+        return None if x is None or not np.isfinite(x) else round(float(x), nd)
+    except TypeError:
+        return None
+
+
+def sleeve_ticket(lb: dict, side: int, ens_last: pd.Series, last_close: pd.Series,
+                  thr: pd.Series, trail_w: pd.Series | None, h_bar: int) -> dict:
+    """Ticket rows for ONE sleeve of the live book (side +1 long / -1 short):
+    new lots (BUY / SHORT), open lots not entering today (HOLD / HOLD SHORT)
+    and lots whose vertical falls at the next open (SELL / COVER). Barrier %s
+    are signed so that fill x (1 + pct/100) is the level on either side: a
+    short's stop is +thr ABOVE the fill and its profit-take -thr below; the
+    trail % is the distance from the running high (long) or low (short)."""
+    sgn = 1 if int(side) > 0 else -1
+    entries, holds_df, due_df = lb["entries"], lb["holds"], lb["due_exits"]
+    held_w = holds_df.groupby("ticker")["tranche_w"].sum() if len(holds_df) \
+        else pd.Series(dtype=float)
+    trail_on = trail_w is not None
+    new_rows, hold_rows, exit_rows = [], [], []
+
+    def _lots(g):
+        return [{"entry_date": str(r.entry_date.date()),
+                 "fill_date": str(r.fill_date.date()),
+                 "weight": round(float(r.tranche_w), 5),
+                 "sessions_left": int(r.sessions_left),
+                 "stop_kind": r.stop_kind,
+                 "stop_vs_close_pct": _fnum(r.stop_vs_close_pct),
+                 "pt_vs_close_pct": _fnum(r.pt_vs_close_pct)}
+                for r in g.itertuples(index=False)]
+
+    for t, wt in entries.sort_values(ascending=False).items():
+        # a name already held gets a NEW lot on top: target_weight is the total
+        # to hold (held + new), new_lot_weight the increment, lots the open ones
+        held_here = float(held_w.get(t, 0.0))
+        g_held = holds_df[holds_df["ticker"] == t].sort_values("entry_date") \
+            if len(holds_df) else holds_df
+        new_rows.append({
+            "ticker": t, "side": sgn, "action": "BUY" if sgn > 0 else "SHORT",
+            "target_weight": round(float(wt) + held_here, 5),
+            "new_lot_weight": round(float(wt), 5),
+            "current_weight": round(held_here, 5),
+            "lots": _lots(g_held) or None,
+            "ensemble_rank": _fnum(ens_last.get(t, np.nan), 4),
+            "last_close": _fnum(last_close.get(t, np.nan)),
+            "stop_pct": _fnum(-sgn * float(thr.get(t, np.nan)) * 100),
+            "profit_take_pct": _fnum(sgn * float(thr.get(t, np.nan)) * 100),
+            "trail_pct": _fnum(float(trail_w.get(t, np.nan)) * 100) if trail_on else None,
+            "levels_basis": "fill",
+            "max_hold_sessions": h_bar, "sessions_left": h_bar,
+            "lot": ("new tranche (fills at the next open)" if sgn > 0
+                    else "new short tranche (sold short at the next open)")})
+    for t, g in (holds_df.groupby("ticker") if len(holds_df) else []):
+        if t in entries.index:
+            continue                      # carried on its new-lot row above
+        g = g.sort_values("entry_date")
+        # the ticket prices levels off the last close: the most binding lot's
+        # stop (closest to the close on the stop side) and the nearest profit-take
+        stop_b = g["stop_vs_close_pct"].max() if sgn > 0 else g["stop_vs_close_pct"].min()
+        pt_b = g["pt_vs_close_pct"].min() if sgn > 0 else g["pt_vs_close_pct"].max()
+        hold_rows.append({
+            "ticker": t, "side": sgn, "action": "HOLD" if sgn > 0 else "HOLD SHORT",
+            "target_weight": round(float(g["tranche_w"].sum()), 5),
+            "current_weight": round(float(g["tranche_w"].sum()), 5),
+            "ensemble_rank": _fnum(ens_last.get(t, np.nan), 4),
+            "last_close": _fnum(last_close.get(t, np.nan)),
+            "stop_pct": _fnum(float(stop_b)),
+            "profit_take_pct": _fnum(float(pt_b)),
+            "trail_pct": _fnum(float(trail_w.get(t, np.nan)) * 100) if trail_on else None,
+            "levels_basis": "last_close",
+            "max_hold_sessions": h_bar,
+            "sessions_left": int(g["sessions_left"].min()),
+            "lots": _lots(g)})
+    for t, g in (due_df.groupby("ticker") if len(due_df) else []):
+        when = ", ".join(str(x.date()) for x in g["entry_date"])
+        exit_rows.append({
+            "ticker": t, "side": sgn, "action": "SELL" if sgn > 0 else "COVER",
+            "target_weight": 0.0,
+            "current_weight": round(float(g["tranche_w"].sum()), 5),
+            "last_close": _fnum(last_close.get(t, np.nan)),
+            "reason": (f"vertical barrier: MOO sell at the next open (entered {when})"
+                       if sgn > 0 else
+                       f"vertical barrier: MOO cover (buy back) at the next open "
+                       f"(entered {when})"),
+            "lots": [{"entry_date": str(r.entry_date.date()),
+                      "weight": round(float(r.tranche_w), 5)}
+                     for r in g.itertuples(index=False)]})
+    gross = float(entries.sum()) + float(held_w.sum())
+    return {"new": new_rows, "holds": hold_rows, "exits": exit_rows, "held_w": held_w,
+            "in_book": set(entries.index) | set(held_w.index), "gross": gross}
+
+
+_EMPTY_SLEEVE = {"new": [], "holds": [], "exits": [], "held_w": pd.Series(dtype=float),
+                 "in_book": set(), "gross": 0.0}
 
 
 def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None = None,
@@ -241,18 +347,42 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     cm = CostModel(per_trade_bps=float(cfg.cost.per_trade_bps),
                    borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
                    borrow_table=d.get("borrow"))
+    # ---- short sleeve (2026-09-17, blueprint [MAY]): the bottom of the SAME
+    # ranking sold short under its own cap, exiting through the same barrier
+    # engine. §I step 4: a name whose borrow fee is above the threshold today is
+    # skipped and logged. All-off (long-only ticket) without the config keys.
+    long_cap, short_cap = sleeve_caps(cfg)
+    max_borrow = cfg.port.get("short_max_borrow_bps_yr")
+    borrowable = cm.borrowable(score_dates, panel.tickers, max_borrow)
+    sel_short = select_short(ens, m, cfg, borrowable)
+    short_on = short_cap > 0 and bool(sel_short.to_numpy().any())
+    htb_skipped: list[str] = []
+    if short_on:
+        raw_last = select_short(ens, m, cfg).iloc[-1]
+        htb_skipped = sorted(str(t) for t in raw_last.index[raw_last & ~sel_short.iloc[-1]])
+        print(f"short sleeve: {cfg.port.get('short_selection')} "
+              f"(N={cfg.port.get('short_n')}), caps long {long_cap} / short {short_cap}"
+              + (f"; hard-to-borrow skipped today: {htb_skipped}" if htb_skipped else ""),
+              flush=True)
+    else:
+        print("short sleeve: off (long-only book)", flush=True)
     # M13 regime overlay + M14 vol targeting scale the ENTERING tranche, exactly
     # as stage3 does: a pre-run over the window feeds the causal vol-target scale
     gm = regime_multiplier(idx_blk, float(cfg.regime.vol_threshold_ann),
                            float(cfg.regime.gross_multiplier_risk_off)) \
         .reindex(score_dates).fillna(1.0)
     eng_kw = engine_opts_from_cfg(cfg)
-    pre = run_event_backtest(sel, panel, sigma32, cm, cfg, day_budget_mult=gm, **eng_kw)
+    eng_kw["gross_cap"] = long_cap
+    pre = run_long_short(sel, sel_short, panel, sigma32, cm, cfg, short_cap=short_cap,
+                         day_budget_mult=gm, **eng_kw)
     vt = vol_target_scale(pre["daily_net"].loc[score_dates[0]:],
                           float(cfg.port.vol_target_ann),
                           float(cfg.port.vol_target_scale_cap))
     budget = (gm * vt.reindex(score_dates).fillna(1.0)).clip(lower=0.0)
-    lb = live_book(sel, panel, sigma32, cm, cfg, day_budget_mult=budget)
+    lb = live_book(sel, panel, sigma32, cm, cfg, day_budget_mult=budget, side=1,
+                   gross_cap=long_cap)
+    lb_s = (live_book(sel_short, panel, sigma32, cm, cfg, day_budget_mult=budget,
+                      side=-1, gross_cap=short_cap) if short_on else None)
     t_last = score_dates[-1]
     assert lb["as_of"] == t_last
     entries, holds_df, due_df = lb["entries"], lb["holds"], lb["due_exits"]
@@ -261,6 +391,13 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
           f"{lb['cap_scale']:.2f}), {len(holds_df)} open lots "
           f"(gross {float(holds_df['tranche_w'].sum()) if len(holds_df) else 0.0:.3f}), "
           f"{len(due_df)} lots due at the open", flush=True)
+    if lb_s is not None:
+        assert lb_s["as_of"] == t_last
+        print(f"short book @ {t_last.date()}: {len(lb_s['entries'])} entering "
+              f"(gross {float(lb_s['entries'].sum()):.3f}, cap scale "
+              f"{lb_s['cap_scale']:.2f}), {len(lb_s['holds'])} open short lots "
+              f"(gross {float(lb_s['holds']['tranche_w'].sum()) if len(lb_s['holds']) else 0.0:.3f}), "
+              f"{len(lb_s['due_exits'])} lots to cover at the open", flush=True)
 
     # ---- barrier levels for NEW entries (M5.2 parameters, % vs the fill) ----
     m_bar, h_bar = float(cfg.barrier.m), int(cfg.barrier.h_days)
@@ -274,92 +411,42 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     last_close = panel.raw_close.loc[t_last]
     ens_last = ens.loc[t_last]
 
-    def _f(x, nd=2):
-        return None if x is None or not np.isfinite(x) else round(float(x), nd)
+    L = sleeve_ticket(lb, 1, ens_last, last_close, thr, trail_w, h_bar)
+    S = sleeve_ticket(lb_s, -1, ens_last, last_close, thr, trail_w, h_bar) \
+        if lb_s is not None else dict(_EMPTY_SLEEVE)
+    buys, holds, sells = L["new"], L["holds"], L["exits"]
+    shorts, short_holds, covers = S["new"], S["holds"], S["exits"]
+    held_w, held_w_s = L["held_w"], S["held_w"]
 
-    held_w = holds_df.groupby("ticker")["tranche_w"].sum() if len(holds_df) \
-        else pd.Series(dtype=float)
-    buys, holds, sells = [], [], []
-    for t, wt in entries.sort_values(ascending=False).items():
-        # a name already held gets a NEW lot on top: target_weight is the total
-        # to hold (held + new), new_lot_weight the increment, lots the open ones
-        held_here = float(held_w.get(t, 0.0))
-        g_held = holds_df[holds_df["ticker"] == t].sort_values("entry_date") \
-            if len(holds_df) else holds_df
-        buys.append({
-            "ticker": t, "target_weight": round(float(wt) + held_here, 5),
-            "new_lot_weight": round(float(wt), 5),
-            "current_weight": round(held_here, 5),
-            "lots": [{"entry_date": str(r.entry_date.date()),
-                      "fill_date": str(r.fill_date.date()),
-                      "weight": round(float(r.tranche_w), 5),
-                      "sessions_left": int(r.sessions_left),
-                      "stop_kind": r.stop_kind,
-                      "stop_vs_close_pct": _f(r.stop_vs_close_pct),
-                      "pt_vs_close_pct": _f(r.pt_vs_close_pct)}
-                     for r in g_held.itertuples(index=False)] or None,
-            "ensemble_rank": _f(ens_last.get(t, np.nan), 4),
-            "last_close": _f(last_close.get(t, np.nan)),
-            "stop_pct": _f(-float(thr.get(t, np.nan)) * 100),
-            "profit_take_pct": _f(float(thr.get(t, np.nan)) * 100),
-            "trail_pct": _f(float(trail_w.get(t, np.nan)) * 100) if trail_on else None,
-            "levels_basis": "fill",
-            "max_hold_sessions": h_bar, "sessions_left": h_bar,
-            "lot": "new tranche (fills at the next open)"})
-    for t, g in (holds_df.groupby("ticker") if len(holds_df) else []):
-        if t in entries.index:
-            continue                      # carried on its BUY (new lot) row above
-        g = g.sort_values("entry_date")
-        # the ticket prices levels off the last close: report the most binding
-        # lot's stop (highest) and the nearest profit-take, both vs last close
-        holds.append({
-            "ticker": t, "target_weight": round(float(g["tranche_w"].sum()), 5),
-            "current_weight": round(float(g["tranche_w"].sum()), 5),
-            "ensemble_rank": _f(ens_last.get(t, np.nan), 4),
-            "last_close": _f(last_close.get(t, np.nan)),
-            "stop_pct": _f(float(g["stop_vs_close_pct"].max())),
-            "profit_take_pct": _f(float(g["pt_vs_close_pct"].min())),
-            "trail_pct": _f(float(trail_w.get(t, np.nan)) * 100) if trail_on else None,
-            "levels_basis": "last_close",
-            "max_hold_sessions": h_bar,
-            "sessions_left": int(g["sessions_left"].min()),
-            "lots": [{"entry_date": str(r.entry_date.date()),
-                      "fill_date": str(r.fill_date.date()),
-                      "weight": round(float(r.tranche_w), 5),
-                      "sessions_left": int(r.sessions_left),
-                      "stop_kind": r.stop_kind,
-                      "stop_vs_close_pct": _f(r.stop_vs_close_pct),
-                      "pt_vs_close_pct": _f(r.pt_vs_close_pct)}
-                     for r in g.itertuples(index=False)]})
-    for t, g in (due_df.groupby("ticker") if len(due_df) else []):
-        sells.append({
-            "ticker": t, "target_weight": 0.0,
-            "current_weight": round(float(g["tranche_w"].sum()), 5),
-            "last_close": _f(last_close.get(t, np.nan)),
-            "reason": "vertical barrier: MOO sell at the next open (entered "
-                      + ", ".join(str(x.date()) for x in g["entry_date"]) + ")",
-            "lots": [{"entry_date": str(r.entry_date.date()),
-                      "weight": round(float(r.tranche_w), 5)}
-                     for r in g.itertuples(index=False)]})
-
-    # ---- diff vs the operator's own positions file (names outside the book) ----
+    # ---- diff vs the operator's own positions file (names outside the book);
+    # weights are signed: a negative weight is a short position ----
     current = pd.Series(dtype=float)
     if positions_csv and Path(positions_csv).exists():
         pos_df = pd.read_csv(positions_csv)
         current = pos_df.set_index("ticker")["weight"] if "weight" in pos_df else \
             pd.Series(dtype=float)
-    in_book = set(entries.index) | set(held_w.index)
     for t, cur in current.items():
-        if t not in in_book and abs(cur) > 1e-6 and not any(s["ticker"] == t for s in sells):
-            sells.append({"ticker": t, "target_weight": 0.0,
+        if abs(cur) <= 1e-6:
+            continue
+        if cur > 0 and t not in L["in_book"] and not any(x["ticker"] == t for x in sells):
+            sells.append({"ticker": t, "side": 1, "action": "SELL", "target_weight": 0.0,
                           "current_weight": round(float(cur), 5),
-                          "last_close": _f(last_close.get(t, np.nan)),
+                          "last_close": _fnum(last_close.get(t, np.nan)),
                           "reason": "held but not in the event-engine book"})
-    gross_book = float(entries.sum()) + float(held_w.sum())
-    # rows are rounded to 5 dp: the ticket must still add up to the book
+        elif cur < 0 and t not in S["in_book"] and not any(x["ticker"] == t for x in covers):
+            covers.append({"ticker": t, "side": -1, "action": "COVER",
+                           "target_weight": 0.0,
+                           "current_weight": round(float(cur), 5),
+                           "last_close": _fnum(last_close.get(t, np.nan)),
+                           "reason": "held short but not in the short sleeve's book"})
+    gross_book, gross_short = L["gross"], S["gross"]
+    # rows are rounded to 5 dp: the ticket must still add up to each sleeve's book
     assert abs(sum(r["target_weight"] for r in buys + holds) - gross_book) < 1e-3, \
         (sum(r["target_weight"] for r in buys + holds), gross_book)
-    book_names = sorted(in_book)
+    assert abs(sum(r["target_weight"] for r in shorts + short_holds) - gross_short) < 1e-3, \
+        (sum(r["target_weight"] for r in shorts + short_holds), gross_short)
+    book_names = sorted(L["in_book"])
+    short_names = sorted(S["in_book"])
 
     suggestions = {
         "as_of_close": str(t_last.date()),
@@ -382,71 +469,134 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
                                               if len(due_df) else 0.0, 5),
                       "budget_mult": round(float(lb["budget"]), 4),
                       "cap_scale": round(float(lb["cap_scale"]), 4),
-                      "spy_hedge_weight": round(hedge_w, 4)},
+                      "spy_hedge_weight": round(hedge_w, 4),
+                      # short sleeve (positive numbers = short exposure as a
+                      # fraction of NAV; net_exposure = long - short)
+                      "n_short_names": int(len(short_names)),
+                      "gross_short": round(gross_short, 5),
+                      "short_entering_gross": round(float(lb_s["entries"].sum()), 5)
+                      if lb_s is not None else 0.0,
+                      "short_held_gross": round(float(held_w_s.sum()), 5),
+                      "short_due_exit_gross": round(float(lb_s["due_exits"]["tranche_w"].sum())
+                                                    if lb_s is not None and len(lb_s["due_exits"])
+                                                    else 0.0, 5),
+                      "short_cap_scale": round(float(lb_s["cap_scale"]), 4)
+                      if lb_s is not None else None,
+                      "gross_total": round(gross_book + gross_short, 5),
+                      "net_exposure": round(gross_book - gross_short, 5)},
         "book_engine": {"engine": "M15 event engine replay (run_event_backtest + live_book)",
                         "window_sessions": int(len(score_dates)),
                         "options": {k: (None if v is None else v)
                                     for k, v in eng_kw.items()},
+                        "short_sleeve": {
+                            "enabled": short_on,
+                            "selection": str(cfg.port.get("short_selection", "none")),
+                            "short_n": cfg.port.get("short_n"),
+                            "long_cap": long_cap, "short_cap": short_cap,
+                            "max_borrow_bps_yr": max_borrow,
+                            "hard_to_borrow_skipped_today": htb_skipped,
+                            "note": "a short is a sale of borrowed shares: SELL MOO to "
+                                    "open, BUY to cover; stop ABOVE the fill (the trail "
+                                    "ratchets it down off the low since fill), "
+                                    "profit-take below; the borrow fee accrues daily; "
+                                    "margin account required (G-14)"},
                         "sizing": "weights are fractions of NAV at entry: "
-                                  "inverse-vol within the top-N tranche / tranches x "
-                                  "regime x vol-target budget, scaled to the cash cap",
+                                  "inverse-vol within the entering tranche / tranches x "
+                                  "regime x vol-target budget, scaled to each sleeve's "
+                                  "cap (long + short live gross <= the cash cap)",
                         "note": "replaces the Stage-1 15-tranche rotation the ticket "
                                 "used until 2026-09-08 — the book shown is the one "
                                 "the backtest trades"},
         "buys_or_increases": buys,
         "holds": holds,
         "sells_or_exits": sells,
+        "shorts_or_increases": shorts,
+        "short_holds": short_holds,
+        "covers_or_exits": covers,
         "exit_rules": {"engine": "M5.2 triple barrier", "m": m_bar, "h_sessions": h_bar,
                        "trail_m": float(trail_m) if trail_on else None,
                        "note": "stop/profit-take are % vs ACTUAL fill at next open; "
                                "vertical exit = MOO at t+h+1"
                                + ("; trailing stop: after each close raise the GTC "
                                   "stop to high_since_fill x (1 - trail_pct), never "
-                                  "below the fixed stop" if trail_on else "")},
+                                  "below the fixed stop" if trail_on else "")
+                               + ("; shorts mirror this: stop above the fill, "
+                                  "profit-take below, vertical = BUY MOO cover"
+                                  + (", trail = lower the GTC buy-stop to "
+                                     "low_since_fill x (1 + trail_pct), never above "
+                                     "the fixed stop" if trail_on else "")
+                                  if short_on else "")},
         "disclaimer": "Research output of an experimental system; NOT financial advice. "
                       "All performance claims require the G-11 gate evaluation first.",
     }
     (out / "suggestions.json").write_text(json.dumps(suggestions, indent=2, default=str))
 
-    md = [f"# Event-engine book for next open (signals @ close {t_last.date()})", "",
-          f"- Names: {len(book_names)}, gross long {gross_book:.2f} "
-          f"(entering {float(entries.sum()):.2f} + held {float(held_w.sum()):.2f}), "
-          f"budget x{lb['budget']:.2f}, cap scale x{lb['cap_scale']:.2f}",
-          f"- Heads valid RankIC: " + ", ".join(
-              f"{k} {v['valid_rank_ic']:.3f}" for k, v in heads_info.items()),
-          f"- Training: {mode} ({why})" + ("" if mode != "warm_update" and mode != "update"
-              else " — " + ", ".join(
-                  f"{k} {'adopted' if v.get('adopted') else 'kept champion'}"
-                  for k, v in heads_info.items())), "",
-          "| ticker | action | weight | rank | last close | stop % | PT % | trail % | "
-          "sessions left | levels vs |",
-          "|---|---|---|---|---|---|---|---|---|---|"]
-    for row in buys[:40]:
+    def _tp(row, sgn):
         tp = row.get("trail_pct")
-        md.append(f"| {row['ticker']} | BUY (new lot {row['new_lot_weight']:.3%}"
-                  f"{' + held ' + format(row['current_weight'], '.3%') if row['current_weight'] else ''}) | "
-                  f"{row['target_weight']:.3%} | "
-                  f"{_rk(row['ensemble_rank'])} | "
-                  f"{row['last_close']} | {row['stop_pct']}% | +{row['profit_take_pct']}% | "
-                  f"{'-' + str(tp) + '%' if tp is not None else 'off'} | {row['sessions_left']} | fill |")
-    for row in holds[:60]:
-        md.append(f"| {row['ticker']} | HOLD ({len(row['lots'])} lot"
-                  f"{'s' if len(row['lots']) != 1 else ''}) | {row['target_weight']:.3%} | "
-                  f"{_rk(row['ensemble_rank'])} | "
-                  f"{row['last_close']} | {row['stop_pct']}% | +{row['profit_take_pct']}% | "
-                  f"{'-' + str(row['trail_pct']) + '%' if row.get('trail_pct') is not None else 'off'} | "
-                  f"{row['sessions_left']} | last close |")
-    for row in sells[:40]:
-        md.append(f"| {row['ticker']} | SELL at open | 0 |  | {row['last_close']} |  |  |  | 0 | "
-                  f"{row['reason'][:40]} |")
+        return f"{'-' if sgn > 0 else '+'}{tp}%" if tp is not None else "off"
+
+    def _lvl(v, plus=False):
+        return "" if v is None else (f"+{v}%" if plus and v >= 0 else f"{v}%")
+
+    md = [f"# Event-engine book for next open (signals @ close {t_last.date()})", "",
+          f"- Long: {len(book_names)} names, gross {gross_book:.2f} "
+          f"(entering {float(entries.sum()):.2f} + held {float(held_w.sum()):.2f}), "
+          f"budget x{lb['budget']:.2f}, cap scale x{lb['cap_scale']:.2f}"]
+    if short_on:
+        md.append(f"- Short: {len(short_names)} names, gross {gross_short:.2f} "
+                  f"(entering {float(lb_s['entries'].sum()):.2f} + held "
+                  f"{float(held_w_s.sum()):.2f}), cap scale x{lb_s['cap_scale']:.2f}; "
+                  f"net exposure {gross_book - gross_short:+.2f}"
+                  + (f"; hard-to-borrow skipped: {', '.join(htb_skipped)}"
+                     if htb_skipped else ""))
+    md += [f"- Heads valid RankIC: " + ", ".join(
+               f"{k} {v['valid_rank_ic']:.3f}" for k, v in heads_info.items()),
+           f"- Training: {mode} ({why})" + ("" if mode != "warm_update" and mode != "update"
+               else " — " + ", ".join(
+                   f"{k} {'adopted' if v.get('adopted') else 'kept champion'}"
+                   for k, v in heads_info.items())), "",
+           "| ticker | action | weight | rank | last close | stop % | PT % | trail % | "
+           "sessions left | levels vs |",
+           "|---|---|---|---|---|---|---|---|---|---|"]
+    for sgn, new_rows, hold_rows, exit_rows in ((1, buys, holds, sells),
+                                                (-1, shorts, short_holds, covers)):
+        verb_new = "BUY" if sgn > 0 else "SHORT"
+        verb_hold = "HOLD" if sgn > 0 else "HOLD SHORT"
+        verb_exit = "SELL at open" if sgn > 0 else "COVER at open"
+        for row in new_rows[:40]:
+            held_txt = (" + held " + format(row['current_weight'], '.3%')
+                        if row['current_weight'] else "")
+            md.append(f"| {row['ticker']} | {verb_new} (new lot "
+                      f"{row['new_lot_weight']:.3%}{held_txt}) | "
+                      f"{row['target_weight']:.3%} | {_rk(row['ensemble_rank'])} | "
+                      f"{row['last_close']} | {_lvl(row['stop_pct'], plus=True)} | "
+                      f"{_lvl(row['profit_take_pct'], plus=True)} | {_tp(row, sgn)} | "
+                      f"{row['sessions_left']} | fill |")
+        for row in hold_rows[:60]:
+            md.append(f"| {row['ticker']} | {verb_hold} ({len(row['lots'])} lot"
+                      f"{'s' if len(row['lots']) != 1 else ''}) | {row['target_weight']:.3%} | "
+                      f"{_rk(row['ensemble_rank'])} | {row['last_close']} | "
+                      f"{_lvl(row['stop_pct'], plus=True)} | "
+                      f"{_lvl(row['profit_take_pct'], plus=True)} | {_tp(row, sgn)} | "
+                      f"{row['sessions_left']} | last close |")
+        for row in exit_rows[:40]:
+            md.append(f"| {row['ticker']} | {verb_exit} | 0 |  | {row['last_close']} |  |  |  "
+                      f"| 0 | {row['reason'][:40]} |")
     md += ["", "_Vertical exit: MOO " + str(h_bar) + " sessions after entry."
-           + (" Trailing stop: each night raise the stop to the high since fill "
-              "minus trail %, never below the fixed stop." if trail_on else "")
+           + (" Trailing stop: each night raise a long's stop to the high since fill "
+              "minus trail %, never below the fixed stop" if trail_on else "")
+           + ((" (a short's stop is lowered to the low since fill plus trail %, never "
+               "above the fixed stop)." if trail_on else " ")
+              + " SHORT = sell borrowed shares at the open; COVER = buy them back; a "
+                "short's stop sits above the fill and its profit-take below."
+              if short_on else ("." if trail_on else ""))
            + " HOLD rows price the most binding lot's levels off the last close. "
              "Research tooling, not financial advice._"]
     (out / "suggestions.md").write_text("\n".join(md))
     print(f"suggestions written: {len(buys)} buys/adds, {len(sells)} exits, "
-          f"{len(holds)} holds", flush=True)
+          f"{len(holds)} holds"
+          + (f"; {len(shorts)} shorts/adds, {len(covers)} covers, "
+             f"{len(short_holds)} short holds" if short_on else ""), flush=True)
     return suggestions
 
 

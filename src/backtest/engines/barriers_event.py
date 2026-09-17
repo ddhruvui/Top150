@@ -8,6 +8,12 @@ the PDT counter; under $25k the exhausted 4th converts to next-open deferral
 [IMPL pdt.mode_under_25k]. Gap-throughs fill at the session open (M15-04).
 
 This engine cross-checks the fast path within |dSharpe| <= 0.1 tolerance [IMPL].
+
+Short sleeve (2026-09-17, blueprint port.selection [MAY]): `run_event_backtest`
+takes `side`; a long/short book is a long sleeve plus a short sleeve, each under
+its own live-gross cap (`sleeve_caps`), combined by `run_long_short` /
+`combine_sleeves`. With no short keys in the config every path here is
+bit-identical to the long-only engine.
 """
 from __future__ import annotations
 
@@ -70,9 +76,25 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
                        trail_m: float | None = None,
                        flat_k: int | None = None,
                        flat_m: float | None = None,
-                       fill_max: float | None = None) -> dict:
+                       fill_max: float | None = None,
+                       side: int = 1) -> dict:
     """selection: wide bool frame (decision date x ticker) of names entering that
-    day's tranche. Returns {'daily_net', 'equity', 'trades', 'pdt_log', ...}."""
+    day's tranche. Returns {'daily_net', 'equity', 'trades', 'pdt_log', ...}.
+
+    side: +1 (default) runs a LONG sleeve — bit-identical to the engine before
+    the short sleeve existed. -1 runs a SHORT sleeve over the same selection
+    frame: every lot is a short sale (the ONE barrier engine flips the
+    profit-take/stop roles and trails the stop off the running low), daily P&L
+    is -tranche_w x open-to-open return, and the borrow fee accrues for every
+    session held at the per-name rate (GC default). The dividend liability
+    needs no term of its own: the adjusted tape is total-return, so a short's
+    path return already contains the dividend (as in the fast path).
+    `tranche_w` stays a positive exposure on both sides and `side` carries the
+    direction, so the cash cap, MOO netting and PDT logic are shared unchanged.
+    A long/short book is two sleeve runs joined by run_long_short."""
+    side = int(side)
+    if side not in (1, -1):
+        raise ValueError(f"side must be +1 or -1, got {side}")
     dates = panel.adj_open.index
     O = panel.adj_open
     pos = {d: i for i, d in enumerate(dates)}
@@ -124,7 +146,7 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
                 if bud <= 0:
                     continue
         for t, wt in w.items():
-            entries.append({"date": d0, "ticker": t, "side": 1,
+            entries.append({"date": d0, "ticker": t, "side": side,
                             "tranche_w": wt / tranches * bud})
     edf = pd.DataFrame(entries)
     if edf.empty:
@@ -177,14 +199,15 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
                 continue                     # barrier exit comes first anyway
             P0 = float(ex.at[idx, "entry_price"])
             px = float(Ov[e, jc])
-            gross = px / P0 - 1.0
+            sd = int(ex.at[idx, "side"])
+            gross = sd * (px / P0 - 1.0)
             ex.at[idx, "exit_date"] = dates[e]
             ex.at[idx, "exit_price"] = px
             ex.at[idx, "barrier_hit"] = "rank"
             ex.at[idx, "label"] = int(np.sign(gross)) if gross != 0 else 0
             ex.at[idx, "exit_ret_gross"] = gross
             ex.at[idx, "exit_ret_net"] = gross - cost_model.round_trip_frac(
-                side=1, holding_days=e - i0, ticker=ex.at[idx, "ticker"],
+                side=sd, holding_days=e - i0, ticker=ex.at[idx, "ticker"],
                 date=dates[e])
             ex.at[idx, "holding_days"] = e - i0
             ex.at[idx, "day_trade"] = False
@@ -270,9 +293,15 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
     # entry and always pay their leg. Default False = original accounting.
     pnl = np.zeros(len(dates))
     leg = cost_model.leg_frac()
-    buy_open: dict[tuple[int, int], float] = {}    # (day, ticker) MOO buys
-    sell_open: dict[tuple[int, int], float] = {}   # (day, ticker) MOO sells
+    # (day, ticker) MOO legs that open a lot / close a lot at the same print. For
+    # a short sleeve the roles are reversed (open = sell short, close = buy to
+    # cover) but the netting is the same: only the NET notional pays the leg.
+    buy_open: dict[tuple[int, int], float] = {}    # MOO legs opening a lot
+    sell_open: dict[tuple[int, int], float] = {}   # MOO legs closing a lot
     cost = np.zeros(len(dates))
+    borrow = np.zeros(len(dates))
+    fee_frame = (cost_model.borrow_fee_frame(dates, O.columns).to_numpy()
+                 if side < 0 else None)
     for r in ex.itertuples(index=False):
         i0, i1 = pos[r.fill_date], pos[r.exit_date]
         j = cols[r.ticker]
@@ -280,9 +309,18 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
         path[-1] = r.exit_price
         rets = np.diff(path) / path[:-1]
         if i1 > i0:
-            pnl[i0 + 1:i1 + 1] += r.tranche_w * rets
+            contrib = r.tranche_w * rets
+            if side < 0:
+                contrib = -contrib
+            pnl[i0 + 1:i1 + 1] += contrib
+            if side < 0:
+                # borrow for every session the short is held overnight (fill
+                # i0 .. i1-1), charged with that session's mark at the per-name
+                # fee known that day — the same day count as round_trip_frac
+                borrow[i0 + 1:i1 + 1] += r.tranche_w * fee_frame[i0:i1, j] / 1e4 / 252.0
         else:   # same-session round trip: open->barrier within the fill session
-            pnl[i0] += r.tranche_w * (r.exit_price / r.entry_price - 1)
+            contrib = r.tranche_w * (r.exit_price / r.entry_price - 1)
+            pnl[i0] += -contrib if side < 0 else contrib
         exit_at_open = i1 > i0 and r.exit_price == Ov[i1, j]
         if net_moo_costs:
             buy_open[(i0, j)] = buy_open.get((i0, j), 0.0) + r.tranche_w
@@ -304,6 +342,9 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
         for (i, j), w in sell_open.items():   # MOO sells with no same-day buy
             cost[i] += w * leg
         pnl -= cost
+    if side < 0:
+        pnl -= borrow
+        cost += borrow
     daily = pd.Series(pnl, index=dates)
     equity = (1 + daily).cumprod() * nav0
     return {"daily_net": daily, "equity": equity, "trades": ex, "pdt_log": pdt_log,
@@ -315,8 +356,15 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
 
 def live_book(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
               cost_model: CostModel, cfg, day_budget_mult: pd.Series | None = None,
-              meta_mult: pd.DataFrame | None = None) -> dict:
+              meta_mult: pd.DataFrame | None = None, side: int = 1,
+              gross_cap="cfg") -> dict:
     """The event-engine book to hold at the NEXT open, read off the ONE engine.
+
+    side=-1 reads the SHORT sleeve's book: every lot is a short sale, its stop
+    sits above the fill (or ratchets DOWN off the low since fill when the trail
+    is on) and its profit-take below; `due_exits` are covers at the next open.
+    `gross_cap` overrides the config's cap for this sleeve (sleeve_caps); the
+    sentinel "cfg" keeps port.gross_cap.
 
     `selection` (decision dates x tickers, bool) covers a trailing window that
     ends at the panel's last session t. The engine is replayed over it with the
@@ -343,9 +391,13 @@ def live_book(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
     h = int(cfg.barrier.h_days)
     tranches = int(cfg.port.tranches)
     cap_name = float(cfg.port.single_name_cap)
+    side = int(side)
     opts = engine_opts_from_cfg(cfg)
+    if not (isinstance(gross_cap, str) and gross_cap == "cfg"):
+        opts["gross_cap"] = gross_cap
     res = run_event_backtest(selection, panel, sigma32, cost_model, cfg,
-                             meta_mult=meta_mult, day_budget_mult=day_budget_mult, **opts)
+                             meta_mult=meta_mult, day_budget_mult=day_budget_mult,
+                             side=side, **opts)
     tr = res["trades"]
     cols = ["entry_date", "ticker", "fill_date", "entry_price", "tranche_w"]
     open_lots = tr[tr["barrier_hit"] == "censored"][cols].copy() if len(tr) \
@@ -356,7 +408,7 @@ def live_book(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
     thr_cap = cfg.barrier.get("thr_cap_pct")
     trail_m = opts.get("trail_m")
     trail_on = trail_m is not None and float(trail_m) > 0
-    H, C = panel.adj_high, panel.adj_close
+    H, C, Lo = panel.adj_high, panel.adj_close, panel.adj_low
     ent_idx, s_left, kinds, stops, pts, stop_pct, pt_pct = [], [], [], [], [], [], []
     for r in open_lots.itertuples(index=False):
         it, i0 = pos[r.entry_date], pos[r.fill_date]
@@ -365,13 +417,24 @@ def live_book(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
         if thr_cap is not None:
             thr = min(thr, float(thr_cap))
         P0 = float(r.entry_price)
-        stop, pt, kind = P0 * (1 - thr), P0 * (1 + thr), "fixed"
+        if side > 0:
+            stop, pt, kind = P0 * (1 - thr), P0 * (1 + thr), "fixed"
+        else:                       # short: stop above the fill, profit-take below
+            stop, pt, kind = P0 * (1 + thr), P0 * (1 - thr), "fixed"
         if trail_on:
-            hi = H[r.ticker].iloc[i0:i_last + 1]
-            if hi.notna().any():
-                lvl = float(np.nanmax(hi.to_numpy())) * (1 - float(trail_m) * sig * np.sqrt(h))
-                if lvl > stop:
-                    stop, kind = lvl, "trail"
+            w_tr = float(trail_m) * sig * np.sqrt(h)
+            if side > 0:
+                hi = H[r.ticker].iloc[i0:i_last + 1]
+                if hi.notna().any():
+                    lvl = float(np.nanmax(hi.to_numpy())) * (1 - w_tr)
+                    if lvl > stop:
+                        stop, kind = lvl, "trail"
+            else:                   # ratchet DOWN off the low since fill
+                lo = Lo[r.ticker].iloc[i0:i_last + 1]
+                if lo.notna().any():
+                    lvl = float(np.nanmin(lo.to_numpy())) * (1 + w_tr)
+                    if lvl < stop:
+                        stop, kind = lvl, "trail"
         c = C[r.ticker].iloc[:i_last + 1].dropna()
         c_last = float(c.iloc[-1]) if len(c) else np.nan
         ent_idx.append(it)
@@ -404,8 +467,73 @@ def live_book(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
             scale = allowed / tot if tot > 0 else 0.0
     entries = intended * scale
     entries = entries[entries > 1e-12]
-    return {"as_of": t, "entries": entries, "holds": keep, "due_exits": due,
-            "budget": bud, "cap_scale": scale,
+    return {"as_of": t, "side": side, "entries": entries, "holds": keep,
+            "due_exits": due, "budget": bud, "cap_scale": scale,
             "gross_next_open": float(entries.sum()) + (float(keep["tranche_w"].sum())
                                                         if len(keep) else 0.0),
             "trades": tr, "daily_net": res["daily_net"]}
+
+
+# ----------------------------------------------------------------------------
+# Long/short book = two sleeves of the ONE engine
+# ----------------------------------------------------------------------------
+def sleeve_caps(cfg) -> tuple[float | None, float]:
+    """Per-sleeve live-gross caps. `port.long_gross_cap` defaults to
+    `port.gross_cap` (the long-only book, unchanged); `port.short_gross_cap`
+    defaults to 0 (no short sleeve). The adopted core105 split is 0.5 / 0.5 of
+    the 1.0 cash cap: long + short live gross never exceeds NAV, so no cash is
+    ever borrowed — the margin account only carries the share loan."""
+    gc = cfg.port.get("gross_cap")
+    lc = cfg.port.get("long_gross_cap", gc)
+    sc = cfg.port.get("short_gross_cap", 0.0)
+    return (None if lc is None else float(lc)), float(sc or 0.0)
+
+
+def combine_sleeves(long_res: dict, short_res: dict | None) -> dict:
+    """Long + short sleeve results -> one book in the engine's result shape.
+    Daily returns add (both are fractions of NAV); trades concatenate, each row
+    carrying its `side`. A None short sleeve returns the long result object
+    itself (bit-identical). [IMPL simplification] the PDT counter runs per
+    sleeve; with pdt.account_equity unset (>= $25k) it never binds."""
+    if short_res is None:
+        return long_res
+    daily = long_res["daily_net"].add(short_res["daily_net"], fill_value=0.0)
+    parts = [t for t in (long_res["trades"], short_res["trades"]) if len(t)]
+    trades = pd.concat(parts, ignore_index=True) if parts else long_res["trades"]
+    hits = dict(long_res.get("hit_counts", {}))
+    for k, v in short_res.get("hit_counts", {}).items():
+        hits[k] = hits.get(k, 0) + v
+    out = {"daily_net": daily, "equity": (1 + daily).cumprod(), "trades": trades,
+           "pdt_log": list(long_res.get("pdt_log", [])) + list(short_res.get("pdt_log", [])),
+           "n_trades": int(len(trades)),
+           "avg_hold": float(trades["holding_days"].mean()) if len(trades) else float("nan"),
+           "hit_counts": hits,
+           "sleeves": {"long": long_res, "short": short_res}}
+    costs = [r["cost_daily"] for r in (long_res, short_res)
+             if r.get("cost_daily") is not None]
+    if costs:
+        cd = costs[0]
+        for c in costs[1:]:
+            cd = cd.add(c, fill_value=0.0)
+        out["cost_daily"] = cd
+    return out
+
+
+def run_long_short(sel_long: pd.DataFrame, sel_short: pd.DataFrame | None, panel,
+                   sigma32: pd.DataFrame, cost_model: CostModel, cfg,
+                   short_cap: float | None = None, **kw) -> dict:
+    """The long/short book: a long sleeve over `sel_long` (kw as for
+    run_event_backtest — its `gross_cap` is the LONG cap) plus, when `short_cap`
+    > 0 and `sel_short` selects anything, a short sleeve over `sel_short` capped
+    at `short_cap`, joined by combine_sleeves. The regime / vol-target budget
+    (day_budget_mult) and the meta multiplier apply to both sleeves alike."""
+    long_res = run_event_backtest(sel_long, panel, sigma32, cost_model, cfg,
+                                  side=1, **kw)
+    short_res = None
+    if short_cap is not None and float(short_cap) > 0 and sel_short is not None \
+            and bool(sel_short.to_numpy().any()):
+        kw_s = dict(kw)
+        kw_s["gross_cap"] = float(short_cap)
+        short_res = run_event_backtest(sel_short, panel, sigma32, cost_model, cfg,
+                                       side=-1, **kw_s)
+    return combine_sleeves(long_res, short_res)

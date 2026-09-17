@@ -52,7 +52,8 @@ def rows_for(results: list[dict]) -> list[dict]:
             "exits": _exit_mix(r),
             "levers": ", ".join(f"{k}={r[k]}" for k in
                                 ("trail_m", "flat_k", "trend", "conv_weight",
-                                 "skip_earnings", "top_n", "exit_rank", "sent_gate")
+                                 "skip_earnings", "top_n", "exit_rank", "sent_gate",
+                                 "short_n", "short_decile", "short_cap", "long_cap")
                                 if r.get(k) not in (None, False)),
         })
     return out

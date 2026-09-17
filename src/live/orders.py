@@ -16,6 +16,13 @@ position at max(fixed stop, trailing level), computed from the position's own
 fill price, entry sigma and running high (the paper book records all three).
 A native broker TRAIL order is deliberately not used — it would trail intraday
 on the last print, which is not what was backtested.
+
+Short sleeve (2026-09-17): a NEGATIVE target weight is a short sale — SELL MOO
+to open, with a BUY STP above the reference price as the M5.2 stop and a BUY
+LMT below it as the profit-take; the vertical exit is a BUY MOO cover. The
+nightly re-peg lowers a short's GTC stop to low_since_fill x (1 + trail),
+never above the fixed stop (the mirror of the long ratchet). Requires a
+margin account (G-14: a cash account cannot short).
 """
 from __future__ import annotations
 
@@ -52,24 +59,37 @@ def generate_orders(target_weights: pd.Series, current_shares: pd.Series,
         px = raw_close.get(t, np.nan)
         if not np.isfinite(px) or px <= 0:
             continue
-        tgt_sh = int(np.floor(w * nav / px))
+        # whole shares, rounded toward zero on either side (a short is -|shares|)
+        tgt_sh = int(np.floor(abs(w) * nav / px)) * (-1 if w < 0 else 1)
         cur_sh = int(current_shares.get(t, 0))
         d = tgt_sh - cur_sh
         if d == 0:
             continue
+        short_leg = d < 0 and tgt_sh < 0
         orders.append(Order(t, "BUY" if d > 0 else "SELL", abs(d), "MOO", "DAY",
-                            note=f"target_w={w:.4f}"))
-        if cur_sh == 0 and d > 0:            # new entry: attach barrier orders (§G)
+                            note=f"target_w={w:.4f}"
+                                 + (" (short sale)" if short_leg else "")))
+        if cur_sh == 0 and d != 0:           # new entry: attach barrier orders (§G)
             thr = m * float(sigma32.get(t, np.nan)) * np.sqrt(h)
             if cap is not None:
                 thr = min(thr, float(cap))
-            if np.isfinite(thr):
+            if not np.isfinite(thr):
+                continue
+            if d > 0:                        # long: stop below, profit-take above
                 orders.append(Order(t, "SELL", abs(d), "STP", "GTC",
                                     stop_price=round(px * (1 - thr), 2),
                                     note="M5.2 stop (re-peg to fill)"))
                 orders.append(Order(t, "SELL", abs(d), "LMT", "GTC",
                                     limit_price=round(px * (1 + thr), 2),
                                     note=f"M5.2 profit-take; vertical MOO t+{h + 1}"))
+            else:                            # short: stop above, profit-take below
+                orders.append(Order(t, "BUY", abs(d), "STP", "GTC",
+                                    stop_price=round(px * (1 + thr), 2),
+                                    note="M5.2 stop, short cover (re-peg to fill)"))
+                orders.append(Order(t, "BUY", abs(d), "LMT", "GTC",
+                                    limit_price=round(px * (1 - thr), 2),
+                                    note=f"M5.2 profit-take, short cover; "
+                                         f"vertical BUY MOO t+{h + 1}"))
     return orders
 
 
@@ -82,16 +102,25 @@ def trail_width(sigma_entry: float, cfg) -> float | None:
 
 
 def stop_level(entry_price: float, sigma_entry: float, high_since_fill: float,
-               cfg) -> tuple[float, str]:
-    """Tonight's stop for an open long: the fixed M5.2 stop, raised to the
-    trailing level once that is higher. Returns (price, 'fixed'|'trail')."""
+               cfg, side: int = 1) -> tuple[float, str]:
+    """Tonight's stop for an open position: the fixed M5.2 stop, ratcheted to
+    the trailing level once that is tighter. For a long (side +1) the third
+    argument is the HIGH since fill and the stop only ever rises; for a short
+    (side -1) pass the LOW since fill and the stop only ever falls.
+    Returns (price, 'fixed'|'trail')."""
     m, h = float(cfg.barrier.m), int(cfg.barrier.h_days)
     thr = m * float(sigma_entry) * np.sqrt(h)
     cap = cfg.barrier.get("thr_cap_pct")
     if cap is not None:
         thr = min(thr, float(cap))
-    fixed = float(entry_price) * (1 - thr)
     w = trail_width(sigma_entry, cfg)
+    if int(side) < 0:
+        fixed = float(entry_price) * (1 + thr)
+        if w is None or not np.isfinite(high_since_fill):
+            return fixed, "fixed"
+        trail = float(high_since_fill) * (1 + w)          # off the running LOW
+        return (trail, "trail") if trail < fixed else (fixed, "fixed")
+    fixed = float(entry_price) * (1 - thr)
     if w is None or not np.isfinite(high_since_fill):
         return fixed, "fixed"
     trail = float(high_since_fill) * (1 - w)
@@ -99,21 +128,30 @@ def stop_level(entry_price: float, sigma_entry: float, high_since_fill: float,
 
 
 def trailing_stops(positions: pd.DataFrame, cfg) -> list[Order]:
-    """Nightly re-peg of the GTC stop on every open long. `positions` columns:
-    ticker, shares, entry_price, sigma_entry, high_since_fill (raw-price basis,
-    fill session onward). One SELL STP per position, REPLACING the standing
-    stop; the note says whether it is the fixed or the trailing level."""
+    """Nightly re-peg of the GTC stop on every open position. `positions`
+    columns: ticker, shares (negative = short), entry_price, sigma_entry,
+    high_since_fill (raw-price basis, fill session onward) and, for shorts,
+    low_since_fill. One SELL STP per long / BUY STP per short, REPLACING the
+    standing stop; the note says whether it is the fixed or the trailing level."""
     orders: list[Order] = []
     if positions is None or not len(positions):
         return orders
     for r in positions.itertuples(index=False):
         sh = int(getattr(r, "shares", 0))
-        if sh <= 0:
+        if sh == 0:
             continue
-        px, kind = stop_level(r.entry_price, r.sigma_entry, r.high_since_fill, cfg)
-        orders.append(Order(str(r.ticker), "SELL", sh, "STP", "GTC",
-                            stop_price=round(px, 2),
-                            note=f"M5.2 {kind} stop re-peg (replaces standing stop)"))
+        if sh > 0:
+            px, kind = stop_level(r.entry_price, r.sigma_entry, r.high_since_fill, cfg)
+            orders.append(Order(str(r.ticker), "SELL", sh, "STP", "GTC",
+                                stop_price=round(px, 2),
+                                note=f"M5.2 {kind} stop re-peg (replaces standing stop)"))
+        else:
+            low = getattr(r, "low_since_fill", np.nan)
+            px, kind = stop_level(r.entry_price, r.sigma_entry, low, cfg, side=-1)
+            orders.append(Order(str(r.ticker), "BUY", -sh, "STP", "GTC",
+                                stop_price=round(px, 2),
+                                note=f"M5.2 {kind} stop re-peg, short cover "
+                                     f"(replaces standing stop)"))
     return orders
 
 
