@@ -71,10 +71,23 @@ GPU_FALLBACK_TYPES="${RUNPOD_GPU_FALLBACK_TYPES:-NVIDIA RTX A4500|NVIDIA RTX 400
 PIP_CPU="pandas pyarrow numpy PyYAML scipy lightgbm scikit-learn optuna pytest pymongo dnspython certifi"
 PIP_GPU="pandas pyarrow numpy PyYAML scipy lightgbm scikit-learn optuna pytest transformers==4.44.2 sentencepiece"
 
+# Pods are named top150-predict-<job>. Until 2026-09-17 they were
+# investopediaclaude-predict-<job> — the SAME name the InvestOpediaClaude repo
+# gives its own pods on the same account and volume — so this check SKIPped on
+# the sibling's pods and killpod.sh deleted them. Exact match on the parsed name.
+POD_NAME="top150-predict-${JOB}"
 RUNNING=$(curl -sS --max-time 30 https://rest.runpod.io/v1/pods \
   -H "Authorization: Bearer ${RUNPOD_API_KEY}" 2>/dev/null) || RUNNING=""
-if printf '%s' "$RUNNING" | grep -q "investopediaclaude-predict-${JOB}"; then
-  echo "SKIP: pod investopediaclaude-predict-${JOB} already running"; exit 0
+if printf '%s' "$RUNNING" | POD_NAME="$POD_NAME" python3 -c '
+import json, os, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+pods = d if isinstance(d, list) else d.get("pods", d.get("data", []))
+sys.exit(0 if any(p.get("name") == os.environ["POD_NAME"] for p in pods) else 1)
+'; then
+  echo "SKIP: pod ${POD_NAME} already running"; exit 0
 fi
 
 # Every path the pod receives. All of them — outputs AND the score dirs it reads
@@ -158,7 +171,7 @@ BOOTSTRAP_ON_POD="$VOL_RESULTS/code/predict/bootstrap.sh"
 if [ "$JOB" = "stage2" ]; then
   PAYLOAD=$(cat <<JSON
 {
-  "name": "investopediaclaude-predict-${JOB}",
+  "name": "${POD_NAME}",
   "computeType": "GPU",
   "cloudType": "SECURE",
   "gpuCount": 1,
@@ -184,7 +197,7 @@ else
     fi
     cat <<JSON
 {
-  "name": "investopediaclaude-predict-${JOB}",
+  "name": "${POD_NAME}",
   ${COMPUTE},
   "cloudType": "SECURE",
   "imageName": "${CPU_IMAGE}",

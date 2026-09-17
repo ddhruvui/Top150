@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Safety net: terminate any leftover "investopediaclaude-*" pods (predict-market,
-# predict-stage1, …) that failed to self-terminate. Lists pods via the account API and
+# Safety net: terminate any leftover "top150-predict-*" pods (top150-predict-market,
+# top150-predict-stage1, …) that failed to self-terminate. Lists pods via the account API and
 # DELETEs each match. Run this when a pod was launched but never died — notably the
 # broken-host case in the top150-pipeline skill (rule 4): no bootstrap log within ~5 min
 # means it will bill forever while RUNNING and never start — and the "terminate attempt
@@ -9,9 +9,13 @@
 # Uses curl for the DELETE (the laptop's python.org build has no CA bundle, so urllib
 # fails with CERTIFICATE_VERIFY_FAILED — observed 2026-09-07). KILL_MATCH overrides the
 # name prefix; KILL_IDS="id1 id2" deletes exactly those ids.
+#
+# The default prefix is this repo's own. Before 2026-09-17 it was
+# "investopediaclaude-", which also matched the InvestOpediaClaude repo's pods (same
+# RunPod account, same volume) — a bare killpod.sh deleted their running jobs too.
 . "$(dirname "$0")/_common.sh"
 : "${RUNPOD_API_KEY:?account rpa_ key, set in runpod/.env}"
-MATCH="${KILL_MATCH:-investopediaclaude-}"
+MATCH="${KILL_MATCH:-top150-predict-}"
 
 if [ -n "${KILL_IDS:-}" ]; then
   IDS="$KILL_IDS"

@@ -63,8 +63,8 @@ Bundled helpers in `.claude/skills/top150-pipeline/scripts/` (call by full path;
 | `srcvol` | READ-ONLY `aws s3` against the volume root — `srcvol ls data/eod_bulk/US/`. Refuses `rm`/`mv`; a `cp`/`sync` destination must be a local path |
 | `vol150` | `aws s3` against `results/Top150` (bare paths are relative to it) — `vol150 ls derived/top150/predict/`. Cannot write, move or delete outside it |
 | `podlog150 <pat> [n]` | newest matching `results/Top150/_pod_logs/` entry |
-| `pods` | account-wide pod list (name, id, status, created) |
-| `watch_pods.py` | report-only watchdog; one line per state change (UP/DONE/STALL/IDLE) |
+| `pods` | account-wide pod list (name, id, status, created). Top150 pods are `top150-predict-<job>`; `investopediaclaude-*` and `researchgate-*` pods share the account and the volume and are **not ours — never delete them** |
+| `watch_pods.py` | report-only watchdog over `top150-predict-*` pods; one line per state change (UP/DONE/STALL/IDLE) |
 | `mirror_top150.sh` | laptop path (optional since the pod publishes): pull book (+stage artifacts with `FULL_MIRROR=1`), enforce G-02 vs the source tape, rebuild `reports/top150` for the git record, re-publish to MongoDB (`PUBLISH_MONGO=0` skips) |
 
 ## Hard rules (each one has burned a run)
@@ -82,7 +82,8 @@ Bundled helpers in `.claude/skills/top150-pipeline/scripts/` (call by full path;
 4. A launched pod with **no bootstrap log in `results/Top150/_pod_logs` within ~5 min** is on a broken
    EU-RO-1 host (struck twice on 2026-09-01): it bills forever while RUNNING and never
    starts. Check `$SK150/vol150 ls _pod_logs/ | tail`, then DELETE the pod
-   (`scripts/killpod.sh`) and relaunch. `launch_predict.sh` does not verify startup.
+   (`KILL_IDS=<id> scripts/killpod.sh`) and relaunch. `launch_predict.sh` does not
+   verify startup. Apply this only to a `top150-predict-*` pod id you launched.
 5. **A pod exiting is not success.** Only `job=0` in the log is. A stage can be
    OOM-killed (`exit=-9`) while its pod self-terminates normally, leaving yesterday's
    output in place.

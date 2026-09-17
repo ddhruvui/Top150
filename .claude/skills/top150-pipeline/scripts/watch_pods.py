@@ -15,13 +15,19 @@ run could end up writing the read-only source tape.
 Written in Python because macOS ships bash 3.2, which has no associative arrays —
 a bash version of this silently mis-tracked state.
 
-Env: POLL (default 180s), STALL_CHECKS (default 5, so ~15 min).
+Only this repo's pods (name prefix top150-predict-) are watched: the account also runs
+InvestOpediaClaude and ResearchGate pods, whose logs are not under results/Top150 and
+would all read as STALL.
+
+Env: POLL (default 180s), STALL_CHECKS (default 5, so ~15 min),
+     WATCH_MATCH (name prefix, default top150-predict-).
 """
 import json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 POLL = int(os.environ.get("POLL", "180"))
 STALL_CHECKS = int(os.environ.get("STALL_CHECKS", "5"))
+MATCH = os.environ.get("WATCH_MATCH", "top150-predict-")
 EXEMPT = set()   # (the old "post" ingest job is gone — this repo does not ingest)
 
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
@@ -48,7 +54,8 @@ def pods():
     except Exception:
         return None
     lst = d if isinstance(d, list) else d.get("pods", d.get("data", []))
-    return {p.get("name"): p.get("id") for p in lst if p.get("name")}
+    return {p.get("name"): p.get("id") for p in lst
+            if str(p.get("name") or "").startswith(MATCH)}
 
 
 def logsizes():
