@@ -239,7 +239,8 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
         print("hedge: none (cash book — no SPY short leg)", flush=True)
     hedge_w = 0.0
     cm = CostModel(per_trade_bps=float(cfg.cost.per_trade_bps),
-                   borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr))
+                   borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
+                   borrow_table=d["m1"].borrow_fees())
     # M13 regime overlay + M14 vol targeting scale the ENTERING tranche, exactly
     # as stage3 does: a pre-run over the window feeds the causal vol-target scale
     gm = regime_multiplier(idx_blk, float(cfg.regime.vol_threshold_ann),

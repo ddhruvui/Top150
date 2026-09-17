@@ -193,10 +193,15 @@ def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed
         hedge = tgt.pop(HEDGE_COL)
         tgt["SPY"] = (tgt["SPY"].fillna(0.0) if "SPY" in tgt.columns else 0.0) + hedge
 
+    # Per-name borrow fees (m1/borrow_fees, iBorrowDesk) for every cost model in
+    # this evaluation; names it does not cover fall back to cost.borrow_gc_bps_yr.
+    # Only ever charged on a SHORT leg — inert while the book is long_only.
+    borrow = d["m1"].borrow_fees()
     results = {}
     for bps in list(cfg.cost.sensitivity_bps):
         cm = CostModel(per_trade_bps=float(bps), slippage_bps=float(cfg.cost.slippage_bps),
-                       borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr))
+                       borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
+                       borrow_table=borrow)
         pre = run_backtest(tgt, open_panel, cm, tax_rate=cfg.tax.ordinary_rate)
         scale = vol_target_scale(pre.daily_net, float(cfg.port.vol_target_ann),
                                  float(cfg.port.vol_target_scale_cap))
@@ -205,7 +210,8 @@ def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed
     res15 = results.get(15, list(results.values())[0])
 
     ic = ic_summary(ens, fwd20, mask.loc[test_dates])
-    cm15 = CostModel(per_trade_bps=15.0, borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr))
+    cm15 = CostModel(per_trade_bps=15.0, borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
+                     borrow_table=borrow)
     bl_spy = spy_buy_hold(spy["adj_open"].reindex(test_dates).dropna(), cm15)
     bl_mom = plain_momentum(panel.adj_close.loc[test_dates], panel.adj_open.loc[test_dates],
                             mask.loc[test_dates], cm15,

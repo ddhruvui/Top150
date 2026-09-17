@@ -2,7 +2,10 @@
 baselines, meta-labeling outcomes, and live estimation.
 
   cost_leg   = notional x (per_trade_bps + slippage_bps)/1e4
-  borrow_day = short_notional x fee_bps_yr/1e4/252     (per-name table, GC default 50)
+  borrow_day = short_notional x fee_bps_yr/1e4/252
+               per-name fee from the iBorrowDesk table where it has one for that
+               name on/before the date, else the GC default (cost.borrow_gc_bps_yr,
+               0.3%/yr on core105). Charged on SHORT legs only.
   short_div  = dividend liability on short positions
 """
 from __future__ import annotations
@@ -22,7 +25,13 @@ class CostModel:
         if borrow_table is not None and len(borrow_table):
             b = borrow_table.copy()
             b["date"] = pd.to_datetime(b["date"])
-            self._borrow = b.set_index(["ticker", "date"])["fee_bps_yr"].sort_index()
+            # The vendor leaves NULL fees on days it has no quote; keeping them
+            # would return NaN for a name that has a perfectly good fee the day
+            # before, and NaN silently poisons every cost downstream.
+            b["fee_bps_yr"] = pd.to_numeric(b["fee_bps_yr"], errors="coerce")
+            b = b[b["fee_bps_yr"].notna()]
+            self._borrow = (b.set_index(["ticker", "date"])["fee_bps_yr"].sort_index()
+                            if len(b) else None)
 
     # ---- per-leg / per-trip fractions -------------------------------------
     def leg_frac(self) -> float:
@@ -34,9 +43,11 @@ class CostModel:
                 s = self._borrow.loc[ticker]
                 s = s.loc[:pd.to_datetime(date)]
                 if len(s):
-                    return float(s.iloc[-1])
+                    v = float(s.iloc[-1])          # last quote on/before the date
+                    if v == v:                     # not NaN
+                        return v
             except KeyError:
-                pass
+                pass                               # not in the table (ETFs, pre-2015)
         return self.borrow_gc_bps_yr
 
     def round_trip_frac(self, side: int = 1, holding_days: int = 0,
