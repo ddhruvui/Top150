@@ -5,7 +5,8 @@ Paste one of these into Claude Code from the repo root. The `top150-pipeline` sk
 verification steps, so the prompt itself can stay short.
 
 **This repo does not download anything.** A separate system fills the source volume
-`crimtr8kbf`; this repo reads it strictly read-only and computes onto `k4cli3aj48`. So the
+`crimtr8kbf`; this repo reads it strictly read-only and writes only under `results/Top150` on
+that same volume. So the
 run starts by *checking* the source is complete, not by fetching it.
 
 ## The one to use
@@ -49,7 +50,7 @@ first.
 Ask for these back, and treat anything missing as not-done:
 
 - `verify_source.py` — every tree **FRESH**, `fail=0`
-- `market job=0` and `predict job=0` — logs on the **calc volume** (`podlog150`)
+- `market job=0` and `predict job=0` — logs under **`results/Top150/_pod_logs`** (`podlog150`)
 - **G-02**: `suggestions.json`'s `as_of_close` equals the newest source day-file
 - `publish=0` in the predict pod log — the pod built the bundle and published it to MongoDB;
   the deployed UI (see `DEPLOY.md`) shows it within about 30 seconds. `publish=3` means G-02

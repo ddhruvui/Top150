@@ -9,12 +9,12 @@
 # USE_MARKET=1 (default) points stage1/predict at the m1x whole-market universe;
 # KEEP_POD=1 leaves the pod alive for inspection.
 #
-# VOLUME CONTRACT: the pod mounts the CALC volume only. The data source is read
-# STRICTLY via S3 GETs into container-local /scratch (the prefetch block in
-# pod_bootstrap_predict.sh) — it is never mounted and never written. _common.sh
-# rebinds RUNPOD_VOLUME_ID to the calc volume and refuses a protected id, so the
-# payload built below cannot name the source volume; the assertion after it is a
-# second lock on the one line that actually mounts something.
+# VOLUME CONTRACT: the pod mounts the one data volume (crimtr8kbf) at /workspace and
+# writes ONLY under /workspace/results/Top150. Its inputs are read STRICTLY via S3
+# GETs into container-local /scratch (the prefetch block in pod_bootstrap_predict.sh),
+# never from the mount. Every path handed to the pod is asserted under that prefix
+# below, the code bundle goes up through res_s3 (which cannot write outside it), and
+# the bootstrap re-checks the same paths before it runs anything.
 . "$(dirname "$0")/_common.sh"
 REPO_ROOT="$ROOT"
 
@@ -77,6 +77,24 @@ if printf '%s' "$RUNNING" | grep -q "investopediaclaude-predict-${JOB}"; then
   echo "SKIP: pod investopediaclaude-predict-${JOB} already running"; exit 0
 fi
 
+# Every path the pod receives. All of them — outputs AND the score dirs it reads
+# back — live under VOL_RESULTS; the volume root is the download system's.
+OUT_DIR="${OUT_DIR:-$VOL_RESULTS/derived/${JOB}}"
+SCORES_DIR="${SCORES_DIR:-$VOL_RESULTS/derived/stage2}"
+SCORES_DIR_ALT="${SCORES_DIR_ALT:-$VOL_RESULTS/derived/stage1}"
+LEDGER_PATH="${LEDGER_PATH:-$VOL_RESULTS/ledger/trials.parquet}"
+MODEL_DIR="${MODEL_DIR:-$VOL_RESULTS/models}"
+MARKET_DIR="${MARKET_DIR:-$VOL_RESULTS/m1x150}"
+for _k in OUT_DIR SCORES_DIR SCORES_DIR_ALT LEDGER_PATH MODEL_DIR MARKET_DIR; do
+  _p="${!_k}"
+  case "/$_p/" in *"/../"*|*"/./"*)
+    echo "REFUSING: $_k=$_p has a '.' or '..' segment" >&2; exit 2 ;; esac
+  case "$_p" in "$VOL_RESULTS"/?*) ;; *)
+    echo "REFUSING: $_k=$_p is outside $VOL_RESULTS — the pod may only write under results/Top150" >&2
+    exit 2 ;; esac
+done
+unset _k _p
+
 echo "Bundling prediction stack ..."
 TMP_TGZ="$(mktemp -t predict-bundle).tgz"
 ( cd "$REPO_ROOT" && tar czf "$TMP_TGZ" \
@@ -88,28 +106,26 @@ ENV_COMMON=$(cat <<JSON
     "USE_MARKET": "${USE_MARKET:-1}",
     "KEEP_POD": "${KEEP_POD:-}",
     "RUNPOD_TERMINATE_KEY": "${RUNPOD_API_KEY}",
-    "OUT_DIR": "${OUT_DIR:-/workspace/derived/${JOB}}",
-    "SCORES_DIR": "${SCORES_DIR:-/workspace/derived/stage2}",
+    "OUT_DIR": "${OUT_DIR}",
+    "SCORES_DIR": "${SCORES_DIR}",
     "NO_CPCV": "${NO_CPCV:-}",
-    "LEDGER_PATH": "${LEDGER_PATH:-/workspace/ledger/trials.parquet}",
-    "MODEL_DIR": "${MODEL_DIR:-/workspace/models}",
+    "LEDGER_PATH": "${LEDGER_PATH}",
+    "MODEL_DIR": "${MODEL_DIR}",
     "REFIT": "${REFIT:-auto}",
-    "SCORES_DIR_ALT": "${SCORES_DIR_ALT:-/workspace/derived/stage1}",
+    "SCORES_DIR_ALT": "${SCORES_DIR_ALT}",
     "VARIANTS_B64": "${VARIANTS_B64:-}",
     "SYSTEM_CONFIG": "${SYSTEM_CONFIG:-}"
 JSON
 )
-# The pod ALWAYS mounts the calc volume and ALWAYS pulls its inputs from the
-# source volume via read-only S3 GETs into /scratch. This used to be conditional
-# ("experiment wiring"); it is now the only mode, because the unconditional path
-# was the one that mounted the source tape and wrote to it.
+# The pod ALWAYS pulls its inputs via read-only S3 GETs into /scratch, never from
+# the mount — so no job process opens a file under /workspace/data or /workspace/m1.
 ENV_COMMON="${ENV_COMMON},
     \"SRC_VOLUME_ID\": \"${SRC_VOLUME_ID}\",
     \"AWS_ACCESS_KEY_ID\": \"${AWS_ACCESS_KEY_ID}\",
     \"AWS_SECRET_ACCESS_KEY\": \"${AWS_SECRET_ACCESS_KEY}\",
     \"RUNPOD_S3_ENDPOINT\": \"${RUNPOD_S3_ENDPOINT}\",
     \"RUNPOD_S3_REGION\": \"${RUNPOD_S3_REGION}\",
-    \"MARKET_DIR\": \"${MARKET_DIR:-/workspace/m1x150}\",
+    \"MARKET_DIR\": \"${MARKET_DIR}\",
     \"UNIVERSE_SIZE\": \"${UNIVERSE_SIZE:-150}\""
 # Pod-side publish: the predict pod (daily book) and the stage3 pod (quarterly
 # research refresh) get the MongoDB credentials from .env at the repo root and
@@ -128,15 +144,16 @@ else
     \"PUBLISH_MONGO\": \"0\""
 fi
 
-# Last line of defence before the payload names a volume to mount.
-if is_protected "$RUNPOD_VOLUME_ID"; then
-  echo "REFUSING: pod payload would mount $RUNPOD_VOLUME_ID, a read-only data volume" >&2
+# Last line of defence before the payload names a volume to mount: the one data
+# volume, and never a retired one.
+if [ "$RUNPOD_VOLUME_ID" != "$SRC_VOLUME_ID" ]; then
+  echo "REFUSING: pod would mount $RUNPOD_VOLUME_ID, not the data volume $SRC_VOLUME_ID" >&2
   exit 2
 fi
-if [ "$RUNPOD_VOLUME_ID" = "$SRC_VOLUME_ID" ]; then
-  echo "REFUSING: mount volume == source volume ($SRC_VOLUME_ID)" >&2
-  exit 2
-fi
+for _v in $RETIRED_VOLUMES; do
+  if [ "$RUNPOD_VOLUME_ID" = "$_v" ]; then echo "REFUSING: $_v is a retired volume" >&2; exit 2; fi
+done
+BOOTSTRAP_ON_POD="$VOL_RESULTS/code/predict/bootstrap.sh"
 
 if [ "$JOB" = "stage2" ]; then
   PAYLOAD=$(cat <<JSON
@@ -151,7 +168,7 @@ if [ "$JOB" = "stage2" ]; then
   "containerDiskInGb": ${RUNPOD_CONTAINER_DISK_GB:-40},
   "volumeMountPath": "/workspace",
   "dataCenterIds": ["${DC}"],
-  "dockerStartCmd": ["bash", "/workspace/code/predict/bootstrap.sh"],
+  "dockerStartCmd": ["bash", "${BOOTSTRAP_ON_POD}"],
   "env": { "PIP_PACKAGES": "${PIP_GPU}", ${ENV_COMMON} }
 }
 JSON
@@ -175,7 +192,7 @@ else
   "containerDiskInGb": ${CPU_DISK},
   "volumeMountPath": "/workspace",
   "dataCenterIds": ["${DC}"],
-  "dockerStartCmd": ["bash", "/workspace/code/predict/bootstrap.sh"],
+  "dockerStartCmd": ["bash", "${BOOTSTRAP_ON_POD}"],
   "env": { "PIP_PACKAGES": "${PIP_CPU}", ${ENV_COMMON} }
 }
 JSON
@@ -204,8 +221,8 @@ if [ -n "${DRY_RUN:-}" ]; then
   rm -f "$TMP_TGZ"
   exit 0
 fi
-aws s3 cp $S3FLAGS "$TMP_TGZ" "$BUCKET/code/predict/bundle.tgz"
-aws s3 cp $S3FLAGS "$REPO_ROOT/scripts/pod_bootstrap_predict.sh" "$BUCKET/code/predict/bootstrap.sh"
+res_s3 cp "$TMP_TGZ" code/predict/bundle.tgz --only-show-errors
+res_s3 cp "$REPO_ROOT/scripts/pod_bootstrap_predict.sh" code/predict/bootstrap.sh --only-show-errors
 rm -f "$TMP_TGZ"
 
 echo "Creating ${JOB} pod in ${DC} ..."
@@ -253,5 +270,5 @@ fi
 printf '%s\tpredict-%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$JOB" "$POD_ID" \
   >> "$ROOT/runpod/launched-pods.log"
 echo "launched predict-${JOB} pod: ${POD_ID}  [${PLACED_ON}]"
-echo "watch:   scripts/storage_usage.sh | grep -E '_pod_logs|derived'"
-echo "fetch:   aws s3 cp \$S3FLAGS $BUCKET/derived/${JOB}/ ./derived_${JOB}/ --recursive"
+echo "log:     .claude/skills/top150-pipeline/scripts/podlog150 predict-${JOB}-${POD_ID}"
+echo "outputs: $RESULTS/${OUT_DIR#"$VOL_RESULTS"/}/"

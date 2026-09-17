@@ -3,9 +3,11 @@
 Implementation of [stock_prediction_implementation_blueprint_v1_0_1.md](stock_prediction_implementation_blueprint_v1_0_1.md)
 (verified by [blueprint_verification_report_v1.md](blueprint_verification_report_v1.md)).
 **This repo computes; it does not ingest.** A **separate system** downloads all vendor
-data onto the source volume `crimtr8kbf`, which this repo reads **strictly read-only** —
-never mounted, never written. Everything computed here lands on the calc volume
-`k4cli3aj48`. See [dailyuse.md](dailyuse.md) and the `top150-pipeline` skill.
+data onto the volume `crimtr8kbf`, whose root (`data/`, `m1/`, `m1x/`, …) this repo reads
+**strictly read-only**. Everything computed here lands under `results/Top150/` on that
+same volume and nowhere else (the old calc volume `k4cli3aj48` is retired). See
+[dailyuse.md](dailyuse.md) and the `top150-pipeline` skill;
+`scripts/test_volume_guards.sh` proves the write boundary.
 
 ## Layout (blueprint §8)
 
@@ -37,8 +39,8 @@ ledger/trials.parquet   # every evaluated config -> DSR's N (G-09)
 
 ## RunPod jobs
 
-Every job goes through `launch_top150.sh`, which wires the calc volume for output and
-the source volume for read-only input. There is no fetch stage and no `daily.sh`.
+Every job goes through `launch_top150.sh`, which wires `results/Top150` for output and
+the rest of the volume for read-only input. There is no fetch stage and no `daily.sh`.
 
 ```sh
 # gate first: has the separate download system finished for this session?
@@ -52,8 +54,8 @@ scripts/launch_top150.sh stage1     # features -> LGBM heads (purged WF) -> ense
 scripts/launch_top150.sh stage2     # + GRU + JKX CNN + FinBERT (GPU pod)
 scripts/launch_top150.sh stage3     # meta gate + barrier book + CPCV
 scripts/launch_top150.sh predict    # latest-date scores -> target book -> suggestions.
-                                    # Continual: warm-updates champions stored on the
-                                    # calc volume; full refit auto every 21 sessions or
+                                    # Continual: warm-updates champions stored under
+                                    # results/Top150; full refit auto every 21 sessions or
                                     # on config/feature change; REFIT=full forces it.
 
 # the predict pod then publishes on its own: G-02 against the source tape -> bundle

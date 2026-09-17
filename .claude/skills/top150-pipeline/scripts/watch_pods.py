@@ -7,8 +7,8 @@ to a Monitor without flooding it:
     STALL <name>    pod alive but its _pod_logs entry has not grown for STALL_CHECKS polls
     IDLE            no pods running (printed once per idle stretch)
 
-Reads pod logs from the CALC volume (vol150) — that is where this pipeline's pods
-write. It is REPORT-ONLY by design: it never relaunches anything. The predecessor
+Reads pod logs from results/Top150/_pod_logs on the data volume (vol150) — that
+is where this pipeline's pods write. It is REPORT-ONLY by design: it never relaunches anything. The predecessor
 that did (watch_jobs.sh) relaunched with prod wiring, which is how an unattended
 run could end up writing the read-only source tape.
 

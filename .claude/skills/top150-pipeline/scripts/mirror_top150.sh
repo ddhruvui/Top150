@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pull TOP-150 results off the calc volume (k4cli3aj48), enforce G-02 against the
-# SOURCE tape (crimtr8kbf, read-only), and rebuild reports/top150 — the bundle the backend
+# Pull TOP-150 results from results/Top150 on the data volume (crimtr8kbf), enforce
+# G-02 against the source tape (the same volume's data/, read-only), and rebuild
+# reports/top150 — the bundle the backend
 # serves on the top150/top200 branches (and serve_top150_console.sh on :8790).
 #
 #   mirror_top150.sh                # daily: suggestions + bundle rebuild
@@ -12,25 +13,22 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 . "$HERE/_env150.sh"
 cd "$REPO"
-# Calc-volume access. Source-volume access goes through src_s3 (read-only,
-# refuses any mutating subcommand and any destination inside the source bucket) —
-# never through this array.
-S3=(aws s3 --region "$RUNPOD_S3_REGION" --endpoint-url "$RUNPOD_S3_ENDPOINT")
+# Both directions go through the guarded accessors in scripts/_common.sh:
+# res_s3 for results/Top150, src_s3 (read-only) for everything else on the volume.
 say() { echo "[$(date -u +%H:%M:%SZ)] mirror150: $*"; }
 
 # ---- pull the book (daily artifact) -----------------------------------------
 mkdir -p derived/top150/predict
-"${S3[@]}" cp "$CALC_BUCKET/derived/top150/predict/suggestions.json" \
-  derived/top150/predict/suggestions.json --quiet
-"${S3[@]}" cp "$CALC_BUCKET/derived/top150/predict/suggestions.md" \
-  reports/suggestions_top150.md --quiet 2>/dev/null || true
+res_s3 cp derived/top150/predict/suggestions.json \
+  ./derived/top150/predict/suggestions.json --quiet
+res_s3 cp derived/top150/predict/suggestions.md \
+  ./reports/suggestions_top150.md --quiet 2>/dev/null || true
 
 # ---- FULL_MIRROR: stage artifacts (quarterly research refresh) ---------------
 if [ "${FULL_MIRROR:-}" = "1" ]; then
   for st in stage1 stage2 stage3; do
-    say "pulling $st from calc volume"
-    "${S3[@]}" cp "$CALC_BUCKET/derived/top150/$st/" "derived/top150/$st/" \
-      --recursive --quiet
+    say "pulling $st from $RESULTS"
+    res_s3 cp "derived/top150/$st/" "./derived/top150/$st/" --recursive --quiet
   done
 fi
 

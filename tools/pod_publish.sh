@@ -11,7 +11,7 @@
 #         as_of_close must equal the newest data/eod_bulk/US/ day-file ON THE
 #         SOURCE — a read-only LIST of the source bucket, the same call
 #         mirror_top150.sh makes; nothing here ever writes there (volume
-#         contract: launch_top150.sh). Every section is published.
+#         contract: scripts/_common.sh). Every section is published.
 #   PUBLISH_MODE=research  (stage3)   The research sections changed (gates
 #         verdict, members, equity curve, CPCV, trade ledger). The book did NOT,
 #         so the `suggestions` section is left untouched in Mongo: the book the
@@ -20,8 +20,8 @@
 #         to sit on the volume. G-02 is therefore not applicable here.
 #
 # Either way the bundle is built with tools/build_reports.py over a flat staging
-# dir (last predict output + stage1/2/3 artifacts on the calc volume + the D-11
-# session grid from the source prefetch) and left on the calc volume
+# dir (last predict output + stage1/2/3 artifacts under results/Top150 + the D-11
+# session grid from the source prefetch) and left under results/Top150
 # (BUNDLE_OUT) so the exact published record can be pulled into git.
 #
 # Inputs (env):
@@ -31,7 +31,7 @@
 #   PUBLISH_MODE   book | research                                        default: book
 #   SESSIONS_PATH  D-11 session grid parquet                              default: /scratch/m1/sessions.parquet
 #   BUNDLE         bundle name                                            default: top150
-#   BUNDLE_OUT     where the built bundle is written                      default: /workspace/reports/$BUNDLE
+#   BUNDLE_OUT     where the built bundle is written                      default: /workspace/results/Top150/reports/$BUNDLE
 #   SRC_VOLUME_ID, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
 #   RUNPOD_S3_ENDPOINT, RUNPOD_S3_REGION                                  G-02 listing (book mode)
 #   MONGO_URI, DB_PASSWORD, MONGO_DB                                      publish
@@ -51,7 +51,13 @@ BUNDLE="${BUNDLE:-top150}"
 DERIVED_ROOT="${DERIVED_ROOT:-$(dirname "$OUT_DIR")}"
 PREDICT_DIR="${PREDICT_DIR:-$DERIVED_ROOT/predict}"
 SESSIONS_PATH="${SESSIONS_PATH:-/scratch/m1/sessions.parquet}"
-BUNDLE_OUT="${BUNDLE_OUT:-/workspace/reports/$BUNDLE}"
+BUNDLE_OUT="${BUNDLE_OUT:-/workspace/results/Top150/reports/$BUNDLE}"
+# On the pod /workspace is the data volume: the bundle may only land under
+# results/Top150 there (a path off the volume is a local rehearsal and is fine).
+case "$("$PY" -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$BUNDLE_OUT")/" in
+  /workspace/results/Top150/?*) ;;
+  /workspace/*) say "FATAL: BUNDLE_OUT=$BUNDLE_OUT is on the data volume outside results/Top150 — refusing"; exit 2 ;;
+esac
 REQUIRED="MONGO_URI"
 [ "$MODE" = "book" ] && REQUIRED="$REQUIRED SRC_VOLUME_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY RUNPOD_S3_ENDPOINT"
 for v in $REQUIRED; do

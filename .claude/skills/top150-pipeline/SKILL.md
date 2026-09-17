@@ -1,38 +1,58 @@
 ---
 name: top150-pipeline
-description: Run and monitor the TOP-150 pipeline — the daily loop (market → predict → reports/top150 bundle) and the quarterly research refresh (stage1 → stage2 GPU → stage3 → FULL_MIRROR) — computing onto the k4cli3aj48 calc volume while reading crimtr8kbf strictly read-only. Use this whenever the user asks to run the top150 daily or quarterly steps, refresh the book/suggestions/reports, rerun stage1/2/3, or check on pods. This repo does NOT download data: a separate system fills crimtr8kbf, and verify_source.py is the gate that says whether it has finished. The volume contract is not visible from the scripts themselves.
+description: Run and monitor the TOP-150 pipeline — the daily loop (market → predict → reports/top150 bundle) and the quarterly research refresh (stage1 → stage2 GPU → stage3 → FULL_MIRROR) — on the one data volume crimtr8kbf, writing only under results/Top150 and reading everything else (data/, m1/, m1x/) strictly read-only. Use this whenever the user asks to run the top150 daily or quarterly steps, refresh the book/suggestions/reports, rerun stage1/2/3, or check on pods. This repo does NOT download data: a separate system fills crimtr8kbf, and verify_source.py is the gate that says whether it has finished. The volume contract is not visible from the scripts themselves.
 ---
 
 # Top-150 pipeline: daily and quarterly
 
 This repo **computes; it does not ingest.** There is no vendor-download code here and
 there must never be any again — a separate system owns every fetch that fills the
-source tape. Two volumes, and the split is the whole safety model:
+source tape. **One volume, `crimtr8kbf`** (since 2026-09-17; the old calc volume
+`k4cli3aj48` is retired), and the split *inside* it is the whole safety model:
 
-- **`crimtr8kbf`** — the data **SOURCE**. **STRICTLY READ-ONLY**: never mounted, never
-  written, never deleted from. Pods read it via S3 GETs into container-local
+- **The root — `data/`, `m1/`, `m1x/`, `data_*`** — the data **SOURCE**, owned by the
+  download system. **STRICTLY READ-ONLY.** Pods mount the volume at `/workspace` but do
+  not read inputs from the mount: they pull them via S3 GETs into container-local
   `/scratch` (the prefetch block in `pod_bootstrap_predict.sh`).
-- **`k4cli3aj48`** — the **CALC** volume, mounted by pods at `/workspace`. Everything
-  computed here lands here and nowhere else: `m1x150/`, `derived/top150/*`,
-  `models/`, `ledger/`, `_pod_logs/`.
+  Vendor layout under `data/`: per-ticker EODHD OHLCV at `ohlcv/<TICKER>.json` (no
+  `.US` suffix; moved from `data/<TICKER>.json` by the 2026-09-17 run), SPY at
+  `market/SPY.US.json`, whole-exchange day-files at `eod_bulk/US/<DATE>.json`, plus
+  `news/`, `dividends/`, `splits/`, `fundamentals/`, `estimates/` keyed by ticker.
+  The pipeline itself prices off the parsed `m1/` and `m1x/` trees, not these files.
+- **`results/Top150/`** — everything this repo writes, and the only place it writes:
+  `m1x150/`, `derived/top150/*`, `models/`, `ledger/`, `reports/`, `code/`,
+  `_pod_logs/`. Same relative layout the calc volume had
+  (`k4cli3aj48:/X` == `crimtr8kbf:/results/Top150/X`). `results/InvestOpediaClaude/`
+  and `results/ResearchGate/` are other projects' — never touched.
 
 `scripts/launch_top150.sh <market|test|stage1|stage2|stage3|predict|exp>` sets the
-wiring (`UNIVERSE_SIZE=150`, `MARKET_DIR=/workspace/m1x150`,
-`SYSTEM_CONFIG=configs/system_top150.yaml`, `OUT_DIR=/workspace/derived/top150/<job>`)
-and hands off to `launch_predict.sh`.
+wiring (`UNIVERSE_SIZE=150`, `MARKET_DIR=/workspace/results/Top150/m1x150`,
+`SYSTEM_CONFIG=configs/system_top150.yaml`,
+`OUT_DIR=/workspace/results/Top150/derived/top150/<job>`) and hands off to
+`launch_predict.sh`.
 
-**The contract is enforced in code, in three places** — you do not have to remember it,
-but do not work around it either:
+**The contract is enforced in code, in layers** — you do not have to remember it, but do
+not work around it either. `scripts/test_volume_guards.sh` proves each one (hermetic,
+no network; run it after touching any of these files):
 
-1. `scripts/_common.sh` rebinds the mountable volume to the calc volume, refuses any
-   id in `PROTECTED_VOLUMES` (`crimtr8kbf`, `8qik4zxpxq`), and refuses calc == source.
-   It also exposes `src_s3`, the only sanctioned source accessor: `ls`/`cp`/`sync`
-   only, and never a destination inside the source bucket.
-2. `scripts/launch_predict.sh` re-asserts both before building the pod payload — the
-   one line that actually names a volume to mount.
-3. `scripts/pod_bootstrap_predict.sh` refuses to run without read-only source wiring,
-   and now **aborts on an incomplete prefetch** instead of computing on a half-synced
-   `/scratch` (`ec=96`).
+1. `scripts/_common.sh` pins `RESULTS_PREFIX=results/Top150` and exposes the only two
+   S3 accessors: `src_s3` (read-only: `ls`/`cp`/`sync`, destination must be local disk)
+   and `res_s3` (the only writer: every destination, `rm` and `mv` must resolve under
+   `results/Top150`, `..` refused). Paths first, flags after. It refuses a shell that
+   still exports `CALC_VOLUME_ID`/`RUNPOD_VOLUME_ID_OVERRIDE`, and the retired volumes
+   (`k4cli3aj48`, `8qik4zxpxq`) as a mount.
+2. `scripts/launch_predict.sh` refuses any pod path (`OUT_DIR`, `MARKET_DIR`,
+   `MODEL_DIR`, `LEDGER_PATH`, `SCORES_DIR*`) outside `/workspace/results/Top150`, and
+   uploads the code bundle through `res_s3`.
+3. `scripts/pod_bootstrap_predict.sh` refuses to run (`ec=95`) unless `/workspace` is
+   the data volume, every input is a `/scratch` path, and every write path resolves —
+   symlinks included — under `results/Top150`. The code unpacks onto container disk
+   (`/opt/top150`), so a relative write can never reach the volume. It still **aborts
+   on an incomplete prefetch** (`ec=96`).
+4. **Do not edit `configs/*.yaml` to change paths — not even comments.** `config_hash`
+   is the SHA-256 of the file's bytes: any edit forces a full refit and orphans the
+   stage artifacts. The pods override the config's `/workspace/models` etc. through
+   env vars instead.
 
 Bundled helpers in `.claude/skills/top150-pipeline/scripts/` (call by full path;
 `SK150=.claude/skills/top150-pipeline/scripts`):
@@ -40,17 +60,18 @@ Bundled helpers in `.claude/skills/top150-pipeline/scripts/` (call by full path;
 | script | what it does |
 |---|---|
 | `verify_source.py` | **read-only gate**: has the separate download system finished? Reads each vendor tree's `_run.json` on the source. Exit 0 only if every tree is fresh with zero hard failures |
-| `srcvol` | READ-ONLY `aws s3` against the SOURCE volume — `srcvol ls data/eod_bulk/US/`. Refuses `rm`/`mv` and refuses a source-bucket destination |
-| `vol150` | `aws s3` against the CALC volume — `vol150 ls derived/top150/predict/` |
-| `podlog150 <pat> [n]` | newest matching `_pod_logs/` entry on the calc volume |
+| `srcvol` | READ-ONLY `aws s3` against the volume root — `srcvol ls data/eod_bulk/US/`. Refuses `rm`/`mv`; a `cp`/`sync` destination must be a local path |
+| `vol150` | `aws s3` against `results/Top150` (bare paths are relative to it) — `vol150 ls derived/top150/predict/`. Cannot write, move or delete outside it |
+| `podlog150 <pat> [n]` | newest matching `results/Top150/_pod_logs/` entry |
 | `pods` | account-wide pod list (name, id, status, created) |
 | `watch_pods.py` | report-only watchdog; one line per state change (UP/DONE/STALL/IDLE) |
 | `mirror_top150.sh` | laptop path (optional since the pod publishes): pull book (+stage artifacts with `FULL_MIRROR=1`), enforce G-02 vs the source tape, rebuild `reports/top150` for the git record, re-publish to MongoDB (`PUBLISH_MONGO=0` skips) |
 
 ## Hard rules (each one has burned a run)
 
-1. **Never write to crimtr8kbf, and never mount it.** Reads go through `src_s3` /
-   `srcvol`. If you find yourself reaching for a raw `aws s3` against the source, stop.
+1. **Never write to crimtr8kbf outside `results/Top150`.** Reads go through `src_s3` /
+   `srcvol`, writes through `res_s3` / `vol150`. If you find yourself reaching for a raw
+   `aws s3` against the volume, stop.
 2. **Never add fetch/download/ingest code to this repo.** If data is missing or stale,
    that is the other system's job — report it, do not fetch it here. There is no
    `data_acquisition/`, no `daily.sh`, and no `watch_jobs.sh` any more; the last of
@@ -58,7 +79,7 @@ Bundled helpers in `.claude/skills/top150-pipeline/scripts/` (call by full path;
 3. **Branch check first**: `git branch --show-current` must say `top150` (or `top200`).
    The backend serves the bundle named by `BUNDLE` (default `top150`) — from MongoDB
    when `MONGO_URI` is set, else `reports/<bundle>` on disk.
-4. A launched pod with **no bootstrap log on k4cli3aj48 within ~5 min** is on a broken
+4. A launched pod with **no bootstrap log in `results/Top150/_pod_logs` within ~5 min** is on a broken
    EU-RO-1 host (struck twice on 2026-09-01): it bills forever while RUNNING and never
    starts. Check `$SK150/vol150 ls _pod_logs/ | tail`, then DELETE the pod
    (`scripts/killpod.sh`) and relaunch. `launch_predict.sh` does not verify startup.
@@ -75,12 +96,12 @@ Bundled helpers in `.claude/skills/top150-pipeline/scripts/` (call by full path;
    python `urllib` DELETE with a Cloudflare **403 "error code: 1010"** (blocked by
    the client signature); curl gets a 204. The bootstrap now falls back to curl.
 8. **One pod at a time when the ledger is being written.** The G-09 trials ledger
-   (`/workspace/ledger/trials.parquet`) is rewritten whole on every append; a second
+   (`/workspace/results/Top150/ledger/trials.parquet`) is rewritten whole on every append; a second
    pod reading it mid-write sees a 0-byte parquet and dies (`ArrowInvalid: Parquet
    file size is 0 bytes` — an `exp` pod launched 30 s after `predict`, 2026-09-08).
    Run predict/stage/exp jobs sequentially, or at least not within the same minute.
 9. **Experiment output stays out of `derived/top150/`.** Branch `exp-short-horizon`
-   writes to `OUT_DIR=/workspace/derived/exp_short/<job>` on the same calc volume and
+   writes to `OUT_DIR=/workspace/results/Top150/derived/exp_short/<job>` and
    launches with `PUBLISH_MONGO=0`; the production prefixes are the daily loop's.
 
 ## Daily loop
@@ -103,21 +124,23 @@ it first, and if it fails, say so rather than trying to fix the source:
 Then, in order (each: launch → confirm bootstrap log → wait → verify exit):
 
 ```sh
-scripts/launch_top150.sh market     # membership@150 + workset -> /workspace/m1x150
-scripts/launch_top150.sh predict    # book -> /workspace/derived/top150/predict
+scripts/launch_top150.sh market     # membership@150 + workset -> results/Top150/m1x150
+scripts/launch_top150.sh predict    # book -> results/Top150/derived/top150/predict
 ```
 
 After each launch confirm `$SK150/vol150 ls _pod_logs/ | tail -2` shows a fresh
 `predict-<job>-<podid>.log` (rule 4 if not). After each pod self-terminates, require
 `job=0` in `$SK150/podlog150 predict-<job>`. The champion store and trials ledger live
-on the calc volume (`/workspace/models`, `/workspace/ledger`), so a full refit instead
-of a warm update is normal on fresh history.
+under `results/Top150` (`models/`, `ledger/`), so a full refit instead of a warm update
+is normal on fresh history — and on the first run after the move if the calc volume's
+`models/` and `ledger/` were not copied across.
 
 **Publishing happens on the pod.** When `predict` exits `job=0`, the same pod runs
 `tools/pod_publish.sh`: it enforces **G-02** (`as_of_close` must equal the newest
 `data/eod_bulk/US/` day-file **on the source** — a read-only LIST), builds the bundle
-with `tools/build_reports.py` (predict output + the stage1/2/3 artifacts on the calc
-volume + the session grid from the prefetch), writes it to `/workspace/reports/top150`,
+with `tools/build_reports.py` (predict output + the stage1/2/3 artifacts under
+`results/Top150` + the session grid from the prefetch), writes it to
+`/workspace/results/Top150/reports/top150`,
 and publishes it to MongoDB (`Top150` db). The deployed UI (Render → Vercel API) shows
 it within ~30 s. Nothing is downloaded to a laptop. The launcher passes the Mongo
 credentials from the repo-root `.env` into the predict pod; `PUBLISH_MONGO=0` launches
@@ -164,7 +187,7 @@ scripts/launch_top150.sh stage3     # meta gate + barrier book + CPCV
 
 **The stage3 pod publishes the research refresh itself** (`publish=0` in its log, below
 `job=`): `tools/pod_publish.sh` in *research* mode rebuilds the bundle from the stage
-artifacts on the calc volume and publishes the gates verdict, members, equity curve,
+artifacts under `results/Top150` and publishes the gates verdict, members, equity curve,
 CPCV and trade ledger. It deliberately leaves the `suggestions` section untouched — the
 book the UI shows is only ever written by a G-02-verified predict publish, so a research
 refresh never re-pushes whatever `suggestions.json` sits on the volume. The next daily

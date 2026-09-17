@@ -13,7 +13,7 @@ Runs ON the pod (the day-files only exist on the volume). Steps:
  3. Workset = every name ever selected  (+ Sharadar SP500 ever-members)  ->
     workset_prices/part-YYYY.parquet — the compact panel Stage 1+ actually loads.
 
-Outputs land in MARKET_DIR (default /workspace/m1x). EODHD `adjusted_close` is
+Outputs land in MARKET_DIR (default /workspace/results/Top150/m1x150). EODHD `adjusted_close` is
 the fallback total-return factor source for names Sharadar doesn't cover; the
 M1 adjustment_factors override where present (handled at panel-build time).
 
@@ -33,7 +33,9 @@ import numpy as np
 import pandas as pd
 
 BULK_DIR = Path(os.environ.get("EOD_BULK_DIR", "/workspace/data/eod_bulk/US"))
-MARKET_DIR = Path(os.environ.get("MARKET_DIR", "/workspace/m1x"))
+# Never the volume-root m1x/: on the mounted data volume that is the download
+# system's parsed tree, which this repo only reads.
+MARKET_DIR = Path(os.environ.get("MARKET_DIR", "/workspace/results/Top150/m1x150"))
 # Read location for the per-year market_prices parts. Defaults to this build's
 # own output; point it at an EXISTING build (e.g. the production m1x pulled
 # read-only over S3) together with SKIP_BULK=1 to re-derive membership/workset

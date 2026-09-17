@@ -456,10 +456,10 @@ if __name__ == "__main__":
     ap.add_argument("--m1", default=os.environ.get("M1_DIR", "/workspace/m1"))
     ap.add_argument("--eod", default=os.environ.get("EOD_DIR", "/workspace/data"))
     ap.add_argument("--out", default=os.environ.get("OUT_DIR", "artifacts/reports/exp"))
-    ap.add_argument("--scores", default=os.environ.get("SCORES_DIR",
-                                                       "/workspace/derived/stage2"))
-    ap.add_argument("--scores-alt", default=os.environ.get("SCORES_DIR_ALT",
-                                                           "/workspace/derived/stage1"))
+    ap.add_argument("--scores", default=os.environ.get(
+        "SCORES_DIR", "/workspace/results/Top150/derived/stage2"))
+    ap.add_argument("--scores-alt", default=os.environ.get(
+        "SCORES_DIR_ALT", "/workspace/results/Top150/derived/stage1"))
     ap.add_argument("--market", default=os.environ.get("MARKET_DIR") or None)
     ap.add_argument("--config", default=None)
     ap.add_argument("--variants", default=os.environ.get("VARIANTS") or None,

@@ -1,11 +1,13 @@
 # Daily use — prediction stack (blueprint v1.0.1 implementation)
 
 > **This repo computes; it does not ingest.** There is no vendor-download code here.
-> A **separate system** owns every fetch that fills the source volume `crimtr8kbf`,
-> and this repo reads that volume **strictly read-only** — never mounting it, never
-> writing to it. Everything computed here lands on the calc volume `k4cli3aj48`.
+> A **separate system** owns every fetch that fills the volume `crimtr8kbf`, and this
+> repo reads its root (`data/`, `m1/`, `m1x/`, …) **strictly read-only**. Everything
+> computed here lands under `results/Top150/` on that same volume and nowhere else
+> (the old calc volume `k4cli3aj48` is retired; same relative layout, one prefix down).
 > The contract is enforced in `scripts/_common.sh` and re-asserted in
-> `scripts/launch_predict.sh` and `scripts/pod_bootstrap_predict.sh`.
+> `scripts/launch_predict.sh` and `scripts/pod_bootstrap_predict.sh`;
+> `scripts/test_volume_guards.sh` proves it.
 >
 > Before computing, gate on the source being complete for the session:
 > `.claude/skills/top150-pipeline/scripts/verify_source.py` (exit 0 = every vendor
@@ -13,14 +15,15 @@
 > to fix — report it rather than trying to fetch anything here.
 
 The modelling/backtest/prediction system lives at repo root (`src/`, `configs/system.yaml`,
-`tests/` — see [README.md](README.md)). **All processing runs on RunPod**: pods mount the
-CALC volume and read the source volume read-only into `/scratch`. Local execution is for
+`tests/` — see [README.md](README.md)). **All processing runs on RunPod**: pods mount
+`crimtr8kbf`, write only under `/workspace/results/Top150`, and read their inputs
+read-only into `/scratch` over S3. Local execution is for
 unit tests and synthetic rehearsals only.
 
 ```sh
 # THE daily loop is now two launches plus a mirror — there is no fetch stage here.
-scripts/launch_top150.sh market     # membership@150 + workset -> /workspace/m1x150
-scripts/launch_top150.sh predict    # book -> /workspace/derived/top150/predict, then the
+scripts/launch_top150.sh market     # membership@150 + workset -> results/Top150/m1x150
+scripts/launch_top150.sh predict    # book -> results/Top150/derived/top150/predict, then the
                                     # POD publishes: G-02 -> bundle -> MongoDB -> deployed UI
 .claude/skills/top150-pipeline/scripts/mirror_top150.sh   # optional: git record + re-publish
 
@@ -30,7 +33,7 @@ scripts/launch_top150.sh market    # eod_bulk -> m1x150 panel + top-150 universe
 scripts/launch_top150.sh stage1    # features -> LGBM heads (purged WF) -> book -> gates
 scripts/launch_top150.sh stage2    # + GRU + JKX CNN + FinBERT (GPU pod)
 scripts/launch_top150.sh stage3    # meta gate + barrier-exit event book + CPCV(6,2)
-                                    #   (reads SCORES_DIR, default /workspace/derived/stage2)
+                                    #   (reads SCORES_DIR, default results/Top150/derived/top150/stage2)
 scripts/launch_top150.sh predict   # latest-close scores -> target book -> suggestions
                                     #   (continual: warm-updates stored champions daily,
                                     #   full refit auto every 21 sessions — see below)
@@ -44,7 +47,7 @@ scripts/launch_top150.sh predict   # latest-close scores -> target book -> sugge
 ## Incremental daily learning (the Monday-morning answer)
 
 Nothing retrains from scratch daily. The `predict` job is **continual**: LGBM champions
-persist on the volume under `/workspace/models/` (`MODEL_DIR`), and each daily run
+persist on the volume under `/workspace/results/Top150/models/` (`MODEL_DIR`), and each daily run
 
 1. **decides the mode** — `update` if every head has a champion trained under the current
    `config_hash` and the last FULL fit is < `continual.full_refit_sessions` (21 ≈ monthly,
@@ -80,8 +83,9 @@ parquets for the git record.
 - Pods self-terminate with a confirmed DELETE; a restart marker prevents billing loops.
   `KEEP_POD=1` keeps a pod alive for inspection; `RUNPOD_VCPU=8` (16 GB) is required for
   stage1/stage3/predict (the 4 GB default OOMs); stage2 needs the GPU flavor (automatic).
-- Outputs land on the CALC volume under `derived/top150/<job>/` (reports, scores, target
-  weights, suggestions). Pull with the calc-volume helper:
+- Outputs land under `results/Top150/derived/top150/<job>/` (reports, scores, target
+  weights, suggestions). Pull with the results helper (bare paths are relative to
+  `results/Top150`):
   `.claude/skills/top150-pipeline/scripts/vol150 cp derived/top150/stage3/ ./derived_stage3/ --recursive`
 - `derived_*/` downloads are disposable and gitignored; keep only
   `artifacts/reports/*.json|md` (small, reviewable) and `ledger/trials.parquet`
@@ -101,7 +105,7 @@ stage artifacts mirrored under `derived/top150/`), and `reports/exp_short/` is t
 experiment record (ranked variant tables + ANALYSIS.md).
 
 ```sh
-# refresh the bundle after a pipeline run (pods write the CALC volume; this only reads)
+# refresh the bundle after a pipeline run (pods write results/Top150; this only reads)
 # — ends by publishing reports/top150 to MongoDB, which is what the deployed UI shows
 .claude/skills/top150-pipeline/scripts/mirror_top150.sh          # daily book + bundle
 FULL_MIRROR=1 .claude/skills/top150-pipeline/scripts/mirror_top150.sh   # after a stage rerun

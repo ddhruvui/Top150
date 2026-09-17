@@ -47,23 +47,24 @@ last-3y and was explicitly declined (no borrowed money).
 ## Run it
 
 > **Historical note.** These rounds were run when `crimtr8kbf` was an *experiment*
-> volume that this repo mounted and wrote. It is now the **read-only data source**,
-> and the commands below have changed accordingly. The old
+> volume that this repo mounted and wrote. It is now the **data source**, read-only
+> except for this repo's own `results/Top150/` prefix, and the commands below have
+> changed accordingly. The old
 > `scripts/launch_sync_volume.sh` and `scripts/launch_exp_aggressive.sh` are gone —
 > both defaulted to mounting `crimtr8kbf`, and the guards in `scripts/_common.sh`
 > would refuse them today. There is no sync step any more: pods read the source
 > read-only into `/scratch` on every run.
 
 ```sh
-# reproduce any experiment round (outputs -> calc volume)
-OUT_DIR=/workspace/derived/top150/exp_aggr/roundF \
+# reproduce any experiment round (outputs -> results/Top150)
+OUT_DIR=/workspace/results/Top150/derived/top150/exp_aggr/roundF \
 VARIANTS_B64="$(base64 < scripts/variants/roundF.json | tr -d '\n')" \
   scripts/launch_top150.sh exp
 
 # daily suggestions for a book (the config hash differs from the adopted top150
 # config, so predict will full-refit its own champion store)
 SYSTEM_CONFIG=configs/system_aggressive.yaml \
-OUT_DIR=/workspace/derived/top150/predict_aggr \
+OUT_DIR=/workspace/results/Top150/derived/top150/predict_aggr \
   scripts/launch_top150.sh predict
 ```
 
