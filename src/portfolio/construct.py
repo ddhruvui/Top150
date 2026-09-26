@@ -25,6 +25,17 @@ import pandas as pd
 HEDGE_COL = "__SPY_HEDGE__"
 
 
+def hedge_enabled(cfg) -> bool:
+    """port.hedge == "none" -> the book carries no index leg.
+
+    ONE reading of the setting for every path. Until 2026-09-26 only predict
+    consulted it: evaluate_book took construct_targets' hedge=True default, so
+    the stage1/stage2 reports (and the G-11 gates built on them) described a
+    beta-matched short-SPY book while the live book had no such leg.
+    """
+    return str(cfg.port.get("hedge", "short_SPY_beta_matched")).strip().lower() != "none"
+
+
 def construct_targets(decile: pd.DataFrame, mask: pd.DataFrame, sigma32: pd.DataFrame,
                       beta: pd.DataFrame | None, gross_mult: pd.Series | None,
                       tranches: int = 15, single_name_cap: float = 0.03,

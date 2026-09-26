@@ -138,7 +138,8 @@ def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed
 
     from src.config import git_sha
     from src.ensemble.rank import ensemble_rank, deciles, select_short
-    from src.portfolio.construct import construct_targets, vol_target_scale, HEDGE_COL
+    from src.portfolio.construct import (construct_targets, vol_target_scale,
+                                         hedge_enabled, HEDGE_COL)
     from src.backtest.costs import CostModel
     from src.backtest.engine import run_backtest
     from src.regime.overlay import regime_multiplier
@@ -208,7 +209,8 @@ def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed
         no_trade_band=float(cfg.port.no_trade_band),
         nav_band=float(cfg.port.no_trade_band_nav_bps) / 1e4,
         short_sel=sel_short if short_on else None,
-        long_budget=long_budget, short_budget=short_budget)
+        long_budget=long_budget, short_budget=short_budget,
+        hedge=hedge_enabled(cfg))
     open_panel = panel.adj_open.loc[test_dates].copy()
     if "SPY" in open_panel.columns:                    # SPY is itself a universe member
         open_panel["SPY"] = open_panel["SPY"].fillna(spy["adj_open"].reindex(test_dates))

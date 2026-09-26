@@ -41,7 +41,7 @@ from src.pipeline.common import prepare
 from src.models.lgbm import LGBMHead
 from src.models.store import ModelStore, decide_refit
 from src.ensemble.rank import ensemble_rank, select_long, select_short
-from src.portfolio.construct import vol_target_scale
+from src.portfolio.construct import vol_target_scale, hedge_enabled
 from src.backtest.costs import CostModel
 from src.backtest.engines.barriers_event import (engine_opts_from_cfg, run_event_backtest,
                                                  run_long_short, live_book, sleeve_caps)
@@ -340,9 +340,16 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     sel = select_long(ens, m, cfg)
     print(f"selection: {cfg.port.get('selection', 'top_decile_long')} "
           f"(N={cfg.port.get('top_n', 20)}) -> event-engine live book", flush=True)
-    hedge_mode = str(cfg.port.get("hedge", "short_SPY_beta_matched"))
-    if hedge_mode == "none":
-        print("hedge: none (cash book — no SPY short leg)", flush=True)
+    # The live event-engine book has no index leg at all. Say so either way, and
+    # say it LOUDLY when the config asks for one: silently trading unhedged while
+    # the config (and the stage reports) assume a hedge is the failure this
+    # setting is now wired to prevent.
+    if hedge_enabled(cfg):
+        print(f"!! port.hedge={cfg.port.get('hedge')!r} but the live book has NO hedge "
+              f"leg — the event engine trades single names only. Set port.hedge: none "
+              f"to make the config match what is traded.", flush=True)
+    else:
+        print("hedge: none (no SPY index leg)", flush=True)
     hedge_w = 0.0
     cm = CostModel(per_trade_bps=float(cfg.cost.per_trade_bps),
                    borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
