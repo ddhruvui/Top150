@@ -82,8 +82,26 @@ else
         mkdir -p /scratch/m1
         timeout 600 aws s3 cp "${EP[@]}" --only-show-errors \
           "$SRC/m1/entities.parquet" /scratch/m1/entities.parquet || PREFETCH_FAIL="entities"
-        export MARKET_PRICES_DIR=/scratch/market_prices SKIP_BULK=1 \
-               ENTITIES_PATH=/scratch/m1/entities.parquet
+        export ENTITIES_PATH=/scratch/m1/entities.parquet
+        # Where do the per-year market_prices parts come from?
+        #  - the source tape's m1x/ (the download system's, read-only) when it has
+        #    them: reuse as-is, only re-derive membership/workset;
+        #  - otherwise THIS project's own build under results/Core105, brought up
+        #    to date by build_market_prices() below: it parses data/eod_bulk/US
+        #    itself (build_market.py step 1), but only the years whose day-file
+        #    count on the source differs from _built.json, plus always the newest
+        #    day-file's year (that file can still be filling when first listed).
+        #    From scratch that is every year; on a daily run, just the current one.
+        # On 2026-09-26 the tape had no m1x/ at all: a from-scratch market job
+        # died on the SKIP_BULK FATAL, and a plain reuse of our own parts would
+        # have frozen the panel at the last build date.
+        if ls /scratch/market_prices/part-*.parquet >/dev/null 2>&1; then
+          export MARKET_PRICES_DIR=/scratch/market_prices SKIP_BULK=1
+          echo "market_prices: reusing the source tape's m1x/ build"
+        else
+          export BUILD_MARKET=1
+          echo "market_prices: no m1x/ parts on the source — building/refreshing our own under results/Core105"
+        fi
       else
         timeout 3600 aws s3 sync "${EP[@]}" --only-show-errors \
           "$SRC/m1" /scratch/m1 --exclude 'qlib/*' || PREFETCH_FAIL="m1"
@@ -176,9 +194,46 @@ print("\n".join(sorted(pd.read_parquet(os.environ["MEM"])["ticker"].astype(str).
       echo "paths OK: inputs /scratch, outputs under $RESULTS_DIR"
       mkdir -p "$OUT_DIR"
 
+      # OWN market_prices build, incremental. The eod_bulk tape is ~6.7k
+      # day-files / 30+ GiB against a 10 G container overlay, so each selected
+      # year is pulled, parsed by step1_market_prices() into MARKET_DIR, and its
+      # JSON dropped before the next. Years whose part is current are never
+      # re-downloaded. Reads are the same read-only S3 GETs as every other job.
+      build_market_prices() {
+        local y years listing=/scratch/eod_bulk_US.listing
+        timeout 600 aws s3 ls "${EP[@]}" "$SRC/data/eod_bulk/US/" > "$listing"
+        if [ $? -ne 0 ] || [ ! -s "$listing" ]; then
+          echo "FATAL: cannot list data/eod_bulk/US on the source"; return 1
+        fi
+        years=$(MARKER="$MARKET_DIR/market_prices/_built.json" python tools/market_years_todo.py < "$listing")
+        if [ -z "$years" ]; then echo "FATAL: no day-files listed under data/eod_bulk/US"; return 1; fi
+        echo "market_prices: (re)building year(s): $years"
+        for y in $years; do
+          timeout 3600 aws s3 sync "${EP[@]}" --only-show-errors \
+            "$SRC/data/eod_bulk/US" "$EOD_BULK_DIR" \
+            --exclude '*' --include "${y}-*.json" --include "${y}-*.json.gz"
+          if [ $? -ne 0 ]; then echo "FATAL: market_prices: sync $y failed"; return 1; fi
+          ls "$EOD_BULK_DIR/${y}-"*.json* >/dev/null 2>&1 || continue
+          echo "market_prices $y: $(ls "$EOD_BULK_DIR/${y}-"*.json* | wc -l) day-files, $(du -sh "$EOD_BULK_DIR" 2>/dev/null | cut -f1) on disk"
+          FORCE_YEAR="$y" python tools/market_years_todo.py --step1 \
+            || { echo "FATAL: market_prices: step1 failed on $y"; return 1; }
+          rm -f "$EOD_BULK_DIR/${y}-"*.json*
+        done
+        ls "$MARKET_DIR"/market_prices/part-*.parquet >/dev/null 2>&1 || {
+          echo "FATAL: no market_prices parts after the build"; return 1; }
+        echo "market_prices: $(ls "$MARKET_DIR"/market_prices/part-*.parquet | wc -l) year-parts current"
+        return 0
+      }
+
       case "${JOB:-stage1}" in
         test)    timeout 3600  python -m pytest tests/ -q ;;
-        market)  timeout 28800 python src/data/build_market.py ;;
+        market)  if [ -n "${BUILD_MARKET:-}" ]; then
+                   mkdir -p "$EOD_BULK_DIR"
+                   build_market_prices \
+                     && SKIP_BULK=1 timeout 28800 python src/data/build_market.py
+                 else
+                   timeout 28800 python src/data/build_market.py
+                 fi ;;
         stage1)  timeout 28800 python -m src.pipeline.stage1 --m1 "$M1_DIR" --eod "$EOD_DIR" \
                    --out "$OUT_DIR" ${USE_MARKET:+--market "$MARKET_DIR"} ;;
         stage2)  timeout 64800 python -m src.pipeline.stage2 --m1 "$M1_DIR" --eod "$EOD_DIR" \
