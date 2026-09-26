@@ -134,3 +134,24 @@ def test_fill_max_redeploys_freed_capital_under_the_cap(rng, synth_panel):
     # be scaled DOWN by the cap precisely because more capital is already live)
     ratio = full['trades']['tranche_w'] / base['trades']['tranche_w']
     assert ratio.max() <= 2.0 + 1e-9
+
+
+def test_core105_config_scores_to_the_last_session():
+    """The adopted config must backtest through the LATEST session on the tape,
+    whatever the tail length past the last full test year (floor 1, 2026-09-17)."""
+    from src.config import load_config
+    cfg, _ = load_config('configs/system_core105.yaml')
+    floor = int(cfg.val.partial_last_fold_min_sessions)
+    assert floor == 1
+    span, emb = 1 + max(cfg.labels.horizons), int(cfg.val.embargo_days)
+    for tail in (1, 5, 20, 21, 100, 251):
+        n = 1260 + 504 + 252 * 3 + tail            # three full test years + a tail
+        dates = pd.bdate_range('2005-01-03', periods=n)
+        folds = walk_forward(dates, 1260, 504, 252, 252, span, emb, partial_last_min=floor)
+        covered = pd.DatetimeIndex(sorted(set().union(*[set(f.test) for f in folds])))
+        assert covered[-1] == dates[-1], f"tail {tail}: last scored {covered[-1]}"
+        assert len(folds[-1].test) == tail
+        # the partial fold is purged and embargoed like every other one
+        te0 = folds[-1].test[0]
+        for d in folds[-1].train:
+            assert d < te0 and dates.get_loc(d) + span <= dates.get_loc(te0)
