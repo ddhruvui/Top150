@@ -27,6 +27,8 @@ artifacts/models/
 artifacts/scores/
 scratch*/
 *.log
+# stage2 FinBERT sentiment (~70 MB, rebuilt every refresh; the volume keeps it)
+derived/*/stage2/sentiment_scores.parquet
 # reports stay tracked (small, reviewable): artifacts/reports/
 # ledger/trials.parquet stays tracked (G-09 append-only audit trail)
 

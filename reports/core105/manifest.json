@@ -1,0 +1,29 @@
+{
+ "built_utc": "2026-09-26T22:25:06+00:00",
+ "source_dir": "/var/folders/nc/94b145q13pl3jz97b9qf8msh0000gn/T/core105_src.ZSN7mo",
+ "sections": {
+  "summary": {
+   "members": "stage2_report.json",
+   "book": "stage3_report.json",
+   "cpcv": "stage3_final_report.json"
+  },
+  "equity": {
+   "points": 1654
+  },
+  "suggestions": {
+   "as_of": "2026-09-25",
+   "n": 11,
+   "n_short": 10
+  },
+  "config": {
+   "config_hash": "285e2cdf71e629a1e4a2e888a8aeac38f7ff075a1e1146fc7ae75a72bd386f90"
+  },
+  "calendar": {
+   "sessions": 84
+  },
+  "trades": {
+   "n_total": 89935,
+   "sampled": 4000
+  }
+ }
+}
