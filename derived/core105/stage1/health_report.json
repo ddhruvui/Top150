@@ -8,7 +8,7 @@
     },
     "missing_bars_in_universe": {
       "total": 6645,
-      "frac": 0.01155,
+      "frac": 0.01182,
       "ok": true,
       "level": "MUST"
     },
@@ -18,14 +18,14 @@
       "level": "SHOULD"
     },
     "factor_continuity": {
-      "jump_bars": 3257,
+      "jump_bars": 3226,
       "ok": true,
       "level": "MUST"
     },
     "universe_count": {
-      "min": 65,
-      "max": 105,
-      "last": 105,
+      "min": 63,
+      "max": 103,
+      "last": 103,
       "ok": "True",
       "level": "MUST"
     },
