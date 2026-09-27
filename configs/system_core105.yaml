@@ -1,12 +1,15 @@
 # ============================================================================
 # CORE-105 (branch core105): the adopted aggressive cash book run on a FIXED,
-# hand-picked universe of 105 names — universe.tickers below — instead of the
+# hand-picked universe of 103 names — universe.tickers below — instead of the
 # point-in-time top-N dollar-volume ranking. Identical to system.yaml except
 # the universe block.
 #
 # The list IS the universe: no dollar-volume ranking, no hysteresis, no
-# min_price screen, and no fund exclusion (SPY and QQQ are deliberately in it
-# and are tradable). A name joins from the first month-end it has prices, so a
+# min_price screen, and no fund exclusion. SPY and QQQ were tradable members
+# until 2026-09-27 and are no longer: the ranking only ever put them low enough
+# to be SHORTED (SPY 299 shorts, 11% won). SPY stays the index
+# (data.index_symbol) for the regime overlay and the baselines. A name joins
+# from the first month-end it has prices, so a
 # recent listing is not back-dated. Because config_hash is the SHA-256 of this
 # file, editing the list forces a full refit — which is what a different
 # universe should do.
@@ -32,7 +35,7 @@
 # ---- §3.1 Data & universe ---------------------------------------------------
 universe:
   mode: fixed_list                     # the tickers below ARE the universe
-  size: 105                             # = len(universe.tickers)
+  size: 103                             # = len(universe.tickers)
   liquidity_window_days: 63            # unused in fixed_list mode
   refresh: monthly                     # membership rows still land month-end
   hysteresis: 0.10                     # unused in fixed_list mode
@@ -142,8 +145,6 @@ universe:
     - "TSM"
     - "ASML"
     - "ARM"
-    - "SPY"
-    - "QQQ"
 data:
   vendors: sharadar+eodhd
   index_symbol: SPY
@@ -253,7 +254,7 @@ hmm:
 
 # ---- §3.5 Portfolio, costs, execution, compliance ---------------------------
 port:
-  selection: top_decile_long           # top decile of the ensemble rank (~10 of 105).
+  selection: top_decile_long           # top decile of the ensemble rank (~10 of 103).
                                        #   The top-5 rule (top_n_long, top_n 5,
                                        #   adopted 2026-08-31) was removed 2026-09-17.
   hedge: none                          # cash book — unhedged (hedging kills it, measured)
@@ -262,18 +263,20 @@ port:
   single_name_cap: 0.30                # concentrated book (~10 names; rarely binds)
   vol_target_ann: 0.20                 # protective: de-risks crises under the cash cap
   vol_target_scale_cap: 2.5            # [IMPL]
-  gross_cap: 1.0                       # long + short live gross never above NAV: no cash
-                                       #   is ever borrowed (the margin account only
-                                       #   carries the short sleeve's share loan)
+  gross_cap: 1.0                       # live gross never above NAV: no cash is ever
+                                       #   borrowed
   gross_cap_exact: true                # recycle capital on actual exit dates
-  # ---- short sleeve (added 2026-09-17; blueprint port.selection [MAY]) ----
-  short_selection: bottom_n            # none | bottom_decile | bottom_n — single-name
-                                       #   short sales, same barrier/trail exits as longs
-  short_n: 10                          # names shorted per day (bottom of the ranking)
-  long_gross_cap: 0.5                  # the 1.0 cash cap split between the sleeves:
-  short_gross_cap: 0.5                 #   long <= 0.5 and short <= 0.5 of NAV
-  short_max_borrow_bps_yr: 100         # skip a short whose borrow fee is above this
-                                       #   (§I step 4: hard-to-borrow -> skip and log)
+  # ---- short sleeve: OFF since 2026-09-27 (built 2026-09-17, blueprint [MAY]) ----
+  # Its first pod run (2026-09-26, bottom-10 at 0.5/0.5) lost money: sleeve SR
+  # -0.86 against the long sleeve's 0.78, turning a passing book into a G-11
+  # KILL. On the same scores (derived/exp_sleeves/run2) long-only at the full
+  # cash cap read SR 0.96 against 0.59 for the split. The bottom of the ranking
+  # still rises in absolute terms; it is a relative signal, not a short signal.
+  short_selection: none                # none | bottom_decile | bottom_n
+  short_n: 10                          # inert while short_selection is none
+  long_gross_cap: 1.0                  # the whole cash cap to the long book
+  short_gross_cap: 0.0
+  short_max_borrow_bps_yr: 100         # inert while short_selection is none
   no_trade_band: 0.20                  # skip if |dw| < 20% of target or < 10 bps NAV
   no_trade_band_nav_bps: 10
   hedge_beta_window: 60                # [IMPL] rolling beta window (Q-019)

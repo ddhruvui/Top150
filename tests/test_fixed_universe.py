@@ -116,7 +116,9 @@ def test_shipped_core105_config_is_the_list_we_expect():
     cfg = yaml.safe_load(open("configs/system_core105.yaml"))
     t = cfg["universe"]["tickers"]
     assert all(isinstance(x, str) for x in t), "a ticker was parsed as a bool"
-    assert len(t) == len(set(t)) == cfg["universe"]["size"] == 105
-    for name in ("ON", "T", "SPY", "QQQ", "BRK-B"):
+    assert len(t) == len(set(t)) == cfg["universe"]["size"] == 103
+    for name in ("ON", "T", "BRK-B"):
         assert name in t
+    for name in ("SPY", "QQQ"):         # removed 2026-09-27: the ranking only ever shorted them
+        assert name not in t
     assert "BRK.B" not in t                                    # tape spelling

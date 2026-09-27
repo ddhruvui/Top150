@@ -67,13 +67,14 @@ def _ens(rng, p):
 
 
 # ----------------------------------------------------------------- config
-def test_core105_config_has_the_short_sleeve_on_and_the_cap_split():
+def test_core105_config_has_the_short_sleeve_off_and_the_full_cap_long():
+    # switched off 2026-09-27: the first pod run's short sleeve lost money
+    # (SR -0.86) and turned a passing long book into a G-11 KILL
     cfg, _ = load_config('configs/system_core105.yaml')
-    assert cfg.port.short_selection == "bottom_n" and int(cfg.port.short_n) == 10
+    assert cfg.port.short_selection == "none"
     lc, sc = sleeve_caps(cfg)
-    assert (lc, sc) == (0.5, 0.5)
-    assert abs(lc + sc - float(cfg.port.gross_cap)) < 1e-12    # cash split, no leverage
-    assert cfg.port.short_max_borrow_bps_yr == 100
+    assert (lc, sc) == (1.0, 0.0)
+    assert lc == float(cfg.port.gross_cap)                      # the whole cash cap, no leverage
     # the default registry has no sleeve: long cap == gross cap, short cap 0
     cfg0, _ = load_config('configs/system.yaml')
     assert sleeve_caps(cfg0) == (float(cfg0.port.gross_cap), 0.0)
