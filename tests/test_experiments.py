@@ -4,10 +4,10 @@ import numpy as np
 import pandas as pd
 
 from src.backtest.costs import CostModel
-from src.ensemble.rank import ensemble_rank, member_ranks
+from src.ensemble.rank import deciles, ensemble_rank, member_ranks
 from src.labels.barriers import barrier_exits
-from src.pipeline.experiments import (daily_rank_ic, trailing_ic_weights,
-                                      weighted_ensemble)
+from src.pipeline.experiments import (daily_rank_ic, exclude_mask,
+                                      trailing_ic_weights, weighted_ensemble)
 
 
 def _frames(n=40, price=100.0):
@@ -75,3 +75,27 @@ def test_daily_rank_ic_sign(rng):
     fwd = ranks['A'] + rng.normal(0, .01, ranks['A'].shape)   # A predicts fwd
     ic = daily_rank_ic(ranks['A'], fwd)
     assert ic.mean() > 0.9
+
+
+def test_exclude_acts_as_if_the_name_were_not_in_the_universe(rng):
+    """`exclude` (e.g. SPY/QQQ): the name is never selected even with the top
+    score every day, and everyone else ranks exactly as without it."""
+    idx = pd.date_range('2024-01-01', periods=30, freq='B')
+    names = [f'N{i}' for i in range(19)] + ['SPY']
+    score = pd.DataFrame(rng.normal(size=(30, 20)), index=idx, columns=names)
+    score['SPY'] = 10.0
+    mask = pd.DataFrame(True, index=idx, columns=names)
+
+    assert exclude_mask(mask, None) is mask
+    assert exclude_mask(mask, ['NOPE']) is mask
+    em = exclude_mask(mask, ['SPY', 'NOPE'])
+    assert not em['SPY'].any() and em.drop(columns='SPY').all().all()
+    assert mask['SPY'].all()                                  # input untouched
+
+    ens = weighted_ensemble(member_ranks({'A': score}, em), em)
+    assert not deciles(ens, em)['SPY'].isin([1, 10]).any()    # neither sleeve
+    rest = score.drop(columns='SPY')
+    m2 = pd.DataFrame(True, index=idx, columns=rest.columns)
+    ref = weighted_ensemble(member_ranks({'A': rest}, m2), m2)
+    pd.testing.assert_frame_equal(ens.drop(columns='SPY'), ref,
+                                  check_exact=False, atol=1e-12)

@@ -33,6 +33,12 @@ skip a name whose borrow fee is above it). The book is the long sleeve plus
 the short sleeve of the ONE engine (run_long_short); `sleeves` in the metrics
 carries each side's own Sharpe/CAGR so the short leg's contribution is
 attributable. Without these keys every variant is bit-identical.
+
+`exclude` (list of tickers, 2026-09-26): drop names from the membership mask
+before ranking, as if they were not in the universe — they trade on neither
+side and shift no one else's rank or decile. Close to, not the same as,
+removing them from universe.tickers: the member models were still fitted with
+them in the cross-section.
 """
 from __future__ import annotations
 
@@ -64,6 +70,19 @@ MEMBERS_ALL = ["lgbm_h5", "lgbm_h20", "lgbm_h60",
 IC_HORIZON = 20
 IC_LAG = IC_HORIZON + 2
 IC_WINDOW = 252
+
+
+def exclude_mask(mask: pd.DataFrame, tickers) -> pd.DataFrame:
+    """`mask` with `tickers` switched off on every date (unknown names ignored).
+    Ranks, deciles and both sleeves are cut from this mask, so an excluded name
+    never trades and does not move anyone else's rank. Returns `mask` itself
+    when there is nothing to drop."""
+    drop = [t for t in (tickers or ()) if t in mask.columns]
+    if not drop:
+        return mask
+    out = mask.copy()
+    out[drop] = False
+    return out
 
 
 def load_scores(scores_dir: Path, members: list[str]) -> dict[str, pd.DataFrame]:
@@ -345,15 +364,17 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
         # M10-03 admission: cnn failed the floor in stage2 — exclude unless asked
         if "members" not in v:
             members = [m for m in members if m != "cnn_I5R20"]
-        key = (v.get("scores", "stage2"), tuple(members))
+        vmask = exclude_mask(mask, v.get("exclude"))
+        key = (v.get("scores", "stage2"), tuple(members),
+               tuple(sorted(v.get("exclude") or ())))
         if key not in rank_cache:
             test_dates = pd.DatetimeIndex(sorted(set().union(
                 *[set(sset[m].dropna(how="all").index) for m in members])))
             sub = {m: sset[m].reindex(test_dates) for m in members}
-            rank_cache[key] = member_ranks(sub, mask.reindex(test_dates).fillna(False))
+            rank_cache[key] = member_ranks(sub, vmask.reindex(test_dates).fillna(False))
         ranks = rank_cache[key]
         test_dates = next(iter(ranks.values())).index
-        msk = mask.reindex(test_dates).fillna(False)
+        msk = vmask.reindex(test_dates).fillna(False)
 
         # regime / vol-target overrides ([IMPL] values; spec fixes the 0.5 mult)
         gm = regime_multiplier(
@@ -462,7 +483,8 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                   "m_up", "m_dn", "cost_bps", "sent_gate", "net_moo",
                   "fin_bps_yr", "gross_cap", "gc_exact", "exit_rank",
                   "trend", "conv_weight", "trail_m", "flat_k", "flat_m", "fill_max",
-                  "short_n", "short_decile", "short_cap", "long_cap", "short_max_borrow")
+                  "short_n", "short_decile", "short_cap", "long_cap", "short_max_borrow",
+                  "exclude")
         row = {"name": name, **{k: v.get(k) for k in LEVERS},
                "members": members, **met}
         results.append(row)
