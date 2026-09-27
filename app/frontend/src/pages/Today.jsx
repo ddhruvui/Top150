@@ -38,24 +38,24 @@ const STATE_TEXT = {
    back at if it drops. Same cells, mirrored meaning; the card headers say so. */
 function BuyRowSimple({ r, onAct, busy }) {
   const noTriggers = r.barrier_unreachable;
-  const fractional = r.shares === 0;
+  const skipped = r.skipped;                 // whole shares only: under one share
   const short = r.side < 0;
   const verb = short ? 'Sell short' : 'Buy';
   return (
     <tr>
       <td><strong>{r.ticker}</strong></td>
       <td>
-        <strong>{fractional ? `${verb} ${fmtMoney(r.est_cost)} worth`
+        <strong>{skipped ? 'Skip'
           : r.shares != null ? `${verb} ${fmtInt(r.shares)} shares` : verb}</strong>
         <div className="small muted">
-          {fractional
-            ? 'less than one whole share — needs fractional shares, or skip it'
+          {skipped
+            ? 'under one whole share at this price — whole shares only'
             : short ? 'at the open — borrowed shares (margin account)' : 'at the open'}
         </div>
       </td>
       <td className="n">{fmtPrice(r.last_close)}</td>
       <td className="n">
-        {fmtMoney(r.est_cost)}
+        {skipped ? <span className="muted">—</span> : fmtMoney(r.est_cost)}
         <div className="small muted">{fmtPct(r.target_weight, 1)} of your money</div>
       </td>
       {noTriggers ? (
@@ -75,7 +75,7 @@ function BuyRowSimple({ r, onAct, busy }) {
         )}
       </td>
       <td>
-        {onAct && (
+        {onAct && !skipped && (
           <button className="btn sm" disabled={busy === r.ticker} onClick={() => onAct(r)}>
             {busy === r.ticker ? '…' : 'Track this trade'}
           </button>
@@ -122,6 +122,7 @@ function HoldRowSimple({ r }) {
 
 const KIND = {
   BUY: ['pass', '▲', 'Buy'],
+  SKIP: ['neutral', '·', 'Skip'],
   SHORT: ['fail', '▼', 'Sell short'],
   SELL: ['fail', '▼', 'Sell'],
   COVER: ['pass', '▲', 'Buy back'],
@@ -132,7 +133,7 @@ const signed = (v) => (v == null ? '—' : `${v > 0 ? '+' : ''}${fmtNum(v, 2)}%`
 function ActionRow({ r, kind }) {
   const wide = r.barrier_unreachable;
   const short = r.side < 0;
-  const k = kind === 'HOLD' && short ? 'HOLD' : kind;
+  const k = r.skipped ? 'SKIP' : kind === 'HOLD' && short ? 'HOLD' : kind;
   const [tone, glyph, label] = KIND[k] ?? KIND.HOLD;
   return (
     <tr>
@@ -236,6 +237,7 @@ export default function Today() {
       fmtMoney(t.plan?.short_total)}`);
   }
   if (t.counts.hold) planBits.push(`leave ${t.counts.hold} alone`);
+  if (t.counts.skipped) planBits.push(`skip ${t.counts.skipped} that would be under one whole share`);
   const anyShortHold = (t.holds ?? EMPTY).some((r) => r.side < 0);
   const exitWord = anyShortHold ? 'Get out' : 'Sell';
   const planText = planBits.length
@@ -299,9 +301,11 @@ export default function Today() {
             </ul>
             <p>
               Share counts and dollar amounts are sized to your practice account
-              ({fmtMoney(nav)} — change it on the Paper page). The trigger prices are
-              estimates from the last close; the exact levels come from the price you
-              actually pay. "Track this trade" records the buy in your practice book so
+              ({fmtMoney(nav)} — change it on the Paper page), in <strong>whole shares
+              only</strong>: a slot that would be less than one share at the current
+              price is marked "Skip" and left out. The trigger prices are estimates
+              from the last close; the exact levels come from the price you actually
+              pay. "Track this trade" records the buy in your practice book so
               the page can tell you when to sell it — no real money moves anywhere.
             </p>
           </div>
@@ -333,7 +337,11 @@ export default function Today() {
 
       <div className="tiles" style={{ marginBottom: 16 }}>
         <StatTile label="Buy" value={fmtInt(t.counts.buy)}
-                  sub="new stocks to purchase" tone="pos" />
+                  sub="new stocks to purchase, whole shares" tone="pos" />
+        {t.counts.skipped > 0 && (
+          <StatTile label="Skip" value={fmtInt(t.counts.skipped)}
+                    sub="under one whole share at your account size" />
+        )}
         <StatTile label="Sell" value={fmtInt(t.counts.sell)}
                   sub="you own, model dropped them" tone={t.counts.sell ? 'neg' : ''} />
         {(t.counts.short > 0 || anyShort) && (

@@ -48,6 +48,17 @@ class Order:
     note: str = ""
 
 
+def whole_shares(weight: float, nav: float, price: float) -> int:
+    """Whole shares for a weight slot — floor(|w| x NAV / price), signed by the
+    side (a short is -|shares|). Never fractional: a slot that comes to less
+    than one share is 0, and generate_orders then emits NO order for it
+    (G-03: shares from raw prices; M14-01: weights become shares only here)."""
+    if not np.isfinite(price) or price <= 0 or not np.isfinite(weight):
+        return 0
+    n = int(np.floor(abs(float(weight)) * float(nav) / float(price)))
+    return -n if weight < 0 else n
+
+
 def generate_orders(target_weights: pd.Series, current_shares: pd.Series,
                     raw_close: pd.Series, nav: float, sigma32: pd.Series,
                     cfg, pdt: PDTCounter | None = None,
@@ -59,8 +70,9 @@ def generate_orders(target_weights: pd.Series, current_shares: pd.Series,
         px = raw_close.get(t, np.nan)
         if not np.isfinite(px) or px <= 0:
             continue
-        # whole shares, rounded toward zero on either side (a short is -|shares|)
-        tgt_sh = int(np.floor(abs(w) * nav / px)) * (-1 if w < 0 else 1)
+        # WHOLE shares, rounded toward zero on either side (a short is -|shares|);
+        # a slot under one share rounds to 0 and produces no order
+        tgt_sh = whole_shares(w, nav, px)
         cur_sh = int(current_shares.get(t, 0))
         d = tgt_sh - cur_sh
         if d == 0:

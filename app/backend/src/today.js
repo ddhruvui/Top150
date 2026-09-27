@@ -99,12 +99,16 @@ export async function ticket(now = new Date()) {
     const px = r.last_close > 0 ? r.last_close : null;
     const dollars = r.target_weight != null ? r.target_weight * nav : null;
     const shares = px && dollars != null ? Math.floor(dollars / px) : null;
+    // Whole shares only: a slot under one share at this price is SKIPPED —
+    // never bought fractionally — costs nothing and stays out of the plan total.
+    const skipped = shares === 0;
     // A ±40%+ barrier is unreachable inside h sessions — the trade is
     // time-exit only, so trigger prices would be nonsense (even negative).
     const unreachable = Math.abs(r.stop_pct ?? 0) > 40;
     return {
       ticker,
       side,
+      skipped,
       target_weight: r.target_weight,
       ensemble_rank: r.ensemble_rank,
       last_close: r.last_close,
@@ -120,8 +124,8 @@ export async function ticket(now = new Date()) {
       trail_pct: r.trail_pct ?? null,
       max_hold_sessions: h,
       shares,
-      // 0 whole shares (price > slot) still costs the slot in fractional terms
-      est_cost: shares ? shares * px : dollars,
+      // whole shares x price; a skipped slot costs 0 (unknown price -> the slot)
+      est_cost: shares ? shares * px : skipped ? 0 : dollars,
       stop_price: !unreachable && px && r.stop_pct != null
         ? px * (1 + r.stop_pct / 100) : null,
       profit_take_price: !unreachable && px && r.profit_take_pct != null
@@ -152,18 +156,25 @@ export async function ticket(now = new Date()) {
       const sellBy = r.sessions_left != null && iNextOpen >= 0
         ? cal[iNextOpen + r.sessions_left] ?? null : sellByFrom(null, h);
       if (!pos) {
-        opens.push({ ...row, action: verb,
-                     reason: r.lots ? `open lot in the backtested book (${r.lots.length} lot${r.lots.length === 1 ? '' : 's'}) — not held here`
-                                    : 'new — not held',
+        opens.push({ ...row, action: row.skipped ? 'SKIP' : verb,
+                     reason: row.skipped
+                       ? 'less than one whole share at this price — whole shares only, skipped'
+                       : r.lots ? `open lot in the backtested book (${r.lots.length} lot${r.lots.length === 1 ? '' : 's'}) — not held here`
+                                : 'new — not held',
                      sell_by_date: sellBy });
       } else if (r.new_lot_weight > 0) {
-        // held here AND the engine adds a lot today: trade the increment only
+        // held here AND the engine adds a lot today: trade the increment only,
+        // in whole shares — an add-on under one share is skipped
         const addDollars = r.new_lot_weight * nav;
         const addShares = px ? Math.floor(addDollars / px) : null;
+        const addSkipped = addShares === 0;
         opens.push({
-          ...row, action: verb, position_id: pos.id, status: pos.status,
-          shares: addShares, est_cost: addShares ? addShares * px : addDollars,
-          reason: `add a lot (${(r.new_lot_weight * 100).toFixed(2)}% of NAV) to an open ${side < 0 ? 'short ' : ''}position`,
+          ...row, action: addSkipped ? 'SKIP' : verb, position_id: pos.id, status: pos.status,
+          skipped: addSkipped,
+          shares: addShares, est_cost: addShares ? addShares * px : addSkipped ? 0 : addDollars,
+          reason: addSkipped
+            ? `add-on lot (${(r.new_lot_weight * 100).toFixed(2)}% of NAV) is under one whole share — skipped`
+            : `add a lot (${(r.new_lot_weight * 100).toFixed(2)}% of NAV) to an open ${side < 0 ? 'short ' : ''}position`,
           sell_by_date: sellByFrom(null, h) });
       } else {
         keeps.push({
@@ -269,11 +280,14 @@ export async function ticket(now = new Date()) {
         : null,
       execute_at: sug.execute_at,
     },
-    counts: { buy: buys.length, sell: sells.length, hold: holds.length,
-              short: shorts.length, cover: covers.length,
+    counts: { buy: buys.filter((r) => !r.skipped).length, sell: sells.length,
+              hold: holds.length,
+              short: shorts.filter((r) => !r.skipped).length, cover: covers.length,
+              skipped: [...buys, ...shorts].filter((r) => r.skipped).length,
               due_exit: dueExits.length, held_total: heldL.size + heldS.size },
     // Sizing basis for the plain-English view: everything above is scaled to
-    // the paper book's NAV, so the page can say "shares" and "dollars".
+    // the paper book's NAV, so the page can say "shares" and "dollars" — whole
+    // shares only; skipped rows carry est_cost 0 and stay out of the totals.
     plan: {
       nav,
       invest_total: buys.reduce((a, r) => a + (r.est_cost ?? 0), 0),

@@ -209,6 +209,7 @@ export default function Paper() {
                 <Th k="ticker" sort={orderedSort.sort} onSort={orderedSort.onSort}>Stock</Th>
                 <Th k="signal_date" sort={orderedSort.sort} onSort={orderedSort.onSort}>Picked on</Th>
                 <Th k="target_weight" num sort={orderedSort.sort} onSort={orderedSort.onSort}>Slice of pot</Th>
+                <Th k="shares" num sort={orderedSort.sort} onSort={orderedSort.onSort}>Shares</Th>
                 <Th k="ref_close" num sort={orderedSort.sort} onSort={orderedSort.onSort}>Close that day</Th>
                 <Th k="stop_pct" num sort={orderedSort.sort} onSort={orderedSort.onSort}>Stop</Th>
                 <Th k="profit_take_pct" num sort={orderedSort.sort} onSort={orderedSort.onSort}>Profit-take</Th>
@@ -220,6 +221,7 @@ export default function Paper() {
                     <td><strong>{p.ticker}</strong></td>
                     <td className="muted">{p.signal_date}</td>
                     <td className="n">{fmtPct(p.target_weight, 2)}</td>
+                    <td className="n">{p.shares != null ? fmtInt(p.shares) : '—'}</td>
                     <td className="n">{fmtNum(p.ref_close, 2)}</td>
                     <td className="n neg">{fmtNum(p.stop_pct, 2)}%</td>
                     <td className="n pos">+{fmtNum(p.profit_take_pct, 2)}%</td>
@@ -250,6 +252,7 @@ export default function Paper() {
                 <Th k="stop_price" num sort={openSort.sort} onSort={openSort.onSort}>Sell if it drops to</Th>
                 <Th k="profit_take_price" num sort={openSort.sort} onSort={openSort.onSort}>Sell if it climbs to</Th>
                 <Th k="target_weight" num sort={openSort.sort} onSort={openSort.onSort}>Slice of pot</Th>
+                <Th k="shares" num sort={openSort.sort} onSort={openSort.onSort}>Shares</Th>
                 <th>Close it out</th>
               </tr></thead>
               <tbody>
@@ -268,6 +271,7 @@ export default function Paper() {
                     <td className="n neg">{fmtNum(p.stop_price, 2)}</td>
                     <td className="n pos">{fmtNum(p.profit_take_price, 2)}</td>
                     <td className="n">{fmtPct(p.target_weight, 2)}</td>
+                    <td className="n">{p.shares != null ? fmtInt(p.shares) : '—'}</td>
                     <td><CloseForm pos={p} onDone={load} /></td>
                   </tr>
                 ))}

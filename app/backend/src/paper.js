@@ -10,6 +10,9 @@
 //   kill switch realized day loss ≤ −ops.max_daily_loss_pct × NAV halts new orders
 //   decay       rolling 63-session paper Sharpe vs the backtest expectation;
 //               < ½ for 2+ quarters ⇒ retrain-or-retire (G-11/G-16)
+//   whole shares a slot is floor(weight × NAV / close) whole shares, never a
+//               fraction; a slot under one share is refused (2026-09-17). Realized
+//               P&L is weighted by the shares actually filled (weight_filled).
 //
 // State is one small document (store.js: Mongo in production, a JSON file
 // locally). Every write is load → mutate → save; the book is single-operator
@@ -81,7 +84,7 @@ function dailyReturns(s) {
   const byDate = new Map();
   for (const p of s.positions) {
     if (p.status !== 'closed' || p.ret_net == null) continue;
-    const w = p.target_weight ?? 0;
+    const w = p.weight_filled ?? p.target_weight ?? 0;    // whole shares filled
     byDate.set(p.exit_date, (byDate.get(p.exit_date) ?? 0) + p.ret_net * w);
   }
   return [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0]))
@@ -190,13 +193,27 @@ export async function openPosition(input) {
   if (stats(s, cfg).kill_switch.tripped) {
     throw fail('kill switch tripped — new orders halted (BP16)', 423);
   }
+  // Whole shares only: size the slot at the reference close and refuse one
+  // that buys less than a share. An unsized open (no weight/close) is allowed
+  // and simply carries no share count.
+  const w = Number(target_weight) || 0;
+  const px = ref_close == null ? null : Number(ref_close);
+  let shares = null;
+  if (w > 0 && px > 0) {
+    shares = Math.floor(w * s.nav / px);
+    if (shares < 1) {
+      throw fail(`${sym}: ${(w * 100).toFixed(2)}% of $${s.nav} is less than one whole `
+                 + `share at $${px} — whole shares only, skip it`, 400);
+    }
+  }
 
   s.seq = (s.seq ?? 0) + 1;
   const pos = {
     id: `p${String(s.seq).padStart(5, '0')}`,
     ticker: sym,
     side: Number(side),
-    target_weight: Number(target_weight) || 0,
+    target_weight: w,
+    shares,                  // whole shares at ref_close (null when unsized)
     signal_date: signal_date ? isoDate(signal_date) : isoDate(Date.now()),
     ref_close: ref_close == null ? null : Number(ref_close),
     stop_pct: stop_pct == null ? null : Number(stop_pct),
@@ -224,6 +241,9 @@ export async function recordFill(id, { fill_price, official_open, fill_date }) {
   p.fill_price = fill;
   p.official_open = open;
   p.fill_date = fill_date ? isoDate(fill_date) : isoDate(Date.now());
+  // the weight that actually went to work: whole shares x fill / NAV
+  p.weight_filled = p.shares != null && s.nav > 0 ? p.shares * fill / s.nav : p.target_weight;
+  p.notional = p.shares != null ? p.shares * fill : null;
   // M18 step 5 — the measurement the whole paper stage exists to collect
   p.slip_bps = open > 0 ? p.side * ((fill - open) / open) * 1e4 : null;
   // M5.2: barriers hang off the ACTUAL fill

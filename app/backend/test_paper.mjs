@@ -68,6 +68,25 @@ await t('a fresh book after reset starts clean', async () => {
   assert.equal(s.stats.slippage.n_fills, 0);
 });
 
+await t('whole shares only: the slot is floored, a sub-share slot is refused', async () => {
+  await paper.reset();                                            // nav 100000
+  await assert.rejects(
+    () => paper.openPosition({ ticker: 'BKNG', target_weight: 0.03, ref_close: 5200 }),
+    /less than one whole share/);
+  const p = await paper.openPosition({ ticker: 'NVDA', target_weight: 0.0305, ref_close: 1000 });
+  assert.equal(p.shares, 3);                                      // floor(3050 / 1000)
+  const f = await paper.recordFill(p.id, { fill_price: 1010, official_open: 1000,
+                                           fill_date: '2026-09-01' });
+  assert.ok(Math.abs(f.weight_filled - 3 * 1010 / 100000) < 1e-12);
+  assert.equal(f.notional, 3030);
+  const c = await paper.closePosition(p.id, { exit_price: 1111, reason: 'profit_take',
+                                              exit_date: '2026-09-04' });
+  // realized P&L is weighted by the shares that filled, not the requested slice
+  const day = (await paper.state()).stats.realized.equity.at(-1);
+  assert.ok(Math.abs((day.equity - 1) - c.ret_net * f.weight_filled) < 1e-12);
+  await paper.reset();
+});
+
 await t('PDT blocks the 4th same-day round trip under $25k', async () => {
   await paper.reset();
   await paper.settings({ account_equity: 10000 });
