@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from src.config import load_config, git_sha
-from src.pipeline.common import prepare
+from src.pipeline.common import admit_members, prepare
 from src.models.lgbm import LGBMHead
 from src.ensemble.rank import ensemble_rank, deciles, select_long, select_short
 from src.backtest.costs import CostModel
@@ -27,6 +27,7 @@ from src.backtest.engines.barriers_event import (engine_opts_from_cfg, run_event
 from src.meta.gate import (candidates_from_deciles, candidates_from_selection,
                            meta_context, meta_outcomes, train_meta, meta_multiplier,
                            META_FEATURES)
+from src.primitives.fwd import forward_return
 from src.primitives.monthly import mom_12_1
 from src.primitives.rolling import RollingCache
 from src.primitives.returns import daily_return
@@ -81,7 +82,15 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
     test_dates = pd.DatetimeIndex(sorted(set().union(*[set(f.test) for f in folds])))
     test_dates = test_dates.intersection(next(iter(scores.values())).dropna(how="all").index)
 
-    ens = ensemble_rank({k: v.reindex(test_dates) for k, v in scores.items()},
+    # M10-03: rank only the members the admission rule lets in — the function
+    # stage 2 applies (common.admit_members), on the same scores. Until
+    # 2026-09-27 stage 3 averaged all seven, so members stage 2 had rejected
+    # (lgbm_h5, gru_h5, cnn_I5R20 on 2026-09-26) still diluted the book the
+    # gates judge.
+    fwd20 = forward_return(panel.adj_close, 20).reindex(test_dates)
+    admitted, _ = admit_members(scores, test_dates, fwd20, mask)
+    print(f"admitted members: {list(admitted)}", flush=True)
+    ens = ensemble_rank({k: v.reindex(test_dates) for k, v in admitted.items()},
                         mask.loc[test_dates])
     dec = deciles(ens, mask.loc[test_dates])
     gm = regime_multiplier(d["idx_blk"], float(cfg.regime.vol_threshold_ann),
@@ -218,8 +227,9 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                     .reindex(columns=panel.tickers)
                 ledger.append(f"lgbm_h{n}", {"cpcv": sp.tag}, config_hash,
                               "cpcv_fit", float("nan"), note="stage3")
-            e = ensemble_rank(per_member, mask.reindex(per_member["lgbm_h5"].index)
-                              if "lgbm_h5" in per_member else mask)
+            # the CPCV heads are LGBM only; keep the ones M10-03 admitted
+            kept = {k: v for k, v in per_member.items() if k in admitted} or per_member
+            e = ensemble_rank(kept, mask.reindex(next(iter(kept.values())).index))
             split_scores[ci] = e
             print(f"  cpcv split {ci + 1}/15 done", flush=True)
         # assemble 5 paths and run the event book on each

@@ -125,6 +125,51 @@ def prepare(cfg, m1_dir: str, eod_dir: str, market_dir: str | None = None,
             "labels": labels, "ys": ys, "borrow": borrow}
 
 
+MEMBER_ADMISSION_FLOOR = 0.02        # M10-03: the G-11 minimum Rank IC
+
+
+def passes_admission(rank_ic, floor: float = MEMBER_ADMISSION_FLOOR) -> bool:
+    """M10-03's test for one member: a finite stitched RankIC at or above `floor`."""
+    import math
+    return rank_ic is not None and math.isfinite(float(rank_ic)) and float(rank_ic) >= floor
+
+
+def admitted_from_report(report_path, floor: float = MEMBER_ADMISSION_FLOOR) -> set | None:
+    """Stage 2's M10-03 decision read back from its report (members -> RankIC), so
+    predict ranks with the same members the research book was judged on. None when
+    the report is absent; every member when none passes, as admit_members does."""
+    import json
+    from pathlib import Path
+    p = Path(report_path)
+    if not p.exists():
+        return None
+    members = json.loads(p.read_text()).get("members", {})
+    ok = {m for m, st in members.items() if passes_admission(st.get("RankIC"), floor)}
+    return ok or set(members)
+
+
+def admit_members(scores: dict, test_dates, fwd20, mask, gate: bool = True,
+                  floor: float = MEMBER_ADMISSION_FLOOR) -> tuple[dict, dict]:
+    """M10-03 member admission, the one implementation every stage uses: a member
+    joins the ensemble only if its stitched RankIC over `test_dates` clears
+    `floor` (a constant member's RankIC is NaN and never does). With nothing
+    admitted, every member is kept so the gates judge the book and kill it
+    honestly. Returns (admitted scores, every member's ic_summary)."""
+    from src.validation.metrics import ic_summary
+    member_ics, admitted = {}, {}
+    for name, sc in scores.items():
+        mi = ic_summary(sc.reindex(test_dates), fwd20, mask.reindex(test_dates))
+        member_ics[name] = mi
+        if (not gate) or passes_admission(mi["RankIC"], floor):
+            admitted[name] = sc
+        else:
+            print(f"M10-03: member {name} NOT admitted (RankIC {mi['RankIC']:.4f})",
+                  flush=True)
+    if not admitted:
+        admitted = dict(scores)  # fall back: report honestly, gates will kill
+    return admitted, member_ics
+
+
 def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed: int,
                   ledger=None, fold_stats=None, regime_on: bool = False,
                   stage: str = "stage1", member_gate: bool = False) -> dict:
@@ -160,18 +205,8 @@ def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed
     fwd20 = forward_return(panel.adj_close, 20).loc[test_dates]
 
     # ---- M10-03 member admission + ensemble ----
-    member_ics = {}
-    admitted = {}
-    for name, sc in scores.items():
-        mi = ic_summary(sc.loc[test_dates], fwd20, mask.loc[test_dates])
-        member_ics[name] = mi
-        if (not member_gate) or (np.isfinite(mi["RankIC"]) and mi["RankIC"] >= 0.02):
-            admitted[name] = sc
-        else:
-            print(f"M10-03: member {name} NOT admitted (RankIC {mi['RankIC']:.4f})",
-                  flush=True)
-    if not admitted:
-        admitted = dict(scores)  # fall back: report honestly, gates will kill
+    admitted, member_ics = admit_members(scores, test_dates, fwd20, mask,
+                                         gate=member_gate)
     ens = ensemble_rank({k: v.loc[test_dates] for k, v in admitted.items()},
                         mask.loc[test_dates])
     dec = deciles(ens, mask.loc[test_dates])
