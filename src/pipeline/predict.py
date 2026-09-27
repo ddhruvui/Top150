@@ -37,7 +37,7 @@ import pandas as pd
 
 from src.config import load_config, git_sha
 from src.data.m1 import M1
-from src.pipeline.common import prepare
+from src.pipeline.common import admitted_from_report, prepare
 from src.models.lgbm import LGBMHead
 from src.models.store import ModelStore, decide_refit
 from src.ensemble.rank import ensemble_rank, select_long, select_short
@@ -157,6 +157,48 @@ _EMPTY_SLEEVE = {"new": [], "holds": [], "exits": [], "held_w": pd.Series(dtype=
                  "in_book": set(), "gross": 0.0}
 
 
+def _gru_member(n, lgbm_head, mode, champion, store, cfg, feats, labels_wide,
+                train_dates, valid_dates, score_dates, tickers, seed, train_through,
+                config_hash, stamp, ledger, persist: bool, keep_files: int):
+    """gru_h{n} for the live ensemble -> (scores over score_dates, heads_info row).
+
+    Full refit: fit on this horizon's LGBM head's top features — the M6->M7
+    contract stage 2 uses — over the last val.train_years before the valid year,
+    early-stopped on predict's valid year, and store it. Update: score the stored
+    champion on ITS OWN feature list; GRU heads are frozen between full refits."""
+    from src.models.gru import SequenceStore, make_sequences, predict_gru, train_gru
+    lookback = int(cfg.gru.lookback)
+    if mode == "update":
+        models, meta = champion
+        cols = list(meta["feature_names"])
+        info = {"mode": "frozen", "adopted": True,
+                "valid_rank_ic": float(meta.get("valid_rank_ic", float("nan"))),
+                "full_train_through": meta.get("full_train_through"), "features": cols}
+    else:
+        cols = lgbm_head.top_importance(int(cfg.gru.n_features))
+        seqs = SequenceStore(feats[cols], cols, lookback=lookback)
+        tr = train_dates[-252 * int(cfg.val.train_years):]
+        models, ginfo = train_gru(make_sequences(seqs, tr), make_sequences(seqs, valid_dates),
+                                  labels_wide, len(cols), cfg, seed)
+        del seqs
+        ric = float(np.mean([s["best_valid_ric"] for s in ginfo["seeds"]]))
+        ledger.append(f"gru_h{n}", {"mode": "full_refit", "train_through": train_through},
+                      config_hash, "valid_rank_ic", ric, note="predict_full_refit")
+        if persist:
+            store.save_gru(n, models, cols, {
+                "mode": "full_refit", "parent": None, "train_through": train_through,
+                "full_train_through": train_through, "valid_rank_ic": ric,
+                "config_hash": config_hash, "stamp": stamp}, keep_files=keep_files)
+        epochs = [int(s["epochs"]) for s in ginfo["seeds"]]
+        info = {"mode": "full_refit", "adopted": True, "valid_rank_ic": ric,
+                "epochs": epochs, "features": cols}
+        print(f"gru_h{n}: valid RIC {ric:.4f} ({len(models)} seeds, epochs {epochs})",
+              flush=True)
+    seqs = SequenceStore(feats[cols], cols, lookback=lookback)
+    gp = predict_gru(models, make_sequences(seqs, score_dates), tickers)
+    return gp.reindex(index=score_dates, columns=tickers), info
+
+
 def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None = None,
                 max_tickers: int | None = None, market_dir: str | None = None,
                 positions_csv: str | None = None, model_dir: str | None = None,
@@ -174,8 +216,21 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     store = ModelStore(model_dir or os.environ.get("MODEL_DIR")
                        or (cc.model_dir if cc else "models"))
     sessions_all = M1(m1_dir).sessions()
+    # M10-03 (2026-09-27): rank with the members stage 2 admitted, read back from
+    # its report, so the live book is built from the same members as the research
+    # book the gates judged — GRU heads included (a full refit fits them, a daily
+    # run only scores them). No report -> the pre-2026-09-27 book: every LGBM head.
+    scores_dir = os.environ.get("SCORES_DIR")
+    admitted = (admitted_from_report(Path(scores_dir) / "stage2_report.json")
+                if scores_dir else None)
+    if admitted is None:
+        print(f"!! no stage2_report.json under SCORES_DIR={scores_dir!r} — M10-03 "
+              f"unknown: every LGBM head, no GRU", flush=True)
+    gru_horizons = [n for n in cfg.labels.horizons
+                    if admitted is not None and f"gru_h{n}" in admitted]
     mode, why = decide_refit(cfg, store, config_hash, sessions_all, cfg.labels.horizons,
-                             forced=refit or os.environ.get("REFIT"))
+                             forced=refit or os.environ.get("REFIT"),
+                             gru_horizons=gru_horizons)
     since = None
     if mode == "update":
         i_now = int(sessions_all.searchsorted(pd.Timestamp.today().normalize(),
@@ -188,19 +243,23 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
 
     d = prepare(cfg, m1_dir, eod_dir, market_dir, max_tickers, since=since)
 
-    champs = {}
+    champs, gru_champs = {}, {}
     if mode == "update":
         for n in cfg.labels.horizons:
             champs[n] = store.load_champion(cfg, n, seed)
+        for n in gru_horizons:
+            gru_champs[n] = store.load_gru(n)
         feat_cols = list(d["feats"].columns)
         bad = [n for n, c in champs.items()
                if c is None or c[1]["feature_names"] != feat_cols]
+        bad += [f"gru_h{n}" for n, g in gru_champs.items()
+                if g is None or not set(g[1]["feature_names"]) <= set(feat_cols)]
         if bad:
             # feature set drifted since the champions were trained — a warm continue
             # would silently mis-map columns, so fall back to a full refit on full data
             print(f"champion/feature mismatch on heads {bad} — falling back to full "
                   f"refit", flush=True)
-            mode, why, champs = "full", "feature set changed after prep", {}
+            mode, why, champs, gru_champs = "full", "feature set changed after prep", {}, {}
             if since is not None:
                 del d
                 import gc
@@ -300,6 +359,13 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
         p = head.predict(Xsc)
         scores[f"lgbm_h{n}"] = p.unstack("ticker").reindex(index=score_dates,
                                                            columns=panel.tickers)
+        if n in gru_horizons:
+            scores[f"gru_h{n}"], heads_info[f"gru_h{n}"] = _gru_member(
+                n, head, mode, gru_champs.get(n), store, cfg, feats, d["labels"][n],
+                train_dates, valid_dates, score_dates, panel.tickers, seed,
+                train_through, config_hash, stamp, ledger,
+                persist=cc is not None and bool(cc.enabled),
+                keep_files=int(cc.keep_model_files) if cc is not None else 6)
 
     # ---- live-tradability screen [IMPL]: the centered-window tape hygiene of
     # build_panel cannot protect the LAST bars (no future context), so the
@@ -336,7 +402,9 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     # book to hold at open t+1 straight off it: open lots, lots whose vertical
     # falls at the next open, and today's tranche sized under the cap.
     m = mask.loc[score_dates]
-    ens = ensemble_rank(scores, m)
+    live = {k: v for k, v in scores.items() if admitted is None or k in admitted} or scores
+    print(f"live ensemble members: {sorted(live)}", flush=True)
+    ens = ensemble_rank(live, m)
     sel = select_long(ens, m, cfg)
     print(f"selection: {cfg.port.get('selection', 'top_decile_long')} "
           f"(N={cfg.port.get('top_n', 20)}) -> event-engine live book", flush=True)
@@ -464,6 +532,7 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
             "train_through": train_through,
             "panel_tail_since": str(since.date()) if since is not None else None,
             "adopted": {k: bool(v.get("adopted", True)) for k, v in heads_info.items()},
+            "ensemble_members": sorted(live),
             "full_refit_cadence_sessions": int(cc.full_refit_sessions) if cc else None,
             "note": "warm_update continues the stored champion on the newest labeled "
                     "year; champion vs challenger judged on the same purged valid year",

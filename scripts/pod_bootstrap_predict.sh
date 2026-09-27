@@ -55,6 +55,16 @@ else
     echo "pip install: $PIP"
     timeout 1200 python -m pip install --quiet --no-input --disable-pip-version-check $PIP \
       || echo "!! pip install failed — job will report missing imports"
+    # predict scores its GRU heads (and fits them on a full refit); the CPU image has
+    # no torch, so pull the CPU-only wheel (~200 MB), not PyPI's multi-GB CUDA build.
+    # A failed install is left to fail predict loudly rather than publish a book
+    # without the GRU members the research book was judged with.
+    if [ "${JOB:-}" = "predict" ] && ! python -c 'import torch' 2>/dev/null; then
+      echo "pip install: torch (cpu wheel)"
+      timeout 1200 python -m pip install --quiet --no-input --disable-pip-version-check \
+        torch --index-url https://download.pytorch.org/whl/cpu \
+        || echo "!! torch (cpu) install failed — predict cannot score its GRU heads"
+    fi
 
     # ---- source prefetch: READ-ONLY GETs from the data volume ----------------
     # The data volume is also mounted at /workspace, but inputs are NOT read from
