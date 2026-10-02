@@ -39,6 +39,13 @@ before ranking, as if they were not in the universe — they trade on neither
 side and shift no one else's rank or decile. Close to, not the same as,
 removing them from universe.tickers: the member models were still fitted with
 them in the cross-section.
+
+`bucket` (dict, 2026-10-02): per-name sub-accounts instead of the shared
+book — each name starts with `bucket0`, enters (whole bucket, one lot at a
+time) when its ensemble score is in the top `1-q` of its OWN trailing
+`window` sessions, exits through the barriers, and compounds its own P&L.
+`cycle`/`fallback_pct`/`fallback_last` optionally force one entry per cycle
+per name. Replaces the decile selection, tranches, cash cap and overlays.
 """
 from __future__ import annotations
 
@@ -54,6 +61,7 @@ from src.pipeline.common import prepare
 from src.ensemble.rank import member_ranks, deciles, select_short
 from src.backtest.costs import CostModel
 from src.backtest.engines.barriers_event import run_event_backtest, run_long_short
+from src.backtest.engines.buckets import own_percentile, run_bucket_backtest
 from src.features.events import event_features
 from src.portfolio.construct import vol_target_scale
 from src.primitives.fwd import forward_return
@@ -267,6 +275,24 @@ def _book_metrics(res: dict, dates_active: pd.DatetimeIndex) -> dict:
     return out
 
 
+def _bucket_book(b: dict, ens: pd.DataFrame, msk: pd.DataFrame, panel,
+                 sigma32: pd.DataFrame, cm: CostModel, cfg, spy: pd.DataFrame) -> dict:
+    """`bucket` lever: per-name sub-accounts entered on the name's own-history
+    percentile of the ensemble score (src/backtest/engines/buckets.py). No
+    regime / vol-target overlay: every bucket is all-in or all-cash —
+    or, with `park: true`, all-in its stock or all-in SPY."""
+    pct = own_percentile(ens, msk, int(b.get("window", 252)),
+                         int(b.get("min_periods", 126)))
+    return run_bucket_backtest(
+        pct, msk, panel, sigma32, cm, cfg, q=float(b.get("q", 0.90)),
+        bucket0=float(b.get("bucket0", 10_000.0)), m=b.get("m"), h=b.get("h"),
+        trail_m=b.get("trail_m"), cycle=b.get("cycle"),
+        fallback_pct=b.get("fallback_pct"),
+        fallback_last=int(b.get("fallback_last", 0)),
+        whole_shares=bool(b.get("whole_shares", True)),
+        park=spy if b.get("park") else None)
+
+
 def default_variants() -> list[dict]:
     """Aggressive short-horizon exploration grid. `baseline` = the adopted h60
     book (anchor + parity check); everything else trades holding time for
@@ -388,94 +414,100 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
         if v.get("weighting") == "icir":
             day_w = trailing_ic_weights(ranks, fwd.reindex(test_dates))
         ens = weighted_ensemble(ranks, msk, day_w)
-        if v.get("top_n"):
-            # concentration lever: absolute top-N per day (deciles are 10% of a
-            # 1000-name universe — far too diffuse for an aggressive book)
-            sel = ens.rank(axis=1, ascending=False, method="first") \
-                     .le(int(v["top_n"])) & msk
+        if v.get("bucket"):
+            res = _bucket_book(v["bucket"], ens, msk, panel, sigma32, cm, cfg,
+                               d["spy"])
         else:
-            dec = deciles(ens, msk)
-            sel = dec.eq(10)
-        if v.get("skip_earnings") and earn2 is not None:
-            sel = sel & ~earn2.reindex(test_dates).reindex(columns=sel.columns) \
-                .fillna(False)
-        if v.get("sent_gate") is not None and sent is not None:
-            # skip entries only where coverage EXISTS and is below the gate —
-            # uncovered names pass (coverage is 2020-12+, ~500 names)
-            bad = sent.reindex(test_dates).reindex(columns=sel.columns) \
-                      .le(float(v["sent_gate"])).fillna(False)
-            sel = sel & ~bad
-        if v.get("trend") and trend_ok is not None:
-            sel = sel & trend_ok.reindex(test_dates).reindex(columns=sel.columns) \
-                .fillna(False)
-        conv = None
-        if v.get("conv_weight"):
-            # conviction tilt inside the entering tranche: rank 1 gets the most
-            r_sel = ens.where(sel).rank(axis=1, ascending=False, method="first")
-            if str(v["conv_weight"]) == "harmonic":
-                conv = 1.0 / r_sel
-            else:                        # linear: N, N-1, ..., 1 over the N entrants
-                conv = r_sel.rsub(r_sel.max(axis=1) + 1.0, axis=0)
-
-        port_over = {}
-        if v.get("short_n"):
-            port_over.update(short_selection="bottom_n", short_n=int(v["short_n"]))
-        elif v.get("short_decile"):
-            port_over.update(short_selection="bottom_decile")
-        cfg_v = _patch_cfg(cfg, v.get("tranches"), v.get("name_cap"), **port_over)
-        cm_v = cm
-        if v.get("cost_bps") is not None:
-            cm_v = CostModel(per_trade_bps=float(v["cost_bps"]),
-                             borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
-                             borrow_table=d.get("borrow"))
-        sel_short = None
-        if port_over:
-            # short sleeve: bottom of the ranking, §I.4 borrow screen, the same
-            # earnings-skip as the longs
-            sel_short = select_short(ens, msk, cfg_v,
-                                     cm_v.borrowable(test_dates, panel.tickers,
-                                                     v.get("short_max_borrow")))
+            if v.get("top_n"):
+                # concentration lever: absolute top-N per day (deciles are 10% of a
+                # 1000-name universe — far too diffuse for an aggressive book)
+                sel = ens.rank(axis=1, ascending=False, method="first") \
+                         .le(int(v["top_n"])) & msk
+            else:
+                dec = deciles(ens, msk)
+                sel = dec.eq(10)
             if v.get("skip_earnings") and earn2 is not None:
-                sel_short = sel_short & ~earn2.reindex(test_dates) \
-                    .reindex(columns=sel_short.columns).fillna(False)
+                sel = sel & ~earn2.reindex(test_dates).reindex(columns=sel.columns) \
+                    .fillna(False)
+            if v.get("sent_gate") is not None and sent is not None:
+                # skip entries only where coverage EXISTS and is below the gate —
+                # uncovered names pass (coverage is 2020-12+, ~500 names)
+                bad = sent.reindex(test_dates).reindex(columns=sel.columns) \
+                          .le(float(v["sent_gate"])).fillna(False)
+                sel = sel & ~bad
+            if v.get("trend") and trend_ok is not None:
+                sel = sel & trend_ok.reindex(test_dates).reindex(columns=sel.columns) \
+                    .fillna(False)
+            conv = None
+            if v.get("conv_weight"):
+                # conviction tilt inside the entering tranche: rank 1 gets the most
+                r_sel = ens.where(sel).rank(axis=1, ascending=False, method="first")
+                if str(v["conv_weight"]) == "harmonic":
+                    conv = 1.0 / r_sel
+                else:                        # linear: N, N-1, ..., 1 over the N entrants
+                    conv = r_sel.rsub(r_sel.max(axis=1) + 1.0, axis=0)
 
-        gm_series = gm.reindex(test_dates).fillna(1.0)
-        kw = dict(m=v.get("m"), h=v.get("h"), thr_cap=v.get("thr_cap"),
-                  m_up=v.get("m_up"), m_dn=v.get("m_dn"),
-                  net_moo_costs=bool(v.get("net_moo")),
-                  gross_cap=v.get("long_cap", v.get("gross_cap")),
-                  gross_cap_exact=bool(v.get("gc_exact")),
-                  trail_m=v.get("trail_m"), flat_k=v.get("flat_k"),
-                  flat_m=v.get("flat_m"), fill_max=v.get("fill_max"))
-        if conv is not None:
-            kw["meta_mult"] = conv
-        if v.get("exit_rank"):
-            # stay while rank <= exit_rank; only an affirmative worse rank
-            # forces the exit (NaN rank = no information = stay)
-            r_all = ens.rank(axis=1, ascending=False, method="first")
-            kw["stay_mask"] = ~r_all.gt(float(v["exit_rank"]))
-        short_cap = v.get("short_cap") if sel_short is not None else None
-        pre = run_long_short(sel, sel_short, panel, sigma32, cm_v, cfg_v,
-                             short_cap=short_cap, day_budget_mult=gm_series, **kw)
-        vt = vol_target_scale(pre["daily_net"], vt_target, vt_cap)
-        budget = (gm_series * vt.reindex(test_dates).fillna(1.0)).clip(lower=0.0)
-        res = run_long_short(sel, sel_short, panel, sigma32, cm_v, cfg_v,
-                             short_cap=short_cap, day_budget_mult=budget, **kw)
+            port_over = {}
+            if v.get("short_n"):
+                port_over.update(short_selection="bottom_n", short_n=int(v["short_n"]))
+            elif v.get("short_decile"):
+                port_over.update(short_selection="bottom_decile")
+            cfg_v = _patch_cfg(cfg, v.get("tranches"), v.get("name_cap"), **port_over)
+            cm_v = cm
+            if v.get("cost_bps") is not None:
+                cm_v = CostModel(per_trade_bps=float(v["cost_bps"]),
+                                 borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
+                                 borrow_table=d.get("borrow"))
+            sel_short = None
+            if port_over:
+                # short sleeve: bottom of the ranking, §I.4 borrow screen, the same
+                # earnings-skip as the longs
+                sel_short = select_short(ens, msk, cfg_v,
+                                         cm_v.borrowable(test_dates, panel.tickers,
+                                                         v.get("short_max_borrow")))
+                if v.get("skip_earnings") and earn2 is not None:
+                    sel_short = sel_short & ~earn2.reindex(test_dates) \
+                        .reindex(columns=sel_short.columns).fillna(False)
 
-        if v.get("fin_bps_yr"):
-            # margin financing on gross above 1x NAV (the engine models no
-            # cash constraint; a vol-targeted concentrated book runs >1x)
-            tr_res = res["trades"]
-            idx = res["daily_net"].index
-            g_in = tr_res.groupby("fill_date")["tranche_w"].sum()
-            g_out = tr_res.groupby("exit_date")["tranche_w"].sum()
-            gross_d = (g_in.reindex(idx, fill_value=0.0)
-                       - g_out.reindex(idx, fill_value=0.0)).cumsum()
-            drag = (gross_d - 1.0).clip(lower=0.0) \
-                * float(v["fin_bps_yr"]) / 1e4 / 252.0
-            res["daily_net"] = res["daily_net"] - drag
+            gm_series = gm.reindex(test_dates).fillna(1.0)
+            kw = dict(m=v.get("m"), h=v.get("h"), thr_cap=v.get("thr_cap"),
+                      m_up=v.get("m_up"), m_dn=v.get("m_dn"),
+                      net_moo_costs=bool(v.get("net_moo")),
+                      gross_cap=v.get("long_cap", v.get("gross_cap")),
+                      gross_cap_exact=bool(v.get("gc_exact")),
+                      trail_m=v.get("trail_m"), flat_k=v.get("flat_k"),
+                      flat_m=v.get("flat_m"), fill_max=v.get("fill_max"))
+            if conv is not None:
+                kw["meta_mult"] = conv
+            if v.get("exit_rank"):
+                # stay while rank <= exit_rank; only an affirmative worse rank
+                # forces the exit (NaN rank = no information = stay)
+                r_all = ens.rank(axis=1, ascending=False, method="first")
+                kw["stay_mask"] = ~r_all.gt(float(v["exit_rank"]))
+            short_cap = v.get("short_cap") if sel_short is not None else None
+            pre = run_long_short(sel, sel_short, panel, sigma32, cm_v, cfg_v,
+                                 short_cap=short_cap, day_budget_mult=gm_series, **kw)
+            vt = vol_target_scale(pre["daily_net"], vt_target, vt_cap)
+            budget = (gm_series * vt.reindex(test_dates).fillna(1.0)).clip(lower=0.0)
+            res = run_long_short(sel, sel_short, panel, sigma32, cm_v, cfg_v,
+                                 short_cap=short_cap, day_budget_mult=budget, **kw)
+
+            if v.get("fin_bps_yr"):
+                # margin financing on gross above 1x NAV (the engine models no
+                # cash constraint; a vol-targeted concentrated book runs >1x)
+                tr_res = res["trades"]
+                idx = res["daily_net"].index
+                g_in = tr_res.groupby("fill_date")["tranche_w"].sum()
+                g_out = tr_res.groupby("exit_date")["tranche_w"].sum()
+                gross_d = (g_in.reindex(idx, fill_value=0.0)
+                           - g_out.reindex(idx, fill_value=0.0)).cumsum()
+                drag = (gross_d - 1.0).clip(lower=0.0) \
+                    * float(v["fin_bps_yr"]) / 1e4 / 252.0
+                res["daily_net"] = res["daily_net"] - drag
 
         met = _book_metrics(res, test_dates)
+        if res.get("stats") is not None:
+            met["bucket_stats"] = res["stats"]
         met["ic_rank"] = float(daily_rank_ic(ens.rank(axis=1, pct=True),
                                              fwd.reindex(test_dates)).mean())
         LEVERS = ("scores", "weighting", "skip_earnings", "m", "h", "thr_cap",
@@ -484,7 +516,7 @@ def run_experiments(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                   "fin_bps_yr", "gross_cap", "gc_exact", "exit_rank",
                   "trend", "conv_weight", "trail_m", "flat_k", "flat_m", "fill_max",
                   "short_n", "short_decile", "short_cap", "long_cap", "short_max_borrow",
-                  "exclude")
+                  "exclude", "bucket")
         row = {"name": name, **{k: v.get(k) for k in LEVERS},
                "members": members, **met}
         results.append(row)

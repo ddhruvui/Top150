@@ -86,7 +86,11 @@ def build_summary(src: Path) -> tuple[dict, dict]:
         ad = s3.get("adoption") or {}
         ung, gat = ad.get("ungated") or {}, ad.get("gated") or {}
         book = {
-            "engine": "event (M5.2 barrier exits, regime + vol targeting)",
+            "engine": ("per-name buckets (own-history signal, one entry per name "
+                       "per cycle, M5.2 barrier exits)"
+                       if s3.get("book_kind") == "buckets"
+                       else "event (M5.2 barrier exits, regime + vol targeting)"),
+            "bucket_stats": s3.get("bucket_stats"),
             "sharpe_net": ung.get("sharpe"),
             "mdd": ung.get("mdd"),
             "n_trades": ung.get("n_trades"),

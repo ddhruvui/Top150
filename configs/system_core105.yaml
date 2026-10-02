@@ -254,6 +254,28 @@ hmm:
 
 # ---- §3.5 Portfolio, costs, execution, compliance ---------------------------
 port:
+  # ---- per-name buckets: THE BOOK since 2026-10-02 ----
+  # Every name owns a pot of bucket_unit; a pot is all-in its own stock (whole
+  # shares, one lot at a time, the M5.2 barriers below) or flat in cash, and
+  # keeps its own P&L. Entry = the ensemble score in the top 10% of that name's
+  # OWN trailing year (not the cross-section, which left 54 of 103 names
+  # untraded since 2020); a name not yet entered in a 40-session cycle lowers
+  # its bar to its own median for the last 10 sessions and enters on the last.
+  # Round L/M (derived/exp_short): SR 0.79, CAGR 11.9%, MDD -40%, ~87% of names
+  # enter per cycle (95% in play) vs the shared decile book's SR 0.98 / 23.7%
+  # / -50% on ~10 names. Parking idle cash in SPY measured worse (SR 0.67,
+  # MDD -55%) and is off. The keys below the bucket block drive the shared
+  # book, still used when book: shared.
+  book: buckets                        # buckets | shared
+  bucket_unit: 10000                   # USD per pot at the start
+  bucket_start: "2026-10-02"           # first decision close of the live pots
+  bucket_q: 0.90                       # own-history percentile to enter
+  bucket_window: 252                   # sessions of own history
+  bucket_min_periods: 126
+  bucket_cycle: 40                     # sessions; one entry per name per cycle
+  bucket_fallback_pct: 0.50            # relaxed bar over the cycle's last sessions
+  bucket_fallback_last: 10
+  bucket_park: none                    # none | SPY
   selection: top_decile_long           # top decile of the ensemble rank (~10 of 103).
                                        #   The top-5 rule (top_n_long, top_n 5,
                                        #   adopted 2026-08-31) was removed 2026-09-17.

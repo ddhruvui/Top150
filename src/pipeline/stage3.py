@@ -24,6 +24,7 @@ from src.ensemble.rank import ensemble_rank, deciles, select_long, select_short
 from src.backtest.costs import CostModel
 from src.backtest.engines.barriers_event import (engine_opts_from_cfg, run_event_backtest,
                                                  run_long_short, sleeve_caps)
+from src.backtest.engines.buckets import bucket_book_on, run_bucket_book
 from src.meta.gate import (candidates_from_deciles, candidates_from_selection,
                            meta_context, meta_outcomes, train_meta, meta_multiplier,
                            META_FEATURES)
@@ -126,22 +127,35 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
           f"({cfg.port.get('short_selection', 'none')}; caps long {long_cap} / "
           f"short {short_cap})", flush=True)
     gm_series = gm.reindex(test_dates).fillna(1.0)
-    pre = run_long_short(sel_ungated, sel_short, panel, sigma32, cm, cfg,
+    buckets = bucket_book_on(cfg)
+    if buckets:
+        # per-name buckets (port.book: buckets, 2026-10-02): the book the gates
+        # judge is the bucket book itself — no regime/vol-target budget, no
+        # meta gate (every pot is all-in its stock or all-in the parking leg)
+        print("book: per-name buckets (own-history signal, "
+              f"q {cfg.port.get('bucket_q')}, cycle {cfg.port.get('bucket_cycle')}, "
+              f"park {cfg.port.get('bucket_park')})", flush=True)
+        res_ungated = run_bucket_book(ens, mask.loc[test_dates], panel, sigma32, cm,
+                                      cfg, d["spy"])
+        print(f"bucket book: {res_ungated['n_trades']:,} trades; stats "
+              f"{json.dumps(res_ungated['stats'], default=str)}", flush=True)
+    pre = None if buckets else run_long_short(sel_ungated, sel_short, panel, sigma32, cm, cfg,
                          short_cap=short_cap, day_budget_mult=gm_series,
                          account_equity=account_equity, **eng_kw)
-    vt = vol_target_scale(pre["daily_net"], float(cfg.port.vol_target_ann),
-                          float(cfg.port.vol_target_scale_cap))
-    budget = (gm_series * vt.reindex(test_dates).fillna(1.0)).clip(lower=0.0)
-    res_ungated = run_long_short(sel_ungated, sel_short, panel, sigma32, cm, cfg,
-                                 short_cap=short_cap, day_budget_mult=budget,
-                                 account_equity=account_equity, **eng_kw)
+    if not buckets:
+        vt = vol_target_scale(pre["daily_net"], float(cfg.port.vol_target_ann),
+                              float(cfg.port.vol_target_scale_cap))
+        budget = (gm_series * vt.reindex(test_dates).fillna(1.0)).clip(lower=0.0)
+        res_ungated = run_long_short(sel_ungated, sel_short, panel, sigma32, cm, cfg,
+                                     short_cap=short_cap, day_budget_mult=budget,
+                                     account_equity=account_equity, **eng_kw)
 
     # ---------------- meta gate, causally per fold (M11-04) ----------------
     meta_mult = pd.DataFrame(np.nan, index=test_dates, columns=panel.tickers)
     train_pool: list[pd.DataFrame] = []
     outcomes_pool: list[pd.DataFrame] = []
     meta_stats = []
-    for k, fold in enumerate(folds):
+    for k, fold in enumerate([] if buckets else folds):
         fold_test = pd.DatetimeIndex(fold.test).intersection(test_dates)
         if not len(fold_test):
             continue
@@ -183,10 +197,10 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
     mm_filled.loc[~has_meta] = 1.0
     sel_gated = sel_ungated & (mm_filled.fillna(0.0) > 0)
     sel_gated_short = sel_short & (mm_filled.fillna(0.0) > 0)
-    res_gated = run_long_short(sel_gated, sel_gated_short, panel, sigma32, cm, cfg,
-                               short_cap=short_cap, meta_mult=mm_filled,
-                               day_budget_mult=budget,
-                               account_equity=account_equity, **eng_kw)
+    res_gated = res_ungated if buckets else run_long_short(
+        sel_gated, sel_gated_short, panel, sigma32, cm, cfg,
+        short_cap=short_cap, meta_mult=mm_filled, day_budget_mult=budget,
+        account_equity=account_equity, **eng_kw)
 
     # ---------------- M11-02 adoption gate ----------------
     s_un, s_gt = sharpe(res_ungated["daily_net"]), sharpe(res_gated["daily_net"])
@@ -199,7 +213,7 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                           "mdd": max_drawdown(res_gated["daily_net"]),
                           **{k: res_gated[k] for k in ("avg_hold", "hit_counts")}},
                 "turnover_cut": 1 - to_gt / max(1, to_un),
-                "adopt": bool(s_gt >= s_un and to_gt < 0.8 * to_un)}
+                "adopt": bool(not buckets and s_gt >= s_un and to_gt < 0.8 * to_un)}
     print(f"M11-02: ungated SR {s_un:.2f}/{to_un} trades; "
           f"gated SR {s_gt:.2f}/{to_gt} trades; adopt={adoption['adopt']}", flush=True)
 
@@ -243,10 +257,14 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
                 segs.append(split_scores[ci].reindex(gd))
             path_ens = pd.concat(segs)
             pmask = mask.reindex(path_ens.index).fillna(False)
-            psel = select_long(path_ens, pmask, cfg)
-            psel_s = select_short(path_ens, pmask, cfg, borrowable) if short_on else None
-            pres = run_long_short(psel, psel_s, panel, sigma32, cm, cfg,
-                                  short_cap=short_cap, **eng_kw)
+            if buckets:
+                pres = run_bucket_book(path_ens, pmask, panel, sigma32, cm, cfg,
+                                       d["spy"])
+            else:
+                psel = select_long(path_ens, pmask, cfg)
+                psel_s = select_short(path_ens, pmask, cfg, borrowable) if short_on else None
+                pres = run_long_short(psel, psel_s, panel, sigma32, cm, cfg,
+                                      short_cap=short_cap, **eng_kw)
             path_stats.append({"path": pi, "sharpe": sharpe(pres["daily_net"]),
                                "mdd": max_drawdown(pres["daily_net"]),
                                "n_trades": pres["n_trades"]})
@@ -265,6 +283,8 @@ def run_stage3(m1_dir: str, eod_dir: str, out_dir: str, scores_dir: str,
               "adoption": adoption, "meta_folds": meta_stats,
               "cpcv": cpcv_report, "dsr": dsr,
               "book": perf_summary(book["daily_net"]),
+              "book_kind": "buckets" if buckets else "shared",
+              "bucket_stats": res_ungated.get("stats") if buckets else None,
               "short_sleeve": {"enabled": short_on, "long_cap": long_cap,
                                "short_cap": short_cap,
                                "selection": str(cfg.port.get("short_selection", "none"))},

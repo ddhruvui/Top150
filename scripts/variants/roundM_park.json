@@ -1,0 +1,8 @@
+[
+ {"name": "M_bucket_q90_force40", "bucket": {"q": 0.90, "window": 252, "bucket0": 10000,
+  "cycle": 40, "fallback_pct": 0.5, "fallback_last": 10}},
+ {"name": "M_bucket_q90_force40_park", "bucket": {"q": 0.90, "window": 252, "bucket0": 10000,
+  "cycle": 40, "fallback_pct": 0.5, "fallback_last": 10, "park": true}},
+ {"name": "M_bucket_q80_force40_park", "bucket": {"q": 0.80, "window": 252, "bucket0": 10000,
+  "cycle": 40, "fallback_pct": 0.5, "fallback_last": 10, "park": true}}
+]

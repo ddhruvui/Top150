@@ -1,0 +1,8 @@
+[
+ {"name": "L_book_baseline", "h": 40, "tranches": 15, "name_cap": 0.3,
+  "vt": 0.2, "vt_cap": 2.5, "net_moo": true, "gross_cap": 1.0, "gc_exact": true},
+ {"name": "L_bucket_q90", "bucket": {"q": 0.90, "window": 252, "bucket0": 10000}},
+ {"name": "L_bucket_q80", "bucket": {"q": 0.80, "window": 252, "bucket0": 10000}},
+ {"name": "L_bucket_q90_force40", "bucket": {"q": 0.90, "window": 252, "bucket0": 10000,
+  "cycle": 40, "fallback_pct": 0.5, "fallback_last": 10}}
+]

@@ -46,6 +46,8 @@ from src.backtest.costs import CostModel
 from src.backtest.engines.barriers_event import (engine_opts_from_cfg, run_event_backtest,
                                                  run_long_short, live_book, sleeve_caps)
 from src.regime.overlay import regime_multiplier
+from src.backtest.engines.buckets import bucket_book_on
+from src.live.bucket_ticket import bucket_book_live, bucket_ticket
 from src.validation.splits import _purge_embargo
 from src.hpo.determinism import seed_everything, artifact_stamp
 from src.hpo.ledger import TrialsLedger
@@ -290,7 +292,11 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     f_dates = feats.index.get_level_values("date")
     Xtr = feats[f_dates.isin(train_dates)]
     Xva = feats[f_dates.isin(valid_dates)]
-    score_dates = dates[-max(WARM_SESSIONS, 2 * int(cfg.barrier.h_days) + 21):]
+    n_score = max(WARM_SESSIONS, 2 * int(cfg.barrier.h_days) + 21)
+    if bucket_book_on(cfg):
+        # the bucket signal ranks today's score in the name's own trailing year
+        n_score = max(n_score, int(cfg.port.get("bucket_window", 252)) + 5)
+    score_dates = dates[-n_score:]
     Xsc = feats[f_dates.isin(score_dates)]
 
     ledger = TrialsLedger()
@@ -405,6 +411,20 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
     live = {k: v for k, v in scores.items() if admitted is None or k in admitted} or scores
     print(f"live ensemble members: {sorted(live)}", flush=True)
     ens = ensemble_rank(live, m)
+    if bucket_book_on(cfg):
+        cm_b = CostModel(per_trade_bps=float(cfg.cost.per_trade_bps),
+                         borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),
+                         borrow_table=d.get("borrow"))
+        header = {
+            "stamp": artifact_stamp(config_hash, d["m1"].data_snapshot_id(), git_sha(), seed),
+            "training": {
+                "mode": mode, "reason": why, "train_through": train_through,
+                "panel_tail_since": str(since.date()) if since is not None else None,
+                "adopted": {k: bool(v.get("adopted", True)) for k, v in heads_info.items()},
+                "ensemble_members": sorted(live),
+                "full_refit_cadence_sessions": int(cc.full_refit_sessions) if cc else None},
+            "heads": heads_info}
+        return _bucket_predict(out, ens, mask, panel, sigma32, cm_b, cfg, d["spy"], header)
     sel = select_long(ens, m, cfg)
     print(f"selection: {cfg.port.get('selection', 'top_decile_long')} "
           f"(N={cfg.port.get('top_n', 20)}) -> event-engine live book", flush=True)
@@ -673,6 +693,95 @@ def run_predict(m1_dir: str, eod_dir: str, out_dir: str, config_path: str | None
           f"{len(holds)} holds"
           + (f"; {len(shorts)} shorts/adds, {len(covers)} covers, "
              f"{len(short_holds)} short holds" if short_on else ""), flush=True)
+    return suggestions
+
+
+def _bucket_predict(out: Path, ens: pd.DataFrame, mask: pd.DataFrame, panel,
+                    sigma32: pd.DataFrame, cm, cfg, spy: pd.DataFrame,
+                    header: dict) -> dict:
+    """port.book: buckets — the per-name bucket book at the next open
+    (src/live/bucket_ticket.py). Same suggestions schema as the shared book
+    (buys/holds/sells), plus `parking` (the SPY leg) and `buckets` (pots)."""
+    t_last = panel.dates[-1]
+    lb = bucket_book_live(ens, mask, panel, sigma32, cm, cfg, spy, out)
+    res = lb["res"]
+    T = bucket_ticket(res, panel, sigma32, cfg, ens.loc[t_last], spy)
+    p = cfg.port
+    h_bar = int(cfg.barrier.h_days)
+    trail_m = cfg.barrier.get("trail_m")
+    trail_on = trail_m is not None and float(trail_m) > 0
+    gross = sum(r["target_weight"] for r in T["buys"] + T["holds"])
+    park_w = T["parking"]["target_weight"] if T["parking"] else 0.0
+    cyc = res["cycle"]
+    status = pd.Series([x["status"] for x in T["pots"]]).value_counts().to_dict()
+    suggestions = {
+        "as_of_close": str(t_last.date()),
+        "execute_at": "next session MOO (G-02: signals from close t earn from open t+1)",
+        **header,
+        "portfolio": {"book": "buckets", "n_names": len(T["buys"]) + len(T["holds"]),
+                      "gross_long": round(gross, 5),
+                      "entering_gross": round(sum(r["target_weight"] for r in T["buys"]), 5),
+                      "held_gross": round(sum(r["target_weight"] for r in T["holds"]), 5),
+                      "due_exit_gross": round(sum(r["current_weight"] for r in T["sells"]), 5),
+                      "parked_gross": round(park_w, 5),
+                      "spy_hedge_weight": 0.0, "n_short_names": 0, "gross_short": 0.0,
+                      "gross_total": round(gross, 5), "net_exposure": round(gross, 5),
+                      "pots": len(T["pots"]), "pot_status": status,
+                      "book_units": T["nav_units"]},
+        "book_engine": {
+            "engine": "per-name buckets (src/backtest/engines/buckets.py)",
+            "bucket_start": str(lb["start"].date()),
+            "unit": float(p.get("bucket_unit", 10_000)),
+            "signal": f"ensemble score in the top {1 - float(p.get('bucket_q', 0.9)):.0%} "
+                      f"of the name's own trailing {int(p.get('bucket_window', 252))} sessions",
+            "cycle": {**cyc, "fallback_pct": p.get("bucket_fallback_pct"),
+                      "fallback_last": p.get("bucket_fallback_last"),
+                      "untraded_this_cycle": sorted(x["ticker"] for x in T["pots"]
+                                                    if not x["traded_this_cycle"])},
+            "park": str(p.get("bucket_park", "none")),
+            "frozen_decision_rows": int(len(lb["rows"])),
+            "sizing": "each pot is all-in its stock (whole shares) or flat; weights "
+                      "are pot / book; a pot keeps its own P&L"},
+        "buys_or_increases": T["buys"],
+        "holds": T["holds"],
+        "sells_or_exits": T["sells"],
+        "shorts_or_increases": [], "short_holds": [], "covers_or_exits": [],
+        "parking": T["parking"],
+        "buckets": T["pots"],
+        "bucket_performance": T["performance"],
+        "exit_rules": {"engine": "M5.2 triple barrier", "m": float(cfg.barrier.m),
+                       "h_sessions": h_bar,
+                       "trail_m": float(trail_m) if trail_on else None,
+                       "note": "stop/profit-take are % vs ACTUAL fill at next open; "
+                               "vertical exit = MOO at t+h+1"
+                               + ("; trailing stop: after each close raise the GTC "
+                                  "stop to high_since_fill x (1 - trail_pct), never "
+                                  "below the fixed stop" if trail_on else "")},
+        "disclaimer": "Research output of an experimental system; NOT financial advice. "
+                      "All performance claims require the G-11 gate evaluation first.",
+    }
+    (out / "suggestions.json").write_text(json.dumps(suggestions, indent=2, default=str))
+    md = [f"# Bucket book for next open (signals @ close {t_last.date()})", "",
+          f"- Pots: {len(T['pots'])} since {lb['start'].date()}; status {status}",
+          f"- Cycle {cyc['block'] + 1}, session {cyc['session_in_cycle']}/"
+          f"{cyc['cycle_sessions']}; not yet traded this cycle: "
+          f"{len(suggestions['book_engine']['cycle']['untraded_this_cycle'])}",
+          f"- In stocks {gross:.1%}" + (f", parked in SPY {park_w:.1%} "
+                                       f"(change {T['parking']['delta_weight']:+.1%})"
+                                       if T["parking"] else ""), "",
+          "| ticker | action | weight | pot | stop % | PT % | sessions left |",
+          "|---|---|---|---|---|---|---|"]
+    for r in T["buys"]:
+        md.append(f"| {r['ticker']} | BUY ({r['entry_kind']}) | {r['target_weight']:.3%} | "
+                  f"{r['pot_value']:,.0f} | {r['stop_pct']} | {r['profit_take_pct']} | {h_bar} |")
+    for r in T["holds"]:
+        md.append(f"| {r['ticker']} | HOLD | {r['target_weight']:.3%} | {r['pot_value']:,.0f} | "
+                  f"{r['stop_pct']} | {r['profit_take_pct']} | {r['sessions_left']} |")
+    for r in T["sells"]:
+        md.append(f"| {r['ticker']} | SELL at open | 0 |  |  |  | 0 |")
+    (out / "suggestions.md").write_text("\n".join(md))
+    print(f"bucket book @ {t_last.date()}: {len(T['buys'])} buys, {len(T['holds'])} holds, "
+          f"{len(T['sells'])} exits; pots {status}; parked {park_w:.1%}", flush=True)
     return suggestions
 
 

@@ -354,6 +354,51 @@ def run_event_backtest(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
             "hit_counts": ex["barrier_hit"].value_counts().to_dict()}
 
 
+def lot_levels(ticker: str, entry_date, fill_date, entry_price: float, panel,
+               sigma32: pd.DataFrame, cfg, side: int = 1,
+               trail_m: float | None = None) -> dict:
+    """Barrier levels of ONE open lot for the next session (M5.2): the fixed
+    stop / profit-take off the fill, the trailing stop ratcheted off the high
+    (long) or low (short) since fill when it binds, and both as % vs the last
+    close; sessions to the vertical. Shared by the live books (G-15)."""
+    dates = panel.adj_open.index
+    pos = {d: i for i, d in enumerate(dates)}
+    i_last = len(dates) - 1
+    h = int(cfg.barrier.h_days)
+    it, i0 = pos[pd.Timestamp(entry_date)], pos[pd.Timestamp(fill_date)]
+    sig = float(sigma32.at[pd.Timestamp(entry_date), ticker])
+    thr = float(cfg.barrier.m) * sig * np.sqrt(h)
+    thr_cap = cfg.barrier.get("thr_cap_pct")
+    if thr_cap is not None:
+        thr = min(thr, float(thr_cap))
+    P0 = float(entry_price)
+    if side > 0:
+        stop, pt, kind = P0 * (1 - thr), P0 * (1 + thr), "fixed"
+    else:                       # short: stop above the fill, profit-take below
+        stop, pt, kind = P0 * (1 + thr), P0 * (1 - thr), "fixed"
+    if trail_m is not None and float(trail_m) > 0:
+        w_tr = float(trail_m) * sig * np.sqrt(h)
+        if side > 0:
+            hi = panel.adj_high[ticker].iloc[i0:i_last + 1]
+            if hi.notna().any():
+                lvl = float(np.nanmax(hi.to_numpy())) * (1 - w_tr)
+                if lvl > stop:
+                    stop, kind = lvl, "trail"
+        else:                   # ratchet DOWN off the low since fill
+            lo = panel.adj_low[ticker].iloc[i0:i_last + 1]
+            if lo.notna().any():
+                lvl = float(np.nanmin(lo.to_numpy())) * (1 + w_tr)
+                if lvl < stop:
+                    stop, kind = lvl, "trail"
+    c = panel.adj_close[ticker].iloc[:i_last + 1].dropna()
+    c_last = float(c.iloc[-1]) if len(c) else np.nan
+    ok = np.isfinite(c_last)
+    return {"entry_idx": it, "sessions_left": max(0, it + h - i_last),
+            "stop_kind": kind, "stop_level_adj": stop, "pt_level_adj": pt,
+            "stop_vs_close_pct": (stop / c_last - 1) * 100 if ok else np.nan,
+            "pt_vs_close_pct": (pt / c_last - 1) * 100 if ok else np.nan}
+
+
 def live_book(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
               cost_model: CostModel, cfg, day_budget_mult: pd.Series | None = None,
               meta_mult: pd.DataFrame | None = None, side: int = 1,
@@ -404,44 +449,15 @@ def live_book(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
         else pd.DataFrame(columns=cols)
 
     # per-lot levels for the next session
-    m_b = float(cfg.barrier.m)
-    thr_cap = cfg.barrier.get("thr_cap_pct")
-    trail_m = opts.get("trail_m")
-    trail_on = trail_m is not None and float(trail_m) > 0
-    H, C, Lo = panel.adj_high, panel.adj_close, panel.adj_low
     ent_idx, s_left, kinds, stops, pts, stop_pct, pt_pct = [], [], [], [], [], [], []
     for r in open_lots.itertuples(index=False):
-        it, i0 = pos[r.entry_date], pos[r.fill_date]
-        sig = float(sigma32.at[r.entry_date, r.ticker])
-        thr = m_b * sig * np.sqrt(h)
-        if thr_cap is not None:
-            thr = min(thr, float(thr_cap))
-        P0 = float(r.entry_price)
-        if side > 0:
-            stop, pt, kind = P0 * (1 - thr), P0 * (1 + thr), "fixed"
-        else:                       # short: stop above the fill, profit-take below
-            stop, pt, kind = P0 * (1 + thr), P0 * (1 - thr), "fixed"
-        if trail_on:
-            w_tr = float(trail_m) * sig * np.sqrt(h)
-            if side > 0:
-                hi = H[r.ticker].iloc[i0:i_last + 1]
-                if hi.notna().any():
-                    lvl = float(np.nanmax(hi.to_numpy())) * (1 - w_tr)
-                    if lvl > stop:
-                        stop, kind = lvl, "trail"
-            else:                   # ratchet DOWN off the low since fill
-                lo = Lo[r.ticker].iloc[i0:i_last + 1]
-                if lo.notna().any():
-                    lvl = float(np.nanmin(lo.to_numpy())) * (1 + w_tr)
-                    if lvl < stop:
-                        stop, kind = lvl, "trail"
-        c = C[r.ticker].iloc[:i_last + 1].dropna()
-        c_last = float(c.iloc[-1]) if len(c) else np.nan
-        ent_idx.append(it)
-        s_left.append(max(0, it + h - i_last))
-        kinds.append(kind); stops.append(stop); pts.append(pt)
-        stop_pct.append((stop / c_last - 1) * 100 if np.isfinite(c_last) else np.nan)
-        pt_pct.append((pt / c_last - 1) * 100 if np.isfinite(c_last) else np.nan)
+        lv = lot_levels(r.ticker, r.entry_date, r.fill_date, float(r.entry_price),
+                        panel, sigma32, cfg, side, opts.get("trail_m"))
+        ent_idx.append(lv["entry_idx"])
+        s_left.append(lv["sessions_left"])
+        kinds.append(lv["stop_kind"]); stops.append(lv["stop_level_adj"])
+        pts.append(lv["pt_level_adj"])
+        stop_pct.append(lv["stop_vs_close_pct"]); pt_pct.append(lv["pt_vs_close_pct"])
     open_lots = open_lots.assign(entry_idx=ent_idx, sessions_left=s_left, stop_kind=kinds,
                                  stop_level_adj=stops, pt_level_adj=pts,
                                  stop_vs_close_pct=stop_pct, pt_vs_close_pct=pt_pct)
