@@ -294,6 +294,15 @@ export async function ticket(now = new Date()) {
       short_total: shorts.reduce((a, r) => a + (r.est_cost ?? 0), 0),
     },
     buys, sells, holds, due_exits: dueExits, shorts, covers,
+    // per-name bucket book (port.book: buckets): every stock owns its pot;
+    // a BUY spends the whole pot, so it is sized off the pot, not a slice
+    bucket_book: sug.portfolio?.book === 'buckets' ? {
+      start: sug.book_engine?.bucket_start ?? null,
+      unit: sug.book_engine?.unit ?? null,
+      cycle: sug.book_engine?.cycle ?? null,
+      pot_status: sug.portfolio?.pot_status ?? null,
+      parking: sug.parking ?? null,
+    } : null,
     gate_warning: 'The G-11 gates on this book return ITERATE — research output, '
       + 'not a recommendation to trade.',
     holdings_source: `the paper book (${storeLocation()}). Positions you hold `

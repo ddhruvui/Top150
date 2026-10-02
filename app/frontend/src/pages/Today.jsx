@@ -322,6 +322,26 @@ export default function Today() {
         </div>
       )}
 
+      {t.bucket_book && (
+        <div className="verdict">
+          <div className="mark" aria-hidden="true">◼</div>
+          <div>
+            <h2>One pot per stock</h2>
+            <p>Every stock has its own pot (started at {fmtMoney(t.bucket_book.unit)} on{' '}
+              {pretty(t.bucket_book.start)}) and keeps its own profit or loss. A buy spends
+              that stock's whole pot; between trades the pot waits in cash.
+              {t.bucket_book.cycle && (
+                <> This is session {t.bucket_book.cycle.session_in_cycle} of{' '}
+                  {t.bucket_book.cycle.cycle_sessions} in the current cycle;{' '}
+                  {(t.bucket_book.cycle.untraded_this_cycle ?? EMPTY).length} stock
+                  {(t.bucket_book.cycle.untraded_this_cycle ?? EMPTY).length === 1 ? ' has' : 's have'}{' '}
+                  not traded yet this cycle and will be bought by its last session.</>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
       {s.open_already_passed && (
         <div className="verdict warn">
           <div className="mark" aria-hidden="true">⚠</div>

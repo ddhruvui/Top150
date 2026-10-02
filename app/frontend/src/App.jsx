@@ -5,10 +5,12 @@ import Dashboard from './pages/Dashboard.jsx';
 import Suggestions from './pages/Suggestions.jsx';
 import Backtest from './pages/Backtest.jsx';
 import Paper from './pages/Paper.jsx';
+import Pots from './pages/Pots.jsx';
 
 const PAGES = [
   ['today', 'Today', Today],
   ['dashboard', 'Dashboard', Dashboard],
+  ['pots', 'Pots', Pots],
   ['suggestions', 'Suggestions', Suggestions],
   ['backtest', 'Backtest', Backtest],
   ['paper', 'Paper trading', Paper],
