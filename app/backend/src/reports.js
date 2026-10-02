@@ -90,6 +90,7 @@ export const suggestions = () => section('suggestions');
 export const tradesSummary = () => section('trades_summary');
 export const manifest = () => section('manifest');
 export const readCalendar = () => section('calendar');
+export const potsHistory = () => section('pots_history');
 
 const DEFAULT_CONFIG = {
   cost: { per_trade_bps: 15, borrow_gc_bps_yr: 50, slippage_bps: 0 },

@@ -87,3 +87,28 @@ def test_pot_performance_adds_up(rng, synth_panel, tmp_path):
         assert (x["open_ret_pct"] is None) == (x["status"] not in ("holding", "due_exit"))
     assert P["curve"][0]["date"] == str(synth_panel.dates[200].date())
     assert abs(P["curve"][-1]["value"] - P["value"]) < 0.05 * n
+
+
+def test_pots_history_rebuilds_each_pot(tmp_path):
+    import sys
+    sys.path.insert(0, "tools")
+    from build_reports import build_pots_history
+    d = pd.to_datetime
+    tr = pd.DataFrame({
+        "ticker": ["A", "A", "B"],
+        "entry_date": d(["2020-01-02", "2020-03-02", "2020-01-02"]),
+        "fill_date": d(["2020-01-03", "2020-03-03", "2020-01-03"]),
+        "exit_date": d(["2020-02-03", "2021-01-04", "2020-02-03"]),
+        "bucket_before": [10_000.0, 10_990.0, 10_000.0],
+        "notional": [9_900.0, 10_880.0, 9_900.0],
+        "exit_ret_net": [0.1, -0.5, -0.2],
+    })
+    tr.to_parquet(tmp_path / "stage3_trades_ungated.parquet")
+    h = build_pots_history(tmp_path)
+    a = next(x for x in h["stocks"] if x["ticker"] == "A")
+    assert a["end_value"] == round(10_990 - 0.5 * 10_880, 2)
+    assert a["trades"] == 2 and a["wins"] == 1
+    assert [p[1] for p in h["paths"]["A"]] == [10_000.0, 10_990.0, a["end_value"]]
+    assert h["total"]["start_value"] == 20_000
+    assert abs(h["total"]["end_value"] - (a["end_value"] + 8_020.0)) < 0.01
+    assert h["book"][-1]["value"] == round(h["total"]["end_value"], 2)

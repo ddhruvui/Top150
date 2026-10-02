@@ -5,7 +5,7 @@
    last close — not the paper account, which is scaled to its own NAV. */
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api.js';
-import { LineChart, fmtNum, fmtInt, fmtSignedPct, arrow, signClass } from '../components/Chart.jsx';
+import { LineChart, BarChart, fmtNum, fmtInt, fmtPct, fmtSignedPct, arrow, signClass } from '../components/Chart.jsx';
 import { Card, StatTile, Loading, ErrorBox, Badge, Delta, useSort, Th } from '../components/Bits.jsx';
 
 const EMPTY = [];
@@ -20,7 +20,7 @@ const STATUS = {
   flat: ['neutral', '○', 'Waiting in cash'],
 };
 
-export default function Pots() {
+function Live() {
   const [d, setD] = useState({ loading: true });
   const [q, setQ] = useState('');
   const [show, setShow] = useState('all');
@@ -42,9 +42,9 @@ export default function Pots() {
   if (d.error) return <ErrorBox error={d.error} />;
   if (!pots.length) {
     return (
-      <Card title="Pots">
+      <Card title="Live pots">
         <div className="empty">The published book is not the per-stock pot book
-          (port.book: buckets), so there are no pots to show.</div>
+          (port.book: buckets), so there are no live pots to show.</div>
       </Card>
     );
   }
@@ -147,6 +147,173 @@ export default function Pots() {
           after costs.
         </p>
       </Card>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------ backtest */
+
+const Money = ({ v }) => (
+  <span className={`${signClass(v)} num`}>
+    <span aria-hidden="true">{arrow(v)}</span> {signedMoney(v)}
+  </span>
+);
+
+function Backtest() {
+  const [d, setD] = useState({ loading: true });
+  const [q, setQ] = useState('');
+  const [show, setShow] = useState('all');
+  const [pick, setPick] = useState(null);
+
+  useEffect(() => {
+    api.potsHistory().then((h) => setD({ h })).catch((error) => setD({ error }));
+  }, []);
+  useEffect(() => {
+    if (pick) document.getElementById('pot-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [pick]);
+
+  const stocks = d.h?.stocks ?? EMPTY;
+  const rows = useMemo(() => {
+    const t = q.trim().toUpperCase();
+    return stocks.filter((r) => (!t || r.ticker.toUpperCase().includes(t))
+      && (show === 'all' || (show === 'up' ? r.pnl > 0 : r.pnl < 0)));
+  }, [stocks, q, show]);
+  const sort = useSort(rows);
+
+  if (d.loading) return <Loading what="backtest pots" />;
+  if (d.error) {
+    return <ErrorBox error={d.error}
+                     hint="The pot history is built from the stage 3 bucket backtest; publish a fresh report bundle." />;
+  }
+  const H = d.h;
+  const T = H.total;
+  const bookSeries = [
+    { name: 'All pots together', color: 'var(--series-1)',
+      points: H.book.map((p) => ({ x: p.date, y: p.value })) },
+    { name: 'Money put in', color: 'var(--series-2, #999)',
+      points: H.book.map((p) => ({ x: p.date, y: p.deposited })) },
+  ];
+  const years = Object.entries(T.by_year || {}).map(([y, v]) => ({
+    label: y, value: v, tipLabel: 'whole book' }));
+  const sel = pick ? stocks.find((x) => x.ticker === pick) : null;
+
+  return (
+    <>
+      <Card title={`How every pot did, ${H.start.slice(0, 4)}–today (backtest)`}
+            subtitle={`Each stock started with ${money(stocks[0]?.start_value)} at its first trade and
+              kept its own profit or loss, after costs, through ${H.end}.`}>
+        <div className="tiles">
+          <StatTile label="Total profit / loss" value={fmtSignedPct(T.pnl_pct, 0)}
+                    sub={`${signedMoney(T.pnl)} on ${money(T.start_value)}`}
+                    tone={T.pnl >= 0 ? 'pos' : 'neg'} />
+          <StatTile label="All pots now" value={money(T.end_value)}
+                    sub={`${fmtInt(T.stocks)} pots`} />
+          <StatTile label="Pots up / down" value={`${fmtInt(T.up)} / ${fmtInt(T.down)}`}
+                    sub="ended above / below their start" />
+          <StatTile label="Trades" value={fmtInt(T.trades)} sub="closed, all pots" />
+        </div>
+        <p className="muted small" style={{ marginTop: 8 }}>{H.note}</p>
+      </Card>
+
+      <Card title="All pots together" subtitle="Total value of every pot at each month end, and the money put in">
+        <LineChart series={bookSeries} height={240} logY
+                   yFormat={(v) => money(v)} />
+      </Card>
+
+      {years.length > 0 && (
+        <Card title="Each year" subtitle="Profit or loss of the whole book per calendar year">
+          <BarChart data={years} height={220} bySign valueFormat={(v) => fmtSignedPct(v, 1)} />
+        </Card>
+      )}
+
+      {sel && (
+        <div id="pot-detail" style={{ scrollMarginTop: 80 }}>
+        <Card title={`${sel.ticker}: ${money(sel.start_value)} → ${money(sel.end_value)} (${fmtSignedPct(sel.pnl_pct, 0)})`}
+              subtitle={`Pot value after every trade since ${sel.first_trade}; ${sel.trades} trades, `
+                + `${fmtPct(sel.win_rate, 0)} won`}
+              right={<button className="btn sm" onClick={() => setPick(null)}>Close</button>}>
+          <LineChart series={[{ name: sel.ticker, color: 'var(--series-1)',
+                                points: (H.paths[sel.ticker] || []).map(([x, y]) => ({ x, y })) }]}
+                     height={220} yFormat={(v) => money(v)} />
+          <BarChart data={Object.entries(sel.by_year).map(([y, v]) => ({
+                      label: y, value: v, tipLabel: sel.ticker }))}
+                    height={180} bySign valueFormat={(v) => fmtSignedPct(v, 1)} />
+        </Card>
+        </div>
+      )}
+
+      <Card title="Every stock"
+            subtitle="Click a stock to see its pot over time"
+            right={(
+              <div style={{ display: 'flex', gap: 8 }}>
+                <select value={show} onChange={(e) => setShow(e.target.value)}>
+                  <option value="all">All stocks</option>
+                  <option value="up">Made money</option>
+                  <option value="down">Lost money</option>
+                </select>
+                <input placeholder="Filter ticker…" value={q} onChange={(e) => setQ(e.target.value)} />
+              </div>
+            )}>
+        <div className="table-wrap" style={{ maxHeight: 720, overflowY: 'auto' }}>
+          <table>
+            <thead>
+              <tr>
+                <Th k="ticker" sort={sort.sort} onSort={sort.onSort}>Stock</Th>
+                <Th k="end_value" num sort={sort.sort} onSort={sort.onSort}>Pot now</Th>
+                <Th k="pnl" num sort={sort.sort} onSort={sort.onSort}>Profit / loss</Th>
+                <Th k="pnl_pct" num sort={sort.sort} onSort={sort.onSort}>Total</Th>
+                <Th k="cagr" num sort={sort.sort} onSort={sort.onSort}>Per year</Th>
+                <Th k="last_1y" num sort={sort.sort} onSort={sort.onSort}>Last 12 mo</Th>
+                <Th k="last_3y" num sort={sort.sort} onSort={sort.onSort}>Last 3 yrs</Th>
+                <Th k="trades" num sort={sort.sort} onSort={sort.onSort}>Trades</Th>
+                <Th k="win_rate" num sort={sort.sort} onSort={sort.onSort}>Won</Th>
+                <Th k="avg_trade" num sort={sort.sort} onSort={sort.onSort}>Avg trade</Th>
+                <Th k="best_trade" num sort={sort.sort} onSort={sort.onSort}>Best</Th>
+                <Th k="worst_trade" num sort={sort.sort} onSort={sort.onSort}>Worst</Th>
+                <Th k="first_trade" sort={sort.sort} onSort={sort.onSort}>Since</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {sort.rows.map((r) => (
+                <tr key={r.ticker} onClick={() => setPick(r.ticker)}
+                    style={{ cursor: 'pointer' }}
+                    aria-selected={pick === r.ticker}>
+                  <td><strong>{r.ticker}</strong></td>
+                  <td className="n">{money(r.end_value)}</td>
+                  <td className="n"><Money v={r.pnl} /></td>
+                  <td className="n"><Delta value={r.pnl_pct} digits={0} /></td>
+                  <td className="n"><Delta value={r.cagr} digits={1} /></td>
+                  <td className="n"><Delta value={r.last_1y} digits={1} /></td>
+                  <td className="n"><Delta value={r.last_3y} digits={1} /></td>
+                  <td className="n">{fmtInt(r.trades)}</td>
+                  <td className="n">{fmtPct(r.win_rate, 0)}</td>
+                  <td className="n"><Delta value={r.avg_trade} digits={1} /></td>
+                  <td className="n"><Delta value={r.best_trade} digits={0} /></td>
+                  <td className="n"><Delta value={r.worst_trade} digits={0} /></td>
+                  <td>{r.first_trade}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </>
+  );
+}
+
+export default function Pots() {
+  const [view, setView] = useState('backtest');
+  return (
+    <>
+      <div className="nav" role="tablist" style={{ marginBottom: 12 }}>
+        {[['backtest', 'Backtest: 2007–today'], ['live', 'Live: since the pots started']]
+          .map(([id, label]) => (
+            <button key={id} role="tab" aria-selected={view === id}
+                    aria-current={view === id ? 'page' : undefined}
+                    onClick={() => setView(id)}>{label}</button>
+          ))}
+      </div>
+      {view === 'backtest' ? <Backtest /> : <Live />}
     </>
   );
 }

@@ -70,6 +70,8 @@ app.get('/api/summary', wrap(async (_req, res) => send(res, await reports.summar
 app.get('/api/equity', wrap(async (_req, res) => send(res, await reports.equity(), 'equity')));
 app.get('/api/suggestions', wrap(async (_req, res) =>
   send(res, await reports.suggestions(), 'suggestions')));
+app.get('/api/pots-history', wrap(async (_req, res) =>
+  send(res, await reports.potsHistory(), 'pots_history')));
 app.get('/api/config', wrap(async (_req, res) => res.json(await reports.config())));
 app.get('/api/trades/summary', wrap(async (_req, res) =>
   send(res, await reports.tradesSummary(), 'trades')));

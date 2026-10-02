@@ -224,6 +224,93 @@ def build_equity(src: Path) -> dict | None:
     })
 
 
+# ------------------------------------------------------------ pots history
+def build_pots_history(src: Path) -> dict | None:
+    """Per-stock pot history of the backtested BUCKET book (port.book:
+    buckets): every closed trade carries the pot before it (bucket_before)
+    and the notional it put to work, so each pot's path is rebuilt exactly —
+    pot after = before + notional x net return. Lots still open at the end
+    of the tape are not in the closed-trade file; a pot is valued at its last
+    exit. Absent for the shared book."""
+    tr = _read_parquet(src / "stage3_trades_ungated.parquet")
+    if tr is None or not len(tr) or "bucket_before" not in tr:
+        return None
+    tr = tr.copy()
+    for c in ("entry_date", "fill_date", "exit_date"):
+        tr[c] = pd.to_datetime(tr[c])
+    tr = tr[tr["exit_ret_net"].notna()].sort_values(["ticker", "exit_date"])
+    tr["after"] = tr["bucket_before"] + tr["notional"] * tr["exit_ret_net"]
+    tr["growth"] = tr["after"] / tr["bucket_before"]
+    end_all = tr["exit_date"].max()
+    cut1, cut3 = end_all - pd.DateOffset(years=1), end_all - pd.DateOffset(years=3)
+
+    def _g(x):
+        return float(x.prod() - 1) if len(x) else 0.0
+
+    stocks, paths = [], {}
+    for t, g in tr.groupby("ticker"):
+        start = float(g["bucket_before"].iloc[0])
+        end = float(g["after"].iloc[-1])
+        first = g["entry_date"].iloc[0]
+        yrs = max((end_all - first).days / 365.25, 1e-9)
+        r = g["exit_ret_net"]
+        stocks.append({
+            "ticker": t, "start_value": round(start, 2), "end_value": round(end, 2),
+            "pnl": round(end - start, 2), "pnl_pct": round(end / start - 1, 6),
+            "cagr": round((end / start) ** (1 / yrs) - 1, 6) if end > 0 else -1.0,
+            "first_trade": str(first.date()), "years": round(yrs, 1),
+            "trades": int(len(g)), "wins": int((r > 0).sum()),
+            "win_rate": round(float((r > 0).mean()), 4),
+            "avg_trade": round(float(r.mean()), 6),
+            "best_trade": round(float(r.max()), 6), "worst_trade": round(float(r.min()), 6),
+            "forced_trades": int((g.get("kind") == "fallback").sum()) if "kind" in g else None,
+            "last_1y": round(_g(g.loc[g["exit_date"] > cut1, "growth"]), 6),
+            "last_3y": round(_g(g.loc[g["exit_date"] > cut3, "growth"]), 6),
+            "by_year": {str(y): round(_g(x["growth"]), 6)
+                        for y, x in g.groupby(g["exit_date"].dt.year)},
+            "peak_value": round(float(max(start, g["after"].max())), 2),
+        })
+        paths[t] = [[str(first.date()), round(start, 2)]] + [
+            [str(d.date()), round(float(v), 2)] for d, v in zip(g["exit_date"], g["after"])]
+
+    # the whole book: the sum of the pots at each month end (a pot counts from
+    # its first trade, at its starting value until then)
+    months = pd.date_range(tr["entry_date"].min(), end_all, freq="ME").append(
+        pd.DatetimeIndex([end_all]))
+    book = []
+    first_by = tr.groupby("ticker")["entry_date"].min()
+    for m in months:
+        live = first_by[first_by <= m].index
+        done = tr[(tr["exit_date"] <= m) & tr["ticker"].isin(live)] \
+            .groupby("ticker")["after"].last()
+        start_v = tr.groupby("ticker")["bucket_before"].first().reindex(live)
+        val = float(start_v.drop(done.index, errors="ignore").sum() + done.sum())
+        book.append({"date": str(m.date()), "value": round(val, 2),
+                     "deposited": round(float(start_v.sum()), 2)})
+    tot_start = float(sum(x["start_value"] for x in stocks))
+    tot_end = float(sum(x["end_value"] for x in stocks))
+    by_year = {}
+    for y in sorted({k for x in stocks for k in x["by_year"]}):
+        ys = [b for b in book if b["date"].startswith(y)]
+        prev = [b for b in book if b["date"] < f"{y}-01-01"]
+        if ys and prev:
+            dep = ys[-1]["deposited"] - prev[-1]["deposited"]
+            by_year[y] = round((ys[-1]["value"] - dep) / prev[-1]["value"] - 1, 6)
+    stocks.sort(key=lambda x: -x["pnl_pct"])
+    return {"start": str(tr["entry_date"].min().date()), "end": str(end_all.date()),
+            "total": {"start_value": round(tot_start, 2), "end_value": round(tot_end, 2),
+                      "pnl": round(tot_end - tot_start, 2),
+                      "pnl_pct": round(tot_end / tot_start - 1, 6),
+                      "stocks": len(stocks),
+                      "up": sum(1 for x in stocks if x["pnl"] > 0),
+                      "down": sum(1 for x in stocks if x["pnl"] < 0),
+                      "trades": int(len(tr)), "by_year": by_year},
+            "stocks": stocks, "book": book, "paths": paths,
+            "note": "Backtest of the bucket book on the current models (stage 3), "
+                    "closed trades after costs. The 105-name list was chosen in 2026, "
+                    "so history back to 2007 flatters it (survivorship)."}
+
+
 # ------------------------------------------------------ suggested -> outcome
 def build_trades(src: Path) -> tuple[dict | None, dict | None]:
     tr = _read_parquet(src / "stage3_trades_ungated.parquet")
@@ -386,6 +473,14 @@ def main() -> int:
         }), indent=1))
         manifest["sections"]["calendar"] = {"sessions": len(window)}
         print(f"OK calendar.json     {len(window)} sessions around today")
+
+    ph = build_pots_history(src)
+    if ph:
+        (out / "pots_history.json").write_text(json.dumps(_clean(ph)))
+        manifest["sections"]["pots_history"] = {"stocks": len(ph["stocks"]),
+                                                "trades": ph["total"]["trades"]}
+        print(f"OK pots_history.json {len(ph['stocks'])} pots, total "
+              f"{ph['total']['pnl_pct']:+.1%} since {ph['start']}")
 
     tsum, tsample = build_trades(src)
     if tsum:

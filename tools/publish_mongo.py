@@ -39,7 +39,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 SECTIONS = ["summary", "equity", "suggestions", "trades_summary", "manifest",
-            "calendar", "config"]           # + trades_sample, handled separately
+            "calendar", "config", "pots_history"]           # + trades_sample, handled separately
 TRADE_CHUNK = 1000
 
 # The Atlas cluster the deployed API actually reads. A mis-pointed MONGO_URI

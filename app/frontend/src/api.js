@@ -19,6 +19,7 @@ export const api = {
   summary: () => req('/api/summary'),
   equity: () => req('/api/equity'),
   suggestions: () => req('/api/suggestions'),
+  potsHistory: () => req('/api/pots-history'),
   config: () => req('/api/config'),
   tradesSummary: () => req('/api/trades/summary'),
   trades: (q = {}) => {
