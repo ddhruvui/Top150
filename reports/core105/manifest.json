@@ -1,6 +1,6 @@
 {
- "built_utc": "2026-09-27T04:29:42+00:00",
- "source_dir": "/var/folders/nc/94b145q13pl3jz97b9qf8msh0000gn/T/core105_src.cmMMxZ",
+ "built_utc": "2026-10-02T14:10:08+00:00",
+ "source_dir": "/var/folders/nc/94b145q13pl3jz97b9qf8msh0000gn/T/core105_src.afqJ2x",
  "sections": {
   "summary": {
    "members": "stage2_report.json",
@@ -8,21 +8,25 @@
    "cpcv": "stage3_final_report.json"
   },
   "equity": {
-   "points": 1654
+   "points": 1613
   },
   "suggestions": {
-   "as_of": "2026-09-25",
-   "n": 11,
+   "as_of": "2026-10-01",
+   "n": 9,
    "n_short": 0
   },
   "config": {
-   "config_hash": "0aff7449c029b6c23988d1cb045ea5bdd2e19938a35bc1e077a4d0f62584e32a"
+   "config_hash": "64e992f62175488753ffbc08e10016ea8eb2a6980fde4b8f8ddd0555bd995266"
   },
   "calendar": {
-   "sessions": 83
+   "sessions": 84
+  },
+  "pots_history": {
+   "stocks": 102,
+   "trades": 10475
   },
   "trades": {
-   "n_total": 44924,
+   "n_total": 10475,
    "sampled": 4000
   }
  }
