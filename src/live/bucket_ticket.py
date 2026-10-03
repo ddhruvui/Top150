@@ -39,13 +39,30 @@ def _f(x, nd=2):
     return round(x, nd) if np.isfinite(x) else None
 
 
+def _plain(df: pd.DataFrame) -> pd.DataFrame:
+    """Plain str ticker columns and a `date` index. The panel's columns are a
+    CategoricalIndex; written as-is, pandas 3 / pyarrow 23 cannot read the
+    file back ("data type 'categorical' not understood", 2026-10-02)."""
+    df = df.copy()
+    df.columns = pd.Index([str(c) for c in df.columns], dtype=object)
+    df.index = pd.DatetimeIndex(pd.to_datetime(df.index), name="date")
+    return df.astype(float)
+
+
 def frozen_rows(out_dir: Path) -> pd.DataFrame | None:
     p = Path(out_dir) / SIGNALS_FILE
     if not p.exists():
         return None
-    df = pd.read_parquet(p)
-    df.index = pd.to_datetime(df.index)
-    return df
+    try:
+        df = pd.read_parquet(p)
+    except (TypeError, KeyError, ValueError):
+        # a file written with categorical column metadata: read the raw
+        # columns and drop pandas' metadata, then restore the date index
+        import pyarrow.parquet as pq
+        df = pq.read_table(p).to_pandas(ignore_metadata=True)
+        idx = next(c for c in ("date", "__index_level_0__") if c in df.columns)
+        df = df.set_index(idx)
+    return _plain(df)
 
 
 def save_rows(out_dir: Path, stored: pd.DataFrame | None, pct: pd.DataFrame,
@@ -53,7 +70,7 @@ def save_rows(out_dir: Path, stored: pd.DataFrame | None, pct: pd.DataFrame,
     """Freeze every decision row from `start` to t_last: stored rows before
     t_last are kept as they are, missing ones are added from `pct`, and
     today's row is always the fresh one."""
-    new = pct.loc[start:t_last]
+    new = _plain(pct.loc[start:t_last])
     if stored is not None and len(stored):
         old = stored[stored.index < t_last].reindex(columns=new.columns)
         new = pd.concat([old, new[~new.index.isin(old.index)]]).sort_index()

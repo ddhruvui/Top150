@@ -112,3 +112,47 @@ def test_pots_history_rebuilds_each_pot(tmp_path):
     assert h["total"]["start_value"] == 20_000
     assert abs(h["total"]["end_value"] - (a["end_value"] + 8_020.0)) < 0.01
     assert h["book"][-1]["value"] == round(h["total"]["end_value"], 2)
+
+
+def _cat_panel(panel, n=None):
+    """The production panel: ticker columns are a CategoricalIndex."""
+    from src.data.panel import Panel
+    cols = pd.CategoricalIndex(panel.tickers, name="ticker")
+    f = {k: getattr(panel, k).iloc[:n].set_axis(cols, axis=1)
+         for k in ("adj_open", "adj_high", "adj_low", "adj_close", "adj_volume",
+                   "raw_volume", "raw_close", "raw_open", "quarantined")}
+    return Panel(sessions=panel.sessions[:n], **f)
+
+
+def test_second_daily_run_reads_the_first_runs_file(rng, synth_panel, tmp_path):
+    # 2026-10-02: day 2's predict died reading day 1's bucket_signals.parquet
+    # (categorical column metadata). Two consecutive runs on the real layout.
+    cm = CostModel(per_trade_bps=15)
+    full = _cat_panel(synth_panel)
+    ens = _ens(rng, synth_panel).set_axis(full.tickers, axis=1)
+    mask = ens.notna()
+    cfg = _cfg(str(synth_panel.dates[300].date()))
+    day1 = _cat_panel(synth_panel, -1)
+    a = bucket_book_live(ens.iloc[:-1], mask.iloc[:-1], day1,
+                         day1.adj_close * 0 + 0.02, cm, cfg, None, tmp_path)
+    pd.read_parquet(tmp_path / "bucket_signals.parquet")      # plain readable file
+    b = bucket_book_live(ens, mask, full, full.adj_close * 0 + 0.02, cm, cfg, None,
+                         tmp_path)
+    rows = frozen_rows(tmp_path)
+    assert len(rows) == len(synth_panel.dates) - 300
+    assert rows.index[0] == synth_panel.dates[300]
+    # day 1's decisions are kept verbatim on day 2
+    pd.testing.assert_frame_equal(a["rows"], rows.iloc[:-1], check_freq=False)
+    T = bucket_ticket(b["res"], full, full.adj_close * 0 + 0.02, cfg, ens.iloc[-1], None)
+    assert len(T["pots"]) == len(synth_panel.tickers)
+
+
+def test_reads_a_legacy_categorical_file(rng, synth_panel, tmp_path):
+    cols = pd.CategoricalIndex(synth_panel.tickers, name="ticker")
+    df = pd.DataFrame(rng.random((5, len(cols))), columns=cols,
+                      index=synth_panel.dates[:5])
+    df.to_parquet(tmp_path / "bucket_signals.parquet")       # how day 1 wrote it
+    rows = frozen_rows(tmp_path)
+    assert list(rows.columns) == [str(c) for c in synth_panel.tickers]
+    np.testing.assert_allclose(rows.to_numpy(), df.to_numpy())
+    assert (rows.index == synth_panel.dates[:5]).all()
