@@ -307,7 +307,7 @@ def build_pots_history(src: Path) -> dict | None:
                       "trades": int(len(tr)), "by_year": by_year},
             "stocks": stocks, "book": book, "paths": paths,
             "note": "Backtest of the bucket book on the current models (stage 3), "
-                    "closed trades after costs. The 105-name list was chosen in 2026, "
+                    "closed trades after costs. The 151-name list was chosen in 2026, "
                     "so history back to 2007 flatters it (survivorship)."}
 
 

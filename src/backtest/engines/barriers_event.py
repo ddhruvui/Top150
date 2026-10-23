@@ -496,7 +496,7 @@ def live_book(selection: pd.DataFrame, panel, sigma32: pd.DataFrame,
 def sleeve_caps(cfg) -> tuple[float | None, float]:
     """Per-sleeve live-gross caps. `port.long_gross_cap` defaults to
     `port.gross_cap` (the long-only book, unchanged); `port.short_gross_cap`
-    defaults to 0 (no short sleeve). The adopted core105 split is 0.5 / 0.5 of
+    defaults to 0 (no short sleeve). The adopted top150 split is 0.5 / 0.5 of
     the 1.0 cash cap: long + short live gross never exceeds NAV, so no cash is
     ever borrowed — the margin account only carries the share loan."""
     gc = cfg.port.get("gross_cap")

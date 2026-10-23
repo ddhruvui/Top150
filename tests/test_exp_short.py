@@ -103,7 +103,7 @@ def test_fill_max_redeploys_freed_capital_under_the_cap(rng, synth_panel):
     from src.backtest.engines.barriers_event import run_event_backtest
     from src.primitives.ewma import ewma_sigma
     from src.primitives.returns import daily_return, log_return
-    cfg, _ = load_config('configs/system_core105.yaml')
+    cfg, _ = load_config('configs/system_top150.yaml')
     p = synth_panel
     sig = ewma_sigma(log_return(daily_return(p.adj_close)), span=32)
     ens = pd.DataFrame(rng.random(p.adj_close.shape), index=p.adj_close.index,
@@ -136,11 +136,11 @@ def test_fill_max_redeploys_freed_capital_under_the_cap(rng, synth_panel):
     assert ratio.max() <= 2.0 + 1e-9
 
 
-def test_core105_config_scores_to_the_last_session():
+def test_top150_config_scores_to_the_last_session():
     """The adopted config must backtest through the LATEST session on the tape,
     whatever the tail length past the last full test year (floor 1, 2026-09-17)."""
     from src.config import load_config
-    cfg, _ = load_config('configs/system_core105.yaml')
+    cfg, _ = load_config('configs/system_top150.yaml')
     floor = int(cfg.val.partial_last_fold_min_sessions)
     assert floor == 1
     span, emb = 1 + max(cfg.labels.horizons), int(cfg.val.embargo_days)

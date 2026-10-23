@@ -3,7 +3,7 @@
 The download system builds `m1/borrow_fees.parquet` from `data_borrow/history/`,
 which holds the 517 equities and NOT the ETFs. SPY and QQQ (and BRK-B) are fetched
 separately into `data_borrow/watchlist/history/<TICKER>.json`, same row schema.
-Since core105 trades SPY and QQQ, their real fees have to come from there instead
+Since top150 trades SPY and QQQ, their real fees have to come from there instead
 of the GC default.
 
 Read-only, and no fetching: these files are already on the source volume, pulled

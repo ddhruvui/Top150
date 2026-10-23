@@ -214,7 +214,7 @@ def evaluate_book(cfg, d: dict, scores: dict, folds, out, config_hash: str, seed
     # ---- short sleeve (2026-09-17, blueprint [MAY]) ----
     # Bottom-of-ranking names enter the fast-path book with NEGATIVE weights under
     # their own budget; the two budgets are the sleeve caps as fractions of the
-    # cash cap (core105: 0.5 / 0.5). Off (all-False, budget 0) unless
+    # cash cap (top150: 0.5 / 0.5). Off (all-False, budget 0) unless
     # port.short_selection is set — then the long-only path is bit-identical.
     borrow = d.get("borrow")
     cm_b = CostModel(per_trade_bps=15.0, borrow_gc_bps_yr=float(cfg.cost.borrow_gc_bps_yr),

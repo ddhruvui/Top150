@@ -7,24 +7,24 @@ import { loadDotEnv, mongoUri } from './env.js';
 
 loadDotEnv();
 
-export const DB_NAME = process.env.MONGO_DB || 'Core105';
+export const DB_NAME = process.env.MONGO_DB || 'Top150';
 /** Which report bundle this API serves — `reports/<bundle>` locally, the
  *  `<bundle>/<section>` documents in Mongo. */
-export const BUNDLE = process.env.BUNDLE || 'core105';
+export const BUNDLE = process.env.BUNDLE || 'top150';
 
 export const hasMongo = () => Boolean(mongoUri());
 
 const g = globalThis;
 export function client() {
-  if (!g.__core105MongoClient) {
+  if (!g.__top150MongoClient) {
     const uri = mongoUri();
     if (!uri) throw new Error('MONGO_URI is not set');
-    g.__core105MongoClient = new MongoClient(uri, {
+    g.__top150MongoClient = new MongoClient(uri, {
       maxPoolSize: 5,
       serverSelectionTimeoutMS: 8000,
     });
   }
-  return g.__core105MongoClient;
+  return g.__top150MongoClient;
 }
 
 export const db = () => client().db(DB_NAME);

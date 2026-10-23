@@ -1,7 +1,7 @@
 """Own market_prices build: which years the market job re-parses from eod_bulk.
 
 The source tape carries no m1x/ build, so the market job keeps its own
-market_prices parts under results/Core105 and must bring them up to date each
+market_prices parts under results/Top150 and must bring them up to date each
 run. Plain reuse froze the panel at the last build date (G-02 would then refuse
 every later book); re-parsing all ~30 GiB daily is not an option either.
 """

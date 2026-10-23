@@ -18,7 +18,7 @@ def test_whole_shares_floor_and_sign():
 
 
 def test_sub_share_slots_produce_no_order_and_quantities_are_integers():
-    cfg, _ = load_config('configs/system_core105.yaml')
+    cfg, _ = load_config('configs/system_top150.yaml')
     tw = pd.Series({"BIG": 0.03, "BIGS": -0.03, "OK": 0.03, "OKS": -0.03})
     cur = pd.Series(0, index=tw.index)
     px = pd.Series({"BIG": 5200.0, "BIGS": 5200.0, "OK": 123.45, "OKS": 123.45})

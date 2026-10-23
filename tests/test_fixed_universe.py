@@ -1,4 +1,4 @@
-"""Fixed-list universe (configs/system_core105.yaml): the configured tickers ARE
+"""Fixed-list universe (configs/system_top150.yaml): the configured tickers ARE
 the universe. Covers the config read, membership construction and the two ways a
 list can be wrong (a ticker absent from the tape, a ticker YAML turned into a bool).
 """
@@ -112,8 +112,8 @@ def test_workset_is_exactly_the_list(tmp_path, monkeypatch):
     assert man["universe_mode"] == "fixed_list" and man["workset_names"] == 2
 
 
-def test_shipped_core105_config_is_the_list_we_expect():
-    cfg = yaml.safe_load(open("configs/system_core105.yaml"))
+def test_shipped_top150_config_is_the_list_we_expect():
+    cfg = yaml.safe_load(open("configs/system_top150.yaml"))
     t = cfg["universe"]["tickers"]
     assert all(isinstance(x, str) for x in t), "a ticker was parsed as a bool"
     assert len(t) == len(set(t)) == cfg["universe"]["size"] == 151

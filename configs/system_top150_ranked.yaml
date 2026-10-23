@@ -1,28 +1,9 @@
 # ============================================================================
-# CORE-105 (branch core105): the adopted aggressive cash book run on a FIXED,
-# hand-picked universe of 151 names — universe.tickers below — instead of the
-# point-in-time top-N dollar-volume ranking. Identical to system.yaml except
-# the universe block.
-#
-# The list IS the universe: no dollar-volume ranking, no hysteresis, no
-# min_price screen, and no fund exclusion. SPY and QQQ were tradable members
-# until 2026-09-27 and are no longer: the ranking only ever put them low enough
-# to be SHORTED (SPY 299 shorts, 11% won). SPY stays the index
-# (data.index_symbol) for the regime overlay and the baselines. A name joins
-# from the first month-end it has prices, so a
-# recent listing is not back-dated. Because config_hash is the SHA-256 of this
-# file, editing the list forces a full refit — which is what a different
-# universe should do.
-#
-# Every ticker is QUOTED: unquoted, YAML 1.1 reads ON (ON Semiconductor) as the
-# boolean true, and would silently drop it from the universe.
-#
-# SURVIVORSHIP / LOOK-AHEAD: a list chosen in 2026 and backtested to 2000 is
-# not survivorship-free (G-05 assumed the ranking). Backtest numbers here are
-# optimistic by construction; treat cross-universe comparisons with care.
-#
-# Pods mount crimtr8kbf and write only under results/Core105 — see
-# scripts/launch_core105.sh.
+# TOP-150 EXPERIMENT (branch top200): the adopted aggressive cash book run on a
+# point-in-time top-150 dollar-volume universe (funds/ETFs excluded at ranking,
+# so the 150 slots hold tradeable common stocks). Identical to system.yaml
+# except universe.size. Pods mount k4cli3aj48 (calc volume); crimtr8kbf is the
+# read-only data source over S3 — see scripts/launch_top150.sh.
 # ============================================================================
 # ============================================================================
 # EOD Swing & Position Trading System — single source of truth (§3)
@@ -34,165 +15,13 @@
 
 # ---- §3.1 Data & universe ---------------------------------------------------
 universe:
-  mode: fixed_list                     # the tickers below ARE the universe
-  size: 151                             # = len(universe.tickers)
-  liquidity_window_days: 63            # unused in fixed_list mode
-  refresh: monthly                     # membership rows still land month-end
-  hysteresis: 0.10                     # unused in fixed_list mode
-  min_price: 5.0                       # USD [IMPL] — unused in fixed_list mode
-  min_mcap: 300.0e+6                   # USD [IMPL] — unused in fixed_list mode
-  tickers:                             # tape spelling (BRK-B, not BRK.B); quoted on purpose
-    - "AAL"
-    - "AAPL"
-    - "ABBV"
-    - "ABNB"
-    - "ABT"
-    - "ADI"
-    - "ADP"
-    - "AEP"
-    - "AMAT"
-    - "AMD"
-    - "AMGN"
-    - "AMT"
-    - "AMZN"
-    - "ANET"
-    - "APD"
-    - "APH"
-    - "ARM"
-    - "ASML"
-    - "AVGO"
-    - "AXP"
-    - "BA"
-    - "BAC"
-    - "BKNG"
-    - "BLK"
-    - "BMY"
-    - "BNY"
-    - "BRK-B"
-    - "C"
-    - "CAT"
-    - "CB"
-    - "CEG"
-    - "CME"
-    - "COF"
-    - "COP"
-    - "COST"
-    - "CRM"
-    - "CRWD"
-    - "CSCO"
-    - "CSX"
-    - "CTAS"
-    - "CVX"
-    - "D"
-    - "DASH"
-    - "DDOG"
-    - "DE"
-    - "DELL"
-    - "DHR"
-    - "DIS"
-    - "DLR"
-    - "DUK"
-    - "ECL"
-    - "EMR"
-    - "EQIX"
-    - "ETN"
-    - "FCX"
-    - "GD"
-    - "GE"
-    - "GEV"
-    - "GILD"
-    - "GLW"
-    - "GOOG"
-    - "GOOGL"
-    - "GS"
-    - "HD"
-    - "HLT"
-    - "HOOD"
-    - "IBM"
-    - "INTC"
-    - "ISRG"
-    - "JCI"
-    - "JNJ"
-    - "JPM"
-    - "KLAC"
-    - "KO"
-    - "LIN"
-    - "LLY"
-    - "LMT"
-    - "LOW"
-    - "LRCX"
-    - "MA"
-    - "MAR"
-    - "MCD"
-    - "MDLZ"
-    - "MDT"
-    - "META"
-    - "MMM"
-    - "MNST"
-    - "MO"
-    - "MPC"
-    - "MRK"
-    - "MRNA"
-    - "MRVL"
-    - "MS"
-    - "MSFT"
-    - "MU"
-    - "NEE"
-    - "NEM"
-    - "NFLX"
-    - "NOW"
-    - "NUE"
-    - "NVDA"
-    - "O"
-    - "ORCL"
-    - "PANW"
-    - "PEP"
-    - "PFE"
-    - "PG"
-    - "PGR"
-    - "PH"
-    - "PLD"
-    - "PLTR"
-    - "PM"
-    - "PSA"
-    - "PSX"
-    - "PWR"
-    - "QCOM"
-    - "QQQ"
-    - "RTX"
-    - "SBUX"
-    - "SCHW"
-    - "SHW"
-    - "SNOW"
-    - "SO"
-    - "SPG"
-    - "SPGI"
-    - "SPY"
-    - "SRE"
-    - "STX"
-    - "T"
-    - "TJX"
-    - "TMO"
-    - "TSLA"
-    - "TSM"
-    - "TT"
-    - "TXN"
-    - "UAL"
-    - "UBER"
-    - "UNH"
-    - "UNP"
-    - "UPS"
-    - "USB"
-    - "V"
-    - "VLO"
-    - "VRTX"
-    - "VST"
-    - "VZ"
-    - "WDC"
-    - "WELL"
-    - "WFC"
-    - "WM"
-    - "XOM"
+  mode: top1000_dollar_volume          # or sp500_historical
+  size: 150
+  liquidity_window_days: 63            # [IMPL] median daily dollar volume window
+  refresh: monthly                     # 10% entry/exit hysteresis buffer [IMPL]
+  hysteresis: 0.10
+  min_price: 5.0                       # USD [IMPL]
+  min_mcap: 300.0e+6                   # USD [IMPL]
 data:
   vendors: sharadar+eodhd
   index_symbol: SPY
@@ -302,51 +131,16 @@ hmm:
 
 # ---- §3.5 Portfolio, costs, execution, compliance ---------------------------
 port:
-  # ---- per-name buckets: THE BOOK since 2026-10-02 ----
-  # Every name owns a pot of bucket_unit; a pot is all-in its own stock (whole
-  # shares, one lot at a time, the M5.2 barriers below) or flat in cash, and
-  # keeps its own P&L. Entry = the ensemble score in the top 10% of that name's
-  # OWN trailing year (not the cross-section, which left 54 of 103 names
-  # untraded since 2020); a name not yet entered in a 40-session cycle lowers
-  # its bar to its own median for the last 10 sessions and enters on the last.
-  # Round L/M (derived/exp_short): SR 0.79, CAGR 11.9%, MDD -40%, ~87% of names
-  # enter per cycle (95% in play) vs the shared decile book's SR 0.98 / 23.7%
-  # / -50% on ~10 names. Parking idle cash in SPY measured worse (SR 0.67,
-  # MDD -55%) and is off. The keys below the bucket block drive the shared
-  # book, still used when book: shared.
-  book: buckets                        # buckets | shared
-  bucket_unit: 10000                   # USD per pot at the start
-  bucket_start: "2026-10-02"           # first decision close of the live pots
-  bucket_q: 0.90                       # own-history percentile to enter
-  bucket_window: 252                   # sessions of own history
-  bucket_min_periods: 126
-  bucket_cycle: 40                     # sessions; one entry per name per cycle
-  bucket_fallback_pct: 0.50            # relaxed bar over the cycle's last sessions
-  bucket_fallback_last: 10
-  bucket_park: none                    # none | SPY
-  selection: top_decile_long           # top decile of the ensemble rank (~15 of 151).
-                                       #   The top-5 rule (top_n_long, top_n 5,
-                                       #   adopted 2026-08-31) was removed 2026-09-17.
+  selection: top_n_long                # aggressive cash: absolute top-N book
+  top_n: 5                             # names held (winner of rounds A-F)
   hedge: none                          # cash book — unhedged (hedging kills it, measured)
   tranches: 15                         # Stage-1 fixed hold = 15 sessions
   weighting: inverse_vol
-  single_name_cap: 0.30                # concentrated book (~10 names; rarely binds)
+  single_name_cap: 0.30                # concentrated book (5 names)
   vol_target_ann: 0.20                 # protective: de-risks crises under the cash cap
   vol_target_scale_cap: 2.5            # [IMPL]
-  gross_cap: 1.0                       # live gross never above NAV: no cash is ever
-                                       #   borrowed
+  gross_cap: 1.0                       # CASH ONLY — never borrow
   gross_cap_exact: true                # recycle capital on actual exit dates
-  # ---- short sleeve: OFF since 2026-09-27 (built 2026-09-17, blueprint [MAY]) ----
-  # Its first pod run (2026-09-26, bottom-10 at 0.5/0.5) lost money: sleeve SR
-  # -0.86 against the long sleeve's 0.78, turning a passing book into a G-11
-  # KILL. On the same scores (derived/exp_sleeves/run2) long-only at the full
-  # cash cap read SR 0.96 against 0.59 for the split. The bottom of the ranking
-  # still rises in absolute terms; it is a relative signal, not a short signal.
-  short_selection: none                # none | bottom_decile | bottom_n
-  short_n: 10                          # inert while short_selection is none
-  long_gross_cap: 1.0                  # the whole cash cap to the long book
-  short_gross_cap: 0.0
-  short_max_borrow_bps_yr: 100         # inert while short_selection is none
   no_trade_band: 0.20                  # skip if |dw| < 20% of target or < 10 bps NAV
   no_trade_band_nav_bps: 10
   hedge_beta_window: 60                # [IMPL] rolling beta window (Q-019)
@@ -359,9 +153,7 @@ cost:
   per_trade_bps: 15                    # Stage-1 anchor; sensitivity {5, 15, 30}
   net_moo_at_open: true                # net same-name MOO exit+entry legs
   sensitivity_bps: [5, 15, 30]
-  borrow_gc_bps_yr: 30                 # 0.3%/yr GC fallback; the per-name iBorrowDesk
-                                       # table (m1/borrow_fees) overrides it where it has
-                                       # a fee for that name on/before the date
+  borrow_gc_bps_yr: 50                 # GC ~0.3–1%/yr; per-name HTB override table
   slippage_bps: 0                      # -> measured (M18/M15-03, >=60 fills)
 exec:
   order_type: MOO
@@ -383,13 +175,10 @@ val:
   step_years: 1
   fk_alternative: false                # 750d train / 250d test, step 250
   embargo_days: 21
-  partial_last_fold_min_sessions: 1    # [IMPL] score the panel TAIL: emit a final
-                                       #   partial test fold so scores and trades run
-                                       #   to the LAST session on the tape instead of
-                                       #   stopping at the last full test year. Was 21
-                                       #   (a floor that left up to 20 sessions after a
-                                       #   fold boundary unscored); 1 since 2026-09-17:
-                                       #   the backtest always ends at the latest date.
+  partial_last_fold_min_sessions: 21   # [IMPL] score the panel TAIL: emit a final
+                                       #   partial test fold (>= 21 sessions) so scores
+                                       #   and trades run to the last date instead of
+                                       #   stopping at the last full test year
   cpcv_n_groups: 6
   cpcv_k_test: 2                       # -> 15 splits, 5 paths
   holdout_years: 1                     # final untouched segment, opened once

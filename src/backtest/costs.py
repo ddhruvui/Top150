@@ -5,7 +5,7 @@ baselines, meta-labeling outcomes, and live estimation.
   borrow_day = short_notional x fee_bps_yr/1e4/252
                per-name fee from the iBorrowDesk table where it has one for that
                name on/before the date, else the GC default (cost.borrow_gc_bps_yr,
-               0.3%/yr on core105). Charged on SHORT legs only.
+               0.3%/yr on top150). Charged on SHORT legs only.
   short_div  = dividend liability on short positions
 """
 from __future__ import annotations

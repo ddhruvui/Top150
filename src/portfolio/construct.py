@@ -4,7 +4,7 @@ Daily sequence after close t (targets fill at open t+1 — the engine owns the l
  1. selection: decile-10 names passing meta gate / universe / earnings-skip
  1b. short sleeve (2026-09-17, [MAY]): `short_sel` names enter a second rotating
     tranche book with NEGATIVE weights; the two sleeves are scaled by
-    `long_budget` / `short_budget` (core105: 0.5 / 0.5 of the book). No short
+    `long_budget` / `short_budget` (top150: 0.5 / 0.5 of the book). No short
     sleeve and long_budget 1.0 -> bit-identical to the long-only construction.
  2. tranche refresh: 1/`tranches` of the book turns over daily (Stage-1 fixed
     15-session rotation; Stage-3 barrier exits supersede)

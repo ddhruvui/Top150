@@ -2,7 +2,7 @@
 """Which market_prices year-parts need (re)building — and step 1 for one year.
 
 Used by the market job in scripts/pod_bootstrap_predict.sh when the source tape
-has no m1x/ build to reuse, so this project keeps its own under results/Core105.
+has no m1x/ build to reuse, so this project keeps its own under results/Top150.
 
     python tools/market_years_todo.py < listing
         stdin: `aws s3 ls data/eod_bulk/US/` output. Prints the years to

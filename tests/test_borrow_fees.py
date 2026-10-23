@@ -1,5 +1,5 @@
 """Borrow fees: per-name iBorrowDesk rate where the table has one, else the GC
-default (cost.borrow_gc_bps_yr — 0.3%/yr on core105). Charged on SHORT legs only,
+default (cost.borrow_gc_bps_yr — 0.3%/yr on top150). Charged on SHORT legs only,
 so it is inert while the book is long_only: these tests pin the mechanics for the
 day shorting is switched back on.
 """
@@ -11,7 +11,7 @@ import yaml
 from src.backtest.costs import CostModel
 from src.data.borrow import borrow_table, watchlist_fees
 
-GC = 30.0                                   # 0.3%/yr, configs/system_core105.yaml
+GC = 30.0                                   # 0.3%/yr, configs/system_top150.yaml
 TBL = pd.DataFrame({
     "date": pd.to_datetime(["2024-01-02", "2024-03-01", "2024-03-05", "2024-03-06"]),
     "ticker": ["META", "META", "META", "NULLY"],
@@ -57,8 +57,8 @@ def test_borrow_is_charged_on_shorts_only():
     assert abs(short_gc - (2 * cm.leg_frac() + GC / 1e4 / 252 * 10)) < 1e-12
 
 
-def test_core105_config_sets_the_03_percent_default():
-    cfg = yaml.safe_load(open("configs/system_core105.yaml"))
+def test_top150_config_sets_the_03_percent_default():
+    cfg = yaml.safe_load(open("configs/system_top150.yaml"))
     assert float(cfg["cost"]["borrow_gc_bps_yr"]) == GC
 
 

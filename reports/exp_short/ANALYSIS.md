@@ -17,7 +17,7 @@ entries were 2026-01-21 and their 40-session verticals landed in late March —
 hence "no trades after March 26".
 
 Fix (`src/validation/splits.py`, `val.partial_last_fold_min_sessions: 21` in
-`configs/system_top150.yaml`): one extra final fold whose test block runs to the
+`configs/system_top150_ranked.yaml`): one extra final fold whose test block runs to the
 last session, purged and embargoed like every other fold. Default off = the old
 folds bit-for-bit (T-02/T-03 still pass on the partial fold).
 
@@ -205,7 +205,7 @@ exits trail 43% / vertical 38% / profit-take 18%.
 
 - Done: round J on the fresh scores (§2d), stage1 → stage2 → stage3 with the
   tail fold (§2c).
-- **Adopted 2026-09-08: `barrier.trail_m: 1.0`** in `configs/system_top150.yaml`.
+- **Adopted 2026-09-08: `barrier.trail_m: 1.0`** in `configs/system_top150_ranked.yaml`.
   Wired through `engine_opts_from_cfg` (stage3 book, CPCV paths), `meta_outcomes`
   (meta labels see the same exits), the M18 order file (`trailing_stops()`:
   nightly GTC-stop re-peg to max(fixed, high_since_fill x (1 - trail)); no native

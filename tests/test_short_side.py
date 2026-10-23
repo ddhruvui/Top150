@@ -19,7 +19,7 @@ from src.primitives.returns import daily_return, log_return
 
 
 def _cfg(h=10, tranches=10, **port):
-    cfg, _ = load_config('configs/system_core105.yaml')
+    cfg, _ = load_config('configs/system_top150.yaml')
     d = cfg.to_dict()
     d["barrier"]["h_days"] = h
     d["port"]["tranches"] = tranches
@@ -29,7 +29,7 @@ def _cfg(h=10, tranches=10, **port):
 
 def _off():
     """The long-only book: no short keys at all (what system.yaml has)."""
-    cfg, _ = load_config('configs/system_core105.yaml')
+    cfg, _ = load_config('configs/system_top150.yaml')
     d = cfg.to_dict()
     d["barrier"]["h_days"] = 10
     d["port"]["tranches"] = 10
@@ -67,10 +67,10 @@ def _ens(rng, p):
 
 
 # ----------------------------------------------------------------- config
-def test_core105_config_has_the_short_sleeve_off_and_the_full_cap_long():
+def test_top150_config_has_the_short_sleeve_off_and_the_full_cap_long():
     # switched off 2026-09-27: the first pod run's short sleeve lost money
     # (SR -0.86) and turned a passing long book into a G-11 KILL
-    cfg, _ = load_config('configs/system_core105.yaml')
+    cfg, _ = load_config('configs/system_top150.yaml')
     assert cfg.port.short_selection == "none"
     lc, sc = sleeve_caps(cfg)
     assert (lc, sc) == (1.0, 0.0)

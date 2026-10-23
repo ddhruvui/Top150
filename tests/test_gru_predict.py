@@ -18,7 +18,7 @@ from src.pipeline.predict import _gru_member
 
 @pytest.fixture(scope="module")
 def cfg_hash():
-    return load_config("configs/system_core105.yaml")
+    return load_config("configs/system_top150.yaml")
 
 
 def _small(cfg):
