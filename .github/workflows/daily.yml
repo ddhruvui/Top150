@@ -1,12 +1,12 @@
 name: Top150 daily
 
-# 04:30 America/New_York, Tue–Sat (the mornings after each US trading session).
+# 04:30 America/New_York, every day.
 # Cron is UTC-only, so both offsets are scheduled and the gate below keeps the one
 # that is 04:30 local today: 08:30 UTC under EDT, 09:30 UTC under EST.
 on:
   schedule:
-    - cron: "30 8 * * 2-6"
-    - cron: "30 9 * * 2-6"
+    - cron: "30 8 * * *"
+    - cron: "30 9 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -23,7 +23,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" != "schedule" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           # Offset from UTC in New York right now: -0400 under EDT, -0500 under EST.
-          if [ "$(TZ=America/New_York date +%z)" = "-0400" ]; then want="30 8 * * 2-6"; else want="30 9 * * 2-6"; fi
+          if [ "$(TZ=America/New_York date +%z)" = "-0400" ]; then want="30 8 * * *"; else want="30 9 * * *"; fi
           if [ "${{ github.event.schedule }}" = "$want" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; fi
 
       - uses: actions/checkout@v4
