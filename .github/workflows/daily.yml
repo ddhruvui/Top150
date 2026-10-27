@@ -45,6 +45,17 @@ jobs:
           echo "runpod/.env keys: $(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' runpod/.env | tr -d '=' | xargs)"
           echo ".env keys: $(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' .env | tr -d '=' | xargs)"
 
+      # RunPod's S3 rejects downloads from the runner's newer aws-cli (2.36.x:
+      # SignatureDoesNotMatch on GetObject) but takes them from 2.31.18, the version
+      # that works from the laptop. Pin it until a newer one is proven.
+      - name: Pin aws-cli 2.31.18
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          curl -sSfL https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.31.18.zip -o "$RUNNER_TEMP/awscli.zip"
+          unzip -q "$RUNNER_TEMP/awscli.zip" -d "$RUNNER_TEMP"
+          sudo "$RUNNER_TEMP/aws/install" --update
+          aws --version
+
       - name: Daily loop (verify_source -> market -> predict)
         if: steps.gate.outputs.run == 'true'
         run: scripts/daily_top150.sh
