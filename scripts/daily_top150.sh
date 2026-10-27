@@ -29,9 +29,15 @@ log_key() {  # newest _pod_logs name for this pod, or empty
 kill_pod() { KILL_IDS="$1" "$ROOT/scripts/killpod.sh" || true; }
 
 run_job() {
-  local job="$1" out pod key t0 f exit_line
+  local job="$1" out pod key t0 f exit_line i
   echo "== launch $job"
-  out=$("$ROOT/scripts/launch_top150.sh" "$job")
+  # EU-RO-1 capacity is often exhausted even after the GPU fallback; placement usually
+  # succeeds within a few tries. A failed create leaves no pod, so retrying is safe.
+  for i in 1 2 3 4 5 6; do
+    out=$("$ROOT/scripts/launch_top150.sh" "$job") && break
+    (( i < 6 )) || { echo "no $job pod could be placed after 6 attempts" >&2; exit 1; }
+    echo "launch attempt $i failed — retrying in 60s"; sleep 60
+  done
   echo "$out"
   pod=$(printf '%s\n' "$out" | sed -n "s/^launched predict-$job pod: \([A-Za-z0-9]*\).*/\1/p")
   [ -n "$pod" ] || { echo "could not read pod id for $job" >&2; exit 1; }

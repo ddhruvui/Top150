@@ -1,54 +1,88 @@
 name: Top150 daily
 
-# 04:30 America/New_York, every day.
-# Cron is UTC-only, so both offsets are scheduled and the gate below keeps the one
-# that is 04:30 local today: 08:30 UTC under EDT, 09:30 UTC under EST.
+# 04:30 America/New_York, every day: scripts/daily_top150.sh (verify_source -> market ->
+# predict). The runner only orchestrates — the work happens on RunPod pods, exactly as when
+# the script is run from the Mac, and the predict pod publishes the book itself.
+#
+# SETUP: two repository secrets (Settings -> Secrets and variables -> Actions):
+#   RUNPOD_ENV  = the full contents of runpod/.env   (RunPod + S3 keys; the file is SOURCED)
+#   TOP150_ENV  = the full contents of the repo-root .env (MONGO_URI etc.; parsed line by line)
+# Keep them apart: Atlas's literal <db_password> in MONGO_URI breaks a sourced file.
+#
+# Cron is UTC and has no DST, so both offsets are scheduled and the gate lets through only the
+# one that is 04:30 in New York today (EDT = UTC-4 -> 08:30 UTC, EST = UTC-5 -> 09:30 UTC).
+# Checking the offset rather than the clock keeps a late-started run (GitHub queues scheduled
+# jobs, sometimes 10-30 min) from being skipped. The bars come from DataAcquistion's 00:00 ET
+# daily-fetch; verify_source fails the run if that has not finished.
 on:
   schedule:
-    - cron: "30 8 * * *"
-    - cron: "30 9 * * *"
-  workflow_dispatch:
+    - cron: "30 8 * * *"    # 04:30 EDT (summer)
+    - cron: "30 9 * * *"    # 04:30 EST (winter)
+  workflow_dispatch:         # manual run from the Actions tab
 
 concurrency:
   group: top150-daily
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   daily:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 355
     steps:
-      - name: Keep only the 04:30 Eastern trigger
+      - name: gate (04:30 New York only)
         id: gate
         run: |
-          if [ "${{ github.event_name }}" != "schedule" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          # Offset from UTC in New York right now: -0400 under EDT, -0500 under EST.
-          if [ "$(TZ=America/New_York date +%z)" = "-0400" ]; then want="30 8 * * *"; else want="30 9 * * *"; fi
-          if [ "${{ github.event.schedule }}" = "$want" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; fi
+          case "${{ github.event.schedule }}" in
+            "30 8 * * *") want="-0400" ;;
+            "30 9 * * *") want="-0500" ;;
+            *)            echo "run=true" >> "$GITHUB_OUTPUT"; exit 0 ;;   # workflow_dispatch
+          esac
+          now="$(TZ=America/New_York date +%z)"
+          if [ "$now" = "$want" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "New York is UTC$now today; this is the UTC$want schedule — skipping."
+          fi
 
       - uses: actions/checkout@v4
         if: steps.gate.outputs.run == 'true'
 
-      - name: Write runpod/.env and .env
+      - name: write runpod/.env and .env
         if: steps.gate.outputs.run == 'true'
         env:
           RUNPOD_ENV: ${{ secrets.RUNPOD_ENV }}
           TOP150_ENV: ${{ secrets.TOP150_ENV }}
         run: |
-          [ -n "$RUNPOD_ENV" ] || { echo "secret RUNPOD_ENV (the contents of runpod/.env) is not set" >&2; exit 1; }
-          [ -n "$TOP150_ENV" ] || { echo "secret TOP150_ENV (the contents of the repo-root .env: MONGO_URI etc.) is not set" >&2; exit 1; }
+          [ -n "$RUNPOD_ENV" ] || { echo "::error::secret RUNPOD_ENV (the contents of runpod/.env) is not set"; exit 1; }
+          [ -n "$TOP150_ENV" ] || { echo "::error::secret TOP150_ENV (the contents of the repo-root .env) is not set"; exit 1; }
           umask 077
           # A secret pasted from a CRLF source would leave \r on every value.
           printf '%s\n' "$RUNPOD_ENV" | tr -d '\r' > runpod/.env
           printf '%s\n' "$TOP150_ENV" | tr -d '\r' > .env
+          # The repo is public, so its logs are too, and GitHub masks a secret only as a whole
+          # string. Register every individual value so no key can leak line by line.
+          for f in runpod/.env .env; do
+            while IFS= read -r line || [ -n "$line" ]; do
+              case "$line" in
+                [A-Za-z_]*=?*)
+                  v="${line#*=}"; v="${v%\"}"; v="${v#\"}"; v="${v%\'}"; v="${v#\'}"
+                  # >= 8 chars: every key/id/URI qualifies; short values like MONGO_DB=Top150
+                  # would just turn every "Top150" in the log into ***.
+                  [ "${#v}" -ge 8 ] && echo "::add-mask::$v" ;;
+              esac
+            done < "$f"
+          done
           # Key names only, never values — enough to spot a mangled paste.
           echo "runpod/.env keys: $(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' runpod/.env | tr -d '=' | xargs)"
           echo ".env keys: $(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' .env | tr -d '=' | xargs)"
 
-      # RunPod's S3 rejects downloads from the runner's newer aws-cli (2.36.x:
-      # SignatureDoesNotMatch on GetObject) but takes them from 2.31.18, the version
-      # that works from the laptop. Pin it until a newer one is proven.
-      - name: Pin aws-cli 2.31.18
+      # RunPod's S3 gave SignatureDoesNotMatch on GetObject from the runner's stock aws-cli
+      # (2.36.40) and took the same reads from 2.31.18, the version that works from the laptop.
+      # Pin it until a newer one is proven.
+      - name: pin aws-cli 2.31.18
         if: steps.gate.outputs.run == 'true'
         run: |
           curl -sSfL https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.31.18.zip -o "$RUNNER_TEMP/awscli.zip"
@@ -56,6 +90,15 @@ jobs:
           sudo "$RUNNER_TEMP/aws/install" --update
           aws --version
 
-      - name: Daily loop (verify_source -> market -> predict)
+      - name: daily loop (verify_source -> market -> predict)
         if: steps.gate.outputs.run == 'true'
         run: scripts/daily_top150.sh
+
+      - name: keep launch log
+        if: always() && steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-logs-${{ github.run_id }}
+          path: runpod/launched-pods.log
+          if-no-files-found: ignore
+          retention-days: 14
