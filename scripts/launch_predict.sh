@@ -109,7 +109,7 @@ done
 unset _k _p
 
 echo "Bundling prediction stack ..."
-TMP_TGZ="$(mktemp -t predict-bundle).tgz"
+TMP_TGZ="$(mktemp "${TMPDIR:-/tmp}/predict-bundle.XXXXXX").tgz"   # explicit X's: GNU mktemp needs them
 ( cd "$REPO_ROOT" && tar czf "$TMP_TGZ" \
     --exclude='__pycache__' --exclude='.pytest_cache' \
     src configs tests tools requirements.txt )
