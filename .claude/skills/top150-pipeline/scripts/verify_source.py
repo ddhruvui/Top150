@@ -36,10 +36,12 @@ floor = ts(FLOOR) if FLOOR else None
 stale, failed = [], []
 for tree in TREES:
     dst = os.path.join(TMP, f"_run_{tree}.json")
-    r = subprocess.run([os.path.join(HERE, "srcvol"), "cp", f"{tree}/_run.json", dst, "--quiet"],
+    r = subprocess.run([os.path.join(HERE, "srcvol"), "cp", f"{tree}/_run.json", dst, "--only-show-errors"],
                        capture_output=True, text=True)
     if r.returncode != 0:
-        print(f"{tree:16s} MANIFEST MISSING"); stale.append(tree); continue
+        err = (r.stderr or r.stdout).strip().splitlines()
+        print(f"{tree:16s} MANIFEST MISSING  {err[-1][:200] if err else ''}")
+        stale.append(tree); continue
     d = json.load(open(dst))
     ended = d.get("ended_at", "")
     e = ts(ended)

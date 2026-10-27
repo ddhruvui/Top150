@@ -29,14 +29,21 @@ jobs:
       - uses: actions/checkout@v4
         if: steps.gate.outputs.run == 'true'
 
-      - name: Write runpod/.env
+      - name: Write runpod/.env and .env
         if: steps.gate.outputs.run == 'true'
         env:
           RUNPOD_ENV: ${{ secrets.RUNPOD_ENV }}
+          TOP150_ENV: ${{ secrets.TOP150_ENV }}
         run: |
           [ -n "$RUNPOD_ENV" ] || { echo "secret RUNPOD_ENV (the contents of runpod/.env) is not set" >&2; exit 1; }
+          [ -n "$TOP150_ENV" ] || { echo "secret TOP150_ENV (the contents of the repo-root .env: MONGO_URI etc.) is not set" >&2; exit 1; }
           umask 077
-          printf '%s\n' "$RUNPOD_ENV" > runpod/.env
+          # A secret pasted from a CRLF source would leave \r on every value.
+          printf '%s\n' "$RUNPOD_ENV" | tr -d '\r' > runpod/.env
+          printf '%s\n' "$TOP150_ENV" | tr -d '\r' > .env
+          # Key names only, never values — enough to spot a mangled paste.
+          echo "runpod/.env keys: $(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' runpod/.env | tr -d '=' | xargs)"
+          echo ".env keys: $(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' .env | tr -d '=' | xargs)"
 
       - name: Daily loop (verify_source -> market -> predict)
         if: steps.gate.outputs.run == 'true'
