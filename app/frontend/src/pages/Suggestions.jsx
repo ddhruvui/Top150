@@ -5,7 +5,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api.js';
 import { BarChart, fmtNum, fmtPct, fmtInt } from '../components/Chart.jsx';
-import { Card, StatTile, Loading, ErrorBox, Badge, useSort, Th } from '../components/Bits.jsx';
+import {
+  Card, StatTile, Stats, Loading, ErrorBox, Badge, useSort, Th, PageHeader, Callout,
+  SearchInput, EmptyState,
+} from '../components/Bits.jsx';
+import { useToast } from '../components/Toast.jsx';
+import Icon from '../components/Icon.jsx';
 
 const EMPTY = [];
 
@@ -14,22 +19,23 @@ const EMPTY = [];
    ±90% barrier — unreachable, i.e. the trade can only ever end at the vertical
    exit. That is a faithful consequence of the spec, not a bug, but it must not
    be presented as a working stop. */
-const WIDE_BARRIER_PCT = 40;
+export const WIDE_BARRIER_PCT = 40;
 
 export default function Suggestions() {
   const [d, setD] = useState({ loading: true });
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(null);
-  const [msg, setMsg] = useState(null);
   const [paperTickers, setPaperTickers] = useState(new Set());
+  const toast = useToast();
 
   const refreshPaper = () => api.paper()
     .then((p) => setPaperTickers(new Set(
       p.positions.filter((x) => x.status !== 'closed').map((x) => x.ticker))))
     .catch(() => {});
 
+  const load = () => api.suggestions().then((s) => setD({ s })).catch((error) => setD({ error }));
   useEffect(() => {
-    api.suggestions().then((s) => setD({ s })).catch((error) => setD({ error }));
+    load();
     refreshPaper();
   }, []);
 
@@ -48,7 +54,10 @@ export default function Suggestions() {
   const exitSort = useSort(exits);
 
   if (d.loading) return <Loading what="suggestions" />;
-  if (d.error) return <ErrorBox error={d.error} hint={d.error.body?.hint || "Run the predict job on a pod, then mirror + publish the bundle."} />;
+  if (d.error) {
+    return <ErrorBox error={d.error} onRetry={() => { setD({ loading: true }); load(); }}
+                     hint={d.error.body?.hint || 'Run the predict job on a pod, then mirror + publish the bundle.'} />;
+  }
 
   const s = d.s;
   const book = s.portfolio || {};
@@ -63,7 +72,6 @@ export default function Suggestions() {
 
   const addToPaper = async (r) => {
     setBusy(r.ticker);
-    setMsg(null);
     try {
       await api.paperOpen({
         ticker: r.ticker, side: r.side ?? 1, target_weight: r.target_weight,
@@ -72,10 +80,10 @@ export default function Suggestions() {
         trail_pct: r.trail_pct ?? null,
         max_hold_sessions: r.max_hold_sessions, ensemble_rank: r.ensemble_rank,
       });
-      setMsg({ ok: true, text: `${r.ticker} is now tracked in your practice book — it "${r.side < 0 ? 'sells short' : 'fills'}" at the next open.` });
+      toast({ ok: true, text: `${r.ticker} is now tracked in your practice book — it "${r.side < 0 ? 'sells short' : 'fills'}" at the next open.` });
       refreshPaper();
     } catch (err) {
-      setMsg({ ok: false, text: `${r.ticker}: ${err.message}` });
+      toast({ ok: false, text: `${r.ticker}: ${err.message}`, ttl: 8000 });
     } finally {
       setBusy(null);
     }
@@ -83,16 +91,13 @@ export default function Suggestions() {
 
   return (
     <>
-      <Card>
-        <h1>The model's full pick list</h1>
-        <p className="muted small" style={{ margin: '4px 0 0' }}>
-          This is the raw output — every stock the model wants and how it splits the
-          money. For exact share counts and what to actually do at the open, use the
-          Today page; this page is for digging into the picks themselves.
-        </p>
-      </Card>
+      <PageHeader eyebrow="Research · the raw picks" icon="list"
+                  title="The model's full pick list"
+                  lede={<>This is the raw output — every stock the model wants and how it splits the
+                    money. For exact share counts and what to actually do at the open, use the{' '}
+                    <a href="#today">Today page</a>; this page is for digging into the picks themselves.</>} />
 
-      <div className="tiles" style={{ marginBottom: 16 }}>
+      <Stats label="The book">
         <StatTile label="Picked after" value={s.as_of_close} sub="that day's market close" />
         <StatTile label="Stocks picked" value={fmtInt(book.n_names)}
                   sub="long — the model's top-decile names" />
@@ -102,65 +107,52 @@ export default function Suggestions() {
                   sub="bottom-of-ranking names sold short" />
         <StatTile label="Money short" value={fmtPct(book.gross_short ?? 0, 0)}
                   sub="of the pot, in borrowed shares" />
-      </div>
+      </Stats>
 
-      <div className="verdict warn">
-        <div className="mark" aria-hidden="true">⚠</div>
-        <div>
-          <h2>Practice money only</h2>
-          <p>{s.disclaimer} Timing rule: {s.execute_at}</p>
-        </div>
+      <div className="callouts">
+        <Callout tone="warning" quiet icon="shield" title="Practice money only">
+          {s.disclaimer} Timing rule: {s.execute_at}
+        </Callout>
+        {wideCount > 0 && (
+          <Callout tone="warning" title={`${wideCount} of ${(s.buys_or_increases || []).length} picks have sell triggers wider than ±${WIDE_BARRIER_PCT}% (widest ±${fmtNum(widest, 0)}%)`}>
+            Trigger width scales with how jumpy a stock is, and for the jumpiest names it
+            lands further than the price could plausibly move before the time limit — so
+            their stop and profit-take will never fire, and those positions simply get
+            sold at the time limit. Don't count on those triggers as protection.
+          </Callout>
+        )}
       </div>
 
       <Card title="Biggest slices of the pot"
             subtitle="How the money is split. Steadier stocks get bigger slices; jumpier ones get smaller slices, and no single stock may exceed the cap.">
         <BarChart data={topWeights} horizontal height={Math.max(200, topWeights.length * 26 + 40)}
-                  valueFormat={(v) => fmtPct(v, 2)} />
+                  label="Target weight by stock" valueFormat={(v) => fmtPct(v, 2)} />
       </Card>
 
-      {wideCount > 0 && (
-        <div className="note" style={{ marginBottom: 16, borderLeft: '3px solid var(--warning)' }}>
-          <span aria-hidden="true">⚠ </span>
-          <strong>{wideCount} of {(s.buys_or_increases || []).length} picks have sell
-          triggers wider than ±{WIDE_BARRIER_PCT}%</strong> (widest ±{fmtNum(widest, 0)}%).
-          Trigger width scales with how jumpy a stock is, and for the jumpiest names it
-          lands further than the price could plausibly move before the time limit — so
-          their stop and profit-take will never fire, and those positions simply get
-          sold at the time limit. Don't count on those triggers as protection.
-        </div>
-      )}
-
-      <Card title="Every pick"
+      <Card flush title="Every pick" count={rows.length}
             subtitle={`Stop and profit-take are % moves from the price you actually pay at the open; the time limit is ${s.exit_rules?.h_sessions} trading days. Conviction is the model's score — higher means it likes the stock more.`}
-            right={<input placeholder="Filter ticker…" value={q} onChange={(e) => setQ(e.target.value)} />}>
-        {msg && (
-          <div className="note" style={{
-            borderLeft: `3px solid ${msg.ok ? 'var(--profit)' : 'var(--loss)'}`,
-          }}>
-            <span aria-hidden="true">{msg.ok ? '✓ ' : '✕ '}</span>{msg.text}
-          </div>
-        )}
-        <div className="table-wrap" style={{ maxHeight: 620, overflowY: 'auto' }}>
-          <table>
+            right={<SearchInput value={q} onChange={setQ} />}>
+        <div className="table-wrap scroll">
+          <table className="sticky-first">
             <thead>
               <tr>
                 <Th k="ticker" sort={pickSort.sort} onSort={pickSort.onSort}>Stock</Th>
-                <th>Action</th>
+                <Th>Action</Th>
                 <Th k="target_weight" num sort={pickSort.sort} onSort={pickSort.onSort}>Slice of pot</Th>
                 <Th k="ensemble_rank" num sort={pickSort.sort} onSort={pickSort.onSort}>Conviction</Th>
                 <Th k="last_close" num sort={pickSort.sort} onSort={pickSort.onSort}>Latest close</Th>
                 <Th k="stop_pct" num sort={pickSort.sort} onSort={pickSort.onSort}>Stop</Th>
                 <Th k="profit_take_pct" num sort={pickSort.sort} onSort={pickSort.onSort}>Profit-take</Th>
                 <Th k="max_hold_sessions" num sort={pickSort.sort} onSort={pickSort.onSort}>Time limit</Th>
-                <th></th>
+                <Th><span className="sr-only">Actions</span></Th>
               </tr>
             </thead>
             <tbody>
               {pickSort.rows.map((r) => {
                 const inPaper = paperTickers.has(r.ticker);
                 return (
-                  <tr key={r.ticker}>
-                    <td><strong>{r.ticker}</strong></td>
+                  <tr key={`${r.side}-${r.ticker}`}>
+                    <td><span className="ticker">{r.ticker}</span></td>
                     <td>{r.side < 0 ? <Badge kind="fail" glyph="▼">Sell short</Badge>
                       : <Badge kind="pass">Buy / add</Badge>}</td>
                     <td className="n">{fmtPct(r.target_weight, 2)}</td>
@@ -173,39 +165,53 @@ export default function Suggestions() {
                         ? <span title={`The ±${fmtNum(Math.abs(r.stop_pct), 0)}% triggers are `
                             + 'further than this stock could plausibly move in time, so the '
                             + 'only realistic exit is selling when the time limit is reached.'}>
-                            <Badge kind="neutral">⏱ {r.max_hold_sessions} days — only exit</Badge>
+                            <Badge kind="warn">⏱ {r.max_hold_sessions} days — only exit</Badge>
                           </span>
                         : `${r.max_hold_sessions} days`}
                     </td>
-                    <td>
-                      <button className="btn sm" disabled={inPaper || busy === r.ticker}
-                              onClick={() => addToPaper(r)}>
-                        {inPaper ? 'Already tracked' : busy === r.ticker ? 'Adding…' : 'Track this trade'}
-                      </button>
+                    <td className="n">
+                      {inPaper ? (
+                        <span className="btn sm done" aria-disabled="true">
+                          <Icon name="check" size={14} />Already tracked
+                        </span>
+                      ) : (
+                        <button type="button" className="btn sm" disabled={busy === r.ticker}
+                                onClick={() => addToPaper(r)}
+                                aria-label={`Track ${r.ticker} in the practice book`}>
+                          {busy === r.ticker ? 'Adding…' : <><Icon name="plus" size={14} />Track this trade</>}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
               })}
-              {!rows.length && <tr><td colSpan="9" className="empty">No matches.</td></tr>}
+              {!rows.length && (
+                <tr><td colSpan="9" className="empty-cell">
+                  <EmptyState icon="search" title="No matches">
+                    No pick matches “{q}”.
+                  </EmptyState>
+                </td></tr>
+              )}
             </tbody>
           </table>
         </div>
       </Card>
 
       {exits.length > 0 && (
-        <Card title="Get out of these" subtitle="Positions the model held before and no longer wants — sell the longs, buy back the shorts.">
+        <Card flush title="Get out of these" count={exits.length}
+              subtitle="Positions the model held before and no longer wants — sell the longs, buy back the shorts.">
           <div className="table-wrap">
             <table>
               <thead><tr>
                 <Th k="ticker" sort={exitSort.sort} onSort={exitSort.onSort}>Stock</Th>
-                <th>Action</th>
+                <Th>Action</Th>
                 <Th k="last_close" num sort={exitSort.sort} onSort={exitSort.onSort}>Latest close</Th>
                 <Th k="current_weight" num sort={exitSort.sort} onSort={exitSort.onSort}>Slice held</Th>
               </tr></thead>
               <tbody>
                 {exitSort.rows.map((r) => (
-                  <tr key={r.ticker}>
-                    <td><strong>{r.ticker}</strong></td>
+                  <tr key={`${r.side}-${r.ticker}`}>
+                    <td><span className="ticker">{r.ticker}</span></td>
                     <td>{r.side < 0 ? <Badge kind="pass" glyph="▲">Buy back</Badge>
                       : <Badge kind="fail">Sell</Badge>}</td>
                     <td className="n">{r.last_close != null ? fmtNum(r.last_close, 2) : '—'}</td>

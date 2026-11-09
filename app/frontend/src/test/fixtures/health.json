@@ -1,0 +1,39 @@
+{
+ "ok": true,
+ "source": "file",
+ "bundle": "top150",
+ "reports_dir": "reports/top150",
+ "paper_store": "file",
+ "bundle_present": true,
+ "generated_utc": "2026-10-02T14:10:08+00:00",
+ "published_utc": null,
+ "sections": {
+  "summary": {
+   "members": "stage2_report.json",
+   "book": "stage3_report.json",
+   "cpcv": "stage3_final_report.json"
+  },
+  "equity": {
+   "points": 1613
+  },
+  "suggestions": {
+   "as_of": "2026-10-01",
+   "n": 9,
+   "n_short": 0
+  },
+  "config": {
+   "config_hash": "64e992f62175488753ffbc08e10016ea8eb2a6980fde4b8f8ddd0555bd995266"
+  },
+  "calendar": {
+   "sessions": 84
+  },
+  "pots_history": {
+   "stocks": 102,
+   "trades": 10475
+  },
+  "trades": {
+   "n_total": 10475,
+   "sampled": 4000
+  }
+ }
+}

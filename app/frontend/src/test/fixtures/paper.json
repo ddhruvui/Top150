@@ -1,0 +1,101 @@
+{
+ "positions": [
+  {
+   "id": "p00001",
+   "ticker": "ON",
+   "side": 1,
+   "target_weight": 0.15656,
+   "signal_date": "2026-09-01",
+   "ref_close": 72.65,
+   "stop_pct": -32.65,
+   "profit_take_pct": 32.65,
+   "max_hold_sessions": 40,
+   "ensemble_rank": 0.3795,
+   "status": "open",
+   "created_utc": "2026-09-02T18:52:29.300Z",
+   "fill_price": 72.32,
+   "official_open": null,
+   "fill_date": "2026-09-02",
+   "slip_bps": null,
+   "stop_price": 48.707519999999995,
+   "profit_take_price": 95.93248
+  }
+ ],
+ "nav": 100000,
+ "account_equity": null,
+ "created_utc": "2026-08-23T16:51:26.497Z",
+ "updated_utc": "2026-09-02T18:53:01.769Z",
+ "seq": 1,
+ "stats": {
+  "counts": {
+   "ordered": 0,
+   "open": 1,
+   "closed": 0
+  },
+  "realized": {
+   "n": 0,
+   "win_rate": null,
+   "avg_ret": null,
+   "sharpe_all": null,
+   "equity": []
+  },
+  "slippage": {
+   "n_fills": 0,
+   "median_bps": null,
+   "mad_bps": null,
+   "adoption_min_fills": 60,
+   "adopted": false,
+   "note": "M15-03: the backtest cost model adopts the rolling median once \u2265 60 fills exist (currently 0)."
+  },
+  "pdt": {
+   "enforced": false,
+   "used": 0,
+   "limit": 3,
+   "window_business_days": 5,
+   "note": "Flat \u22643 budget ignores FINRA's 6%-of-total-trades carve-out (strictly conservative)."
+  },
+  "kill_switch": {
+   "threshold_pct": 0.02,
+   "today_realized_pct": 0,
+   "tripped": false
+  },
+  "decay": {
+   "window_sessions": 63,
+   "rolling_sharpe": null,
+   "sessions_recorded": 0,
+   "note": "G-11: retrain-or-retire when rolling 63-session Sharpe stays below \u00bd the backtest expectation for 2+ quarters (126 sessions)."
+  }
+ },
+ "cfg": {
+  "config_hash": "64e992f62175488753ffbc08e10016ea8eb2a6980fde4b8f8ddd0555bd995266",
+  "cost": {
+   "per_trade_bps": 15,
+   "borrow_gc_bps_yr": 30,
+   "slippage_bps": 0
+  },
+  "barrier": {
+   "m": 1.5,
+   "h_days": 40,
+   "tie_break": "stop_first"
+  },
+  "port": {
+   "single_name_cap": 0.3,
+   "vol_target_ann": 0.2,
+   "tranches": 15
+  },
+  "pdt": {
+   "limit": 3,
+   "window_business_days": 5,
+   "equity_floor": 25000
+  },
+  "ops": {
+   "max_daily_loss_pct": 0.02
+  },
+  "slippage_adoption_min_fills": 60,
+  "decay": {
+   "window_sessions": 63,
+   "breach_sessions": 126,
+   "ratio_of_backtest": 0.5
+  }
+ }
+}

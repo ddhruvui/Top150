@@ -18,6 +18,24 @@
         "scripts/serve_top150_console.sh"
       ],
       "port": 8790
+    },
+    {
+      "name": "top150-api-sandbox",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd app/backend && REPORTS_DIR=\"$PWD/../../reports/top150\" PAPER_DATA_DIR=\"$PWD/data/sandbox\" SERVE_FRONTEND=0 PORT=8791 exec node src/server.js"
+      ],
+      "port": 8791
+    },
+    {
+      "name": "top150-ui-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd app/frontend && API_PROXY=http://localhost:8791 exec npx vite --port 5191 --strictPort"
+      ],
+      "port": 5191
     }
   ]
 }
